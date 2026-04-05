@@ -51,4 +51,13 @@ A spaced repetition study app at `artifacts/mobile/`.
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 - `pnpm --filter @workspace/mobile run dev` — run mobile app
 
+## Monetization (RevenueCat - Pending Setup)
+
+The app spec includes in-app purchases (₹99/month, ₹999/year, ₹1999 lifetime). RevenueCat integration was not authorized during initial setup. To add it:
+1. Connect RevenueCat via Replit integrations
+2. Install `react-native-purchases` in the mobile package
+3. Create seed script in `scripts/src/seedRevenueCat.ts`
+4. Add `lib/revenuecat.tsx` to the mobile app
+5. Wrap app in `SubscriptionProvider` and add paywall screen
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
