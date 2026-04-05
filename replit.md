@@ -29,6 +29,7 @@ A spaced repetition study app at `artifacts/mobile/`.
 - 14-day activity chart in Analytics tab
 - Category breakdown analytics
 - Offline-first with AsyncStorage
+- **Scholar AI tutor**: ask any question (text + optional image), get structured explanations with key points, summary, and follow-up question suggestions. Powered by OpenAI gpt-5.2 via Replit AI integrations
 
 ### App Architecture
 - State: React Context (`context/AppContext.tsx`) + AsyncStorage (`lib/storage.ts`)

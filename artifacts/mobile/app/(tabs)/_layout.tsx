@@ -21,6 +21,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "note.text", selected: "note.text" }} />
         <Label>Notes</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="scholar">
+        <Icon sf={{ default: "brain", selected: "brain" }} />
+        <Label>Scholar</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="analytics">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
         <Label>Analytics</Label>
@@ -94,6 +98,18 @@ function ClassicTabLayout() {
               <SymbolView name="note.text" tintColor={color} size={24} />
             ) : (
               <Feather name="file-text" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="scholar"
+        options={{
+          title: "Scholar",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="brain" tintColor={color} size={24} />
+            ) : (
+              <Feather name="cpu" size={22} color={color} />
             ),
         }}
       />
