@@ -182,7 +182,7 @@ export default function ScholarScreen() {
   const [loading, setLoading] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const bottomPad = Platform.OS === "web" ? 88 : insets.bottom + 8;
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -277,7 +277,7 @@ export default function ScholarScreen() {
       <ScrollView
         ref={scrollRef}
         style={styles.messages}
-        contentContainerStyle={[styles.messageContent, { paddingBottom: 16 }]}
+        contentContainerStyle={[styles.messageContent, { paddingBottom: 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
