@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 
+import { initNotificationsOnFirstLaunch } from "@/lib/notifications";
 import {
   Category,
   Note,
@@ -130,6 +131,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await seedDefaultsIfNeeded();
       await refresh();
       setIsLoading(false);
+      const due = await getDueNotes();
+      initNotificationsOnFirstLaunch(due.length).catch(() => {});
     };
     init();
   }, [refresh]);

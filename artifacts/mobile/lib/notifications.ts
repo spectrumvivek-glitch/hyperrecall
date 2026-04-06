@@ -38,10 +38,22 @@ export async function getNotificationSettings(): Promise<{
     AsyncStorage.getItem(NOTIF_MINUTE_KEY),
   ]);
   return {
-    enabled: enabled === "true",
+    // null means never set → default to true (enabled)
+    enabled: enabled !== "false",
     hour: hour !== null ? parseInt(hour, 10) : DEFAULT_HOUR,
     minute: minute !== null ? parseInt(minute, 10) : DEFAULT_MINUTE,
   };
+}
+
+export async function initNotificationsOnFirstLaunch(dueCount: number): Promise<void> {
+  if (Platform.OS === "web") return;
+  const raw = await AsyncStorage.getItem(NOTIF_ENABLED_KEY);
+  if (raw !== null) return; // already set, don't override
+  const granted = await requestNotificationPermission();
+  if (granted) {
+    await saveNotificationSettings(true, DEFAULT_HOUR, DEFAULT_MINUTE);
+    await scheduleDailyRevisionReminder(DEFAULT_HOUR, DEFAULT_MINUTE, dueCount);
+  }
 }
 
 export async function saveNotificationSettings(

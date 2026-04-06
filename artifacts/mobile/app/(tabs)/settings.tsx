@@ -37,7 +37,7 @@ export default function SettingsScreen() {
   const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
   const [showAddCat, setShowAddCat] = useState(false);
 
-  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(true);
   const [notifHour, setNotifHour] = useState(9);
   const [notifMinute, setNotifMinute] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);

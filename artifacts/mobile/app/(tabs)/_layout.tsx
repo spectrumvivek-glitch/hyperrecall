@@ -5,10 +5,35 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+
+function DueBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <View
+      style={{
+        position: "absolute",
+        top: -4,
+        right: -8,
+        backgroundColor: "#ef4444",
+        borderRadius: 8,
+        minWidth: 16,
+        height: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 3,
+      }}
+    >
+      <Text style={{ color: "#fff", fontSize: 9, fontWeight: "800" }}>
+        {count > 99 ? "99+" : count}
+      </Text>
+    </View>
+  );
+}
 
 function NativeTabLayout() {
   return (
@@ -16,6 +41,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="review">
+        <Icon sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }} />
+        <Label>Review</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="notes">
         <Icon sf={{ default: "note.text", selected: "note.text" }} />
@@ -41,6 +70,7 @@ function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
   const safeAreaInsets = useSafeAreaInsets();
+  const { dueNotes } = useApp();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
@@ -87,6 +117,22 @@ function ClassicTabLayout() {
             ) : (
               <Feather name="home" size={22} color={color} />
             ),
+        }}
+      />
+      <Tabs.Screen
+        name="review"
+        options={{
+          title: "Review",
+          tabBarIcon: ({ color }) => (
+            <View style={{ position: "relative" }}>
+              {isIOS ? (
+                <SymbolView name="checkmark.circle" tintColor={color} size={24} />
+              ) : (
+                <Feather name="check-circle" size={22} color={color} />
+              )}
+              <DueBadge count={dueNotes.length} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
