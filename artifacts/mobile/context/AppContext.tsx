@@ -30,6 +30,22 @@ import {
   skipRevision,
   updateNote,
 } from "@/lib/storage";
+import { calcImprovementPct, getXpProgress } from "@/lib/xp";
+
+export interface XpInfo {
+  totalXp: number;
+  level: number;
+  levelName: string;
+  xpIntoLevel: number;
+  xpNeeded: number;
+  progressPct: number;
+}
+
+export interface LevelUpEvent {
+  newLevel: number;
+  levelName: string;
+  xpGained: number;
+}
 
 interface AppContextValue {
   categories: Category[];
@@ -39,6 +55,10 @@ interface AppContextValue {
   userStats: UserStats;
   dueNotes: { note: Note; plan: RevisionPlan }[];
   isLoading: boolean;
+  xpInfo: XpInfo;
+  improvementPct: number | null;
+  pendingLevelUp: LevelUpEvent | null;
+  dismissLevelUp: () => void;
 
   addCategory: (name: string, color: string) => Promise<Category>;
   removeCategory: (id: string) => Promise<void>;
@@ -61,6 +81,11 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+function buildXpInfo(stats: UserStats): XpInfo {
+  const info = getXpProgress(stats.totalXp);
+  return { totalXp: stats.totalXp, ...info };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -71,9 +96,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     lastActiveDate: 0,
     totalCompleted: 0,
     totalSkipped: 0,
+    totalXp: 0,
+    todayCompleted: 0,
+    yesterdayCompleted: 0,
+    lastXpDate: 0,
   });
   const [dueNotes, setDueNotes] = useState<{ note: Note; plan: RevisionPlan }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingLevelUp, setPendingLevelUp] = useState<LevelUpEvent | null>(null);
+
+  const xpInfo = buildXpInfo(userStats);
+  const improvementPct = calcImprovementPct(userStats.todayCompleted, userStats.yesterdayCompleted);
 
   const refresh = useCallback(async () => {
     const [cats, nts, plans, logs, stats, due] = await Promise.all([
@@ -139,8 +172,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const markCompleted = useCallback(async (noteId: string) => {
-    await completeRevision(noteId);
+    const result = await completeRevision(noteId);
     await refresh();
+    if (result.leveledUp) {
+      const stats = await getUserStats();
+      const info = getXpProgress(stats.totalXp);
+      setPendingLevelUp({
+        newLevel: result.newLevel,
+        levelName: info.levelName,
+        xpGained: result.xpGained,
+      });
+    }
   }, [refresh]);
 
   const markSkipped = useCallback(async (noteId: string) => {
@@ -150,6 +192,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await saveUserStats(stats);
     await refresh();
   }, [refresh]);
+
+  const dismissLevelUp = useCallback(() => setPendingLevelUp(null), []);
 
   return (
     <AppContext.Provider
@@ -161,6 +205,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         userStats,
         dueNotes,
         isLoading,
+        xpInfo,
+        improvementPct,
+        pendingLevelUp,
+        dismissLevelUp,
         addCategory,
         removeCategory,
         addNote,

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { calcXpForAction, getLevelFromXp } from "./xp";
 
 export interface Category {
   id: string;
@@ -45,6 +46,10 @@ export interface UserStats {
   lastActiveDate: number;
   totalCompleted: number;
   totalSkipped: number;
+  totalXp: number;
+  todayCompleted: number;
+  yesterdayCompleted: number;
+  lastXpDate: number;
 }
 
 const KEYS = {
@@ -174,10 +179,12 @@ export async function getDueNotes(): Promise<{ note: Note; plan: RevisionPlan }[
     .filter((item) => !!item.note);
 }
 
-export async function completeRevision(noteId: string): Promise<void> {
+export async function completeRevision(
+  noteId: string
+): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number }> {
   const plans = await getRevisionPlans();
   const idx = plans.findIndex((p) => p.noteId === noteId);
-  if (idx === -1) return;
+  if (idx === -1) return { xpGained: 0, leveledUp: false, newLevel: 1 };
   const plan = plans[idx];
   const nextStep = Math.min(plan.currentStep + 1, plan.intervals.length - 1);
   const daysUntilNext = plan.intervals[nextStep] || plan.intervals[plan.intervals.length - 1];
@@ -186,7 +193,7 @@ export async function completeRevision(noteId: string): Promise<void> {
   plans[idx] = plan;
   await saveRevisionPlans(plans);
   await logRevision(noteId, "completed");
-  await updateStreak();
+  return await updateStreak();
 }
 
 export async function skipRevision(noteId: string): Promise<void> {
@@ -220,32 +227,64 @@ async function logRevision(noteId: string, status: "completed" | "skipped"): Pro
 // User Stats
 export async function getUserStats(): Promise<UserStats> {
   const raw = await AsyncStorage.getItem(KEYS.USER_STATS);
-  if (raw) return JSON.parse(raw);
-  return { currentStreak: 0, lastActiveDate: 0, totalCompleted: 0, totalSkipped: 0 };
+  if (raw) {
+    const parsed = JSON.parse(raw) as UserStats;
+    return {
+      totalXp: 0,
+      todayCompleted: 0,
+      yesterdayCompleted: 0,
+      lastXpDate: 0,
+      ...parsed,
+    };
+  }
+  return {
+    currentStreak: 0,
+    lastActiveDate: 0,
+    totalCompleted: 0,
+    totalSkipped: 0,
+    totalXp: 0,
+    todayCompleted: 0,
+    yesterdayCompleted: 0,
+    lastXpDate: 0,
+  };
 }
 
 export async function saveUserStats(stats: UserStats): Promise<void> {
   await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(stats));
 }
 
-async function updateStreak(): Promise<void> {
+async function updateStreak(): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number }> {
   const stats = await getUserStats();
   const today = startOfDay(Date.now());
   const yesterday = today - 24 * 60 * 60 * 1000;
   const lastActive = startOfDay(stats.lastActiveDate);
+  const lastXpDay = startOfDay(stats.lastXpDate || 0);
 
-  if (lastActive === today) {
-    stats.totalCompleted += 1;
-  } else if (lastActive === yesterday) {
-    stats.currentStreak += 1;
-    stats.totalCompleted += 1;
-    stats.lastActiveDate = Date.now();
-  } else {
-    stats.currentStreak = 1;
-    stats.totalCompleted += 1;
+  if (lastActive !== today) {
+    if (lastActive === yesterday) {
+      stats.currentStreak += 1;
+    } else {
+      stats.currentStreak = 1;
+    }
     stats.lastActiveDate = Date.now();
   }
+  stats.totalCompleted += 1;
+
+  if (lastXpDay !== today) {
+    stats.yesterdayCompleted = stats.todayCompleted;
+    stats.todayCompleted = 0;
+    stats.lastXpDate = Date.now();
+  }
+  stats.todayCompleted += 1;
+
+  const prevLevel = getLevelFromXp(stats.totalXp);
+  const xpGained = calcXpForAction(stats.currentStreak, false);
+  stats.totalXp += xpGained;
+  const newLevel = getLevelFromXp(stats.totalXp);
+  const leveledUp = newLevel > prevLevel;
+
   await saveUserStats(stats);
+  return { xpGained, leveledUp, newLevel };
 }
 
 export function startOfDay(ts: number): number {
