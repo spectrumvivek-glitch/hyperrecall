@@ -171,18 +171,21 @@ export default function DashboardScreen() {
             label="Due Today"
             value={dueNotes.length}
             subtitle={dueNotes.length > 0 ? "Ready to review" : "All caught up!"}
+            icon="refresh-cw"
             accentColor={dueNotes.length > 0 ? colors.primary : colors.success}
           />
           <StatCard
             label="Total Notes"
             value={notes.length}
             subtitle={`${revisionPlans.length} scheduled`}
+            icon="file-text"
             accentColor={colors.warning}
           />
           <StatCard
             label="Completed"
             value={userStats.totalCompleted}
             subtitle="All time"
+            icon="check-circle"
             accentColor={colors.success}
           />
         </View>

@@ -23,6 +23,7 @@ export function NoteCard({ note, plan, onPress, showDueBadge }: Props) {
   const colors = useColors();
   const { categories } = useApp();
   const category = categories.find((c) => c.id === note.categoryId);
+  const catColor = category?.color ?? colors.primary;
 
   const daysUntilDue = plan
     ? Math.ceil((plan.nextRevisionDate - Date.now()) / (24 * 60 * 60 * 1000))
@@ -31,27 +32,36 @@ export function NoteCard({ note, plan, onPress, showDueBadge }: Props) {
   const isDue = daysUntilDue !== null && daysUntilDue <= 0;
   const isUpcoming = daysUntilDue !== null && daysUntilDue > 0 && daysUntilDue <= 3;
 
+  const revisionColor = isDue ? colors.primary : isUpcoming ? colors.warning : colors.mutedForeground;
+  const revisionLabel = isDue
+    ? "Due today"
+    : daysUntilDue === 1
+    ? "Tomorrow"
+    : daysUntilDue !== null
+    ? `In ${daysUntilDue}d`
+    : null;
+
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.72}
       style={[
         styles.card,
         {
           backgroundColor: colors.card,
           borderRadius: colors.radius,
-          borderColor: isDue ? colors.primary + "40" : colors.border,
-          borderWidth: isDue ? 1.5 : 1,
+          borderColor: colors.border,
+          borderLeftColor: catColor,
         },
       ]}
     >
       {note.images.length > 0 && (
-        <View style={styles.imageRow}>
+        <View style={styles.imageStrip}>
           {note.images.slice(0, 3).map((img) => (
             <Image
               key={img.id}
               source={{ uri: img.uri }}
-              style={[styles.thumbnail, { borderRadius: colors.radius - 4 }]}
+              style={[styles.thumbnail, { borderRadius: colors.radius - 6 }]}
               resizeMode="cover"
             />
           ))}
@@ -59,10 +69,7 @@ export function NoteCard({ note, plan, onPress, showDueBadge }: Props) {
             <View
               style={[
                 styles.moreImages,
-                {
-                  borderRadius: colors.radius - 4,
-                  backgroundColor: colors.muted,
-                },
+                { borderRadius: colors.radius - 6, backgroundColor: colors.muted },
               ]}
             >
               <Text style={[styles.moreText, { color: colors.mutedForeground }]}>
@@ -74,88 +81,45 @@ export function NoteCard({ note, plan, onPress, showDueBadge }: Props) {
       )}
 
       <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Text
-            style={[styles.title, { color: colors.foreground }]}
-            numberOfLines={2}
-          >
-            {note.title}
-          </Text>
+        <View style={styles.topRow}>
+          <View style={styles.titleArea}>
+            {category && (
+              <View style={styles.catRow}>
+                <View style={[styles.catDot, { backgroundColor: catColor }]} />
+                <Text style={[styles.catText, { color: catColor }]}>{category.name}</Text>
+              </View>
+            )}
+            <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+              {note.title}
+            </Text>
+          </View>
           {showDueBadge && isDue && (
-            <View
-              style={[
-                styles.dueBadge,
-                { backgroundColor: colors.primary, borderRadius: colors.radius / 2 },
-              ]}
-            >
+            <View style={[styles.duePill, { backgroundColor: colors.primary }]}>
+              <View style={styles.dueDot} />
               <Text style={styles.dueText}>Due</Text>
             </View>
           )}
         </View>
 
         {note.content.length > 0 && (
-          <Text
-            style={[styles.content, { color: colors.mutedForeground }]}
-            numberOfLines={2}
-          >
+          <Text style={[styles.preview, { color: colors.mutedForeground }]} numberOfLines={2}>
             {note.content}
           </Text>
         )}
 
-        <View style={styles.footer}>
-          {category && (
-            <View
-              style={[
-                styles.categoryBadge,
-                {
-                  backgroundColor: category.color + "20",
-                  borderRadius: colors.radius / 2,
-                },
-              ]}
-            >
-              <View
-                style={[styles.categoryDot, { backgroundColor: category.color }]}
-              />
-              <Text style={[styles.categoryText, { color: category.color }]}>
-                {category.name}
-              </Text>
+        {revisionLabel && (
+          <View style={styles.footerRow}>
+            <View style={[styles.revisionPill, { backgroundColor: revisionColor + "14" }]}>
+              <Feather name="clock" size={10} color={revisionColor} />
+              <Text style={[styles.revisionText, { color: revisionColor }]}>{revisionLabel}</Text>
             </View>
-          )}
-
-          {plan && (
-            <View style={styles.revisionInfo}>
-              <Feather
-                name="refresh-cw"
-                size={11}
-                color={
-                  isDue
-                    ? colors.primary
-                    : isUpcoming
-                    ? colors.warning
-                    : colors.mutedForeground
-                }
-              />
-              <Text
-                style={[
-                  styles.revisionText,
-                  {
-                    color: isDue
-                      ? colors.primary
-                      : isUpcoming
-                      ? colors.warning
-                      : colors.mutedForeground,
-                  },
-                ]}
-              >
-                {isDue
-                  ? "Today"
-                  : daysUntilDue === 1
-                  ? "Tomorrow"
-                  : `${daysUntilDue}d`}
+            {plan && (
+              <Text style={[styles.stepText, { color: colors.mutedForeground }]}>
+                Step {plan.currentStep + 1}
               </Text>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -164,86 +128,55 @@ export function NoteCard({ note, plan, onPress, showDueBadge }: Props) {
 const styles = StyleSheet.create({
   card: {
     overflow: "hidden",
+    borderWidth: 1,
+    borderLeftWidth: 4,
   },
-  imageRow: {
+  imageStrip: {
     flexDirection: "row",
     gap: 4,
     padding: 10,
     paddingBottom: 0,
   },
-  thumbnail: {
-    width: 60,
-    height: 60,
-  },
+  thumbnail: { width: 56, height: 56 },
   moreImages: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
   },
-  moreText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-  },
-  body: {
-    padding: 12,
-    gap: 6,
-  },
-  titleRow: {
+  moreText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  body: { padding: 14, gap: 7 },
+  topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 8,
+    gap: 10,
   },
-  title: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-    lineHeight: 20,
-  },
-  dueBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  dueText: {
-    color: "#fff",
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
-  content: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 2,
-  },
-  categoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  categoryDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  categoryText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-  },
-  revisionInfo: {
+  titleArea: { flex: 1, gap: 3 },
+  catRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  catDot: { width: 6, height: 6, borderRadius: 3 },
+  catText: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.4 },
+  title: { fontSize: 15, fontFamily: "Inter_600SemiBold", lineHeight: 21 },
+  duePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
-  revisionText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
+  dueDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#ffffff99" },
+  dueText: { color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" },
+  preview: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  footerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 },
+  revisionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
   },
+  revisionText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  stepText: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });
