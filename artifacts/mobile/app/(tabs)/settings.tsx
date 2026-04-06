@@ -1,10 +1,11 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -14,6 +15,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import {
+  cancelAllRevisionNotifications,
+  formatTime,
+  getNotificationSettings,
+  requestNotificationPermission,
+  saveNotificationSettings,
+  scheduleDailyRevisionReminder,
+} from "@/lib/notifications";
 
 const CATEGORY_COLORS = [
   "#4f46e5", "#10b981", "#f59e0b", "#ec4899",
@@ -23,13 +32,74 @@ const CATEGORY_COLORS = [
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { categories, addCategory, removeCategory, notes } = useApp();
+  const { categories, addCategory, removeCategory, notes, dueNotes } = useApp();
   const [newCatName, setNewCatName] = useState("");
   const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
   const [showAddCat, setShowAddCat] = useState(false);
 
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifHour, setNotifHour] = useState(9);
+  const [notifMinute, setNotifMinute] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+
+  useEffect(() => {
+    getNotificationSettings().then(({ enabled, hour, minute }) => {
+      setNotifEnabled(enabled);
+      setNotifHour(hour);
+      setNotifMinute(minute);
+    });
+  }, []);
+
+  const handleToggleNotifications = async (value: boolean) => {
+    if (Platform.OS === "web") {
+      Alert.alert("Not supported", "Push notifications require the native app installed via Expo Go or a device build.");
+      return;
+    }
+    setNotifLoading(true);
+    try {
+      if (value) {
+        const granted = await requestNotificationPermission();
+        if (!granted) {
+          Alert.alert(
+            "Permission required",
+            "Please allow notifications in your device settings to receive revision reminders."
+          );
+          setNotifLoading(false);
+          return;
+        }
+        await saveNotificationSettings(true, notifHour, notifMinute);
+        await scheduleDailyRevisionReminder(notifHour, notifMinute, dueNotes.length);
+        setNotifEnabled(true);
+      } else {
+        await saveNotificationSettings(false, notifHour, notifMinute);
+        await cancelAllRevisionNotifications();
+        setNotifEnabled(false);
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleChangeHour = (delta: number) => {
+    const newHour = (notifHour + delta + 24) % 24;
+    setNotifHour(newHour);
+    if (notifEnabled) {
+      saveNotificationSettings(true, newHour, notifMinute);
+      scheduleDailyRevisionReminder(newHour, notifMinute, dueNotes.length);
+    }
+  };
+
+  const handleChangeMinute = (delta: number) => {
+    const newMinute = (notifMinute + delta + 60) % 60;
+    setNotifMinute(newMinute);
+    if (notifEnabled) {
+      saveNotificationSettings(true, notifHour, newMinute);
+      scheduleDailyRevisionReminder(notifHour, newMinute, dueNotes.length);
+    }
+  };
 
   const handleAddCategory = async () => {
     if (newCatName.trim().length === 0) return;
@@ -187,6 +257,89 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Notifications Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Notifications</Text>
+        <View style={[styles.notifCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.notifRow}>
+            <View style={styles.notifLeft}>
+              <View style={[styles.notifIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Feather name="bell" size={18} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={[styles.notifLabel, { color: colors.foreground }]}>Daily Reminders</Text>
+                <Text style={[styles.notifSub, { color: colors.mutedForeground }]}>
+                  {notifEnabled ? `Remind at ${formatTime(notifHour, notifMinute)}` : "Tap to enable"}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={notifEnabled}
+              onValueChange={handleToggleNotifications}
+              disabled={notifLoading}
+              trackColor={{ false: colors.muted, true: colors.primary + "80" }}
+              thumbColor={notifEnabled ? colors.primary : colors.mutedForeground}
+            />
+          </View>
+
+          {notifEnabled && Platform.OS !== "web" && (
+            <>
+              <View style={[styles.notifDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.timePicker}>
+                <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>Reminder time</Text>
+                <View style={styles.timeControls}>
+                  <View style={styles.timeUnit}>
+                    <TouchableOpacity onPress={() => handleChangeHour(1)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                      <Feather name="chevron-up" size={18} color={colors.foreground} />
+                    </TouchableOpacity>
+                    <Text style={[styles.timeValue, { color: colors.foreground }]}>
+                      {notifHour.toString().padStart(2, "0")}
+                    </Text>
+                    <TouchableOpacity onPress={() => handleChangeHour(-1)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                      <Feather name="chevron-down" size={18} color={colors.foreground} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={[styles.timeSep, { color: colors.foreground }]}>:</Text>
+                  <View style={styles.timeUnit}>
+                    <TouchableOpacity onPress={() => handleChangeMinute(5)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                      <Feather name="chevron-up" size={18} color={colors.foreground} />
+                    </TouchableOpacity>
+                    <Text style={[styles.timeValue, { color: colors.foreground }]}>
+                      {notifMinute.toString().padStart(2, "0")}
+                    </Text>
+                    <TouchableOpacity onPress={() => handleChangeMinute(-5)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                      <Feather name="chevron-down" size={18} color={colors.foreground} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={[styles.ampm, { color: colors.mutedForeground }]}>
+                    {notifHour >= 12 ? "PM" : "AM"}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.notifDivider, { backgroundColor: colors.border }]} />
+              <View style={[styles.notifHint, { backgroundColor: colors.primary + "10" }]}>
+                <Feather name="info" size={13} color={colors.primary} />
+                <Text style={[styles.notifHintText, { color: colors.primary }]}>
+                  You'll get a daily reminder at {formatTime(notifHour, notifMinute)} with how many cards are due.
+                </Text>
+              </View>
+            </>
+          )}
+
+          {Platform.OS === "web" && (
+            <>
+              <View style={[styles.notifDivider, { backgroundColor: colors.border }]} />
+              <View style={[styles.notifHint, { backgroundColor: colors.warning + "15" }]}>
+                <Feather name="smartphone" size={13} color={colors.warning} />
+                <Text style={[styles.notifHintText, { color: colors.warning }]}>
+                  Install via Expo Go on your phone to receive push notifications.
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+
       {/* App Info */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
@@ -284,4 +437,21 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
   infoValue: { fontSize: 14, fontFamily: "Inter_500Medium" },
   infoDivider: { height: 1, marginLeft: 44 },
+  notifCard: { borderRadius: 12, borderWidth: 1, overflow: "hidden" },
+  notifRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
+  notifLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  notifIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  notifLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  notifSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  notifDivider: { height: 1 },
+  timePicker: { padding: 14, gap: 10 },
+  timeLabel: { fontSize: 12, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.5 },
+  timeControls: { flexDirection: "row", alignItems: "center", gap: 12 },
+  timeUnit: { alignItems: "center", gap: 6 },
+  timeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  timeValue: { fontSize: 24, fontFamily: "Inter_700Bold", minWidth: 36, textAlign: "center" },
+  timeSep: { fontSize: 24, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  ampm: { fontSize: 16, fontFamily: "Inter_600SemiBold", marginLeft: 4, marginBottom: 4 },
+  notifHint: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12 },
+  notifHintText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
