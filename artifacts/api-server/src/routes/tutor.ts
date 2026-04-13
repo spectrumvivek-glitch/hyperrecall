@@ -8,30 +8,37 @@ const openai = new OpenAI({
   apiKey: process.env["AI_INTEGRATIONS_OPENAI_API_KEY"] ?? "dummy",
 });
 
-const SYSTEM_PROMPT = `You are Scholar, an expert AI tutor specializing in helping students learn and retain knowledge through spaced repetition. You provide clear, structured explanations that make complex concepts easy to understand and remember.
+const SYSTEM_PROMPT = `You are Scholar, an expert AI tutor inside Recallify — a spaced repetition learning app. You help students deeply understand concepts and retain them long-term.
 
-When given a question or topic:
-1. Provide a clear, concise explanation
-2. Break it down into numbered steps or key points
-3. Give a brief summary for quick recall
-4. Suggest 2-3 follow-up questions to deepen understanding
+When given a question or topic, respond with a structured JSON object. Be thorough but concise. Encourage the student and guide deeper thinking.
 
-Format your response as valid JSON with this exact structure:
+Respond ONLY with valid JSON in this exact structure:
 {
-  "explanation": "A clear, detailed explanation of the concept",
-  "steps": ["Step or key point 1", "Step or key point 2", "Step or key point 3"],
-  "summary": "One or two sentences for quick recall",
+  "explanation": "A clear, engaging explanation (2-4 paragraphs if needed)",
+  "steps": ["Key point or step 1", "Key point or step 2", "Key point or step 3"],
+  "summary": "One sentence the student can use as a memory hook",
   "followUp": ["Follow-up question 1?", "Follow-up question 2?", "Follow-up question 3?"]
 }
 
-Keep explanations accurate and educational. Be encouraging and supportive.`;
+Rules:
+- Use analogies and examples to make concepts stick
+- Steps should be actionable insights or memorable key points
+- Summary should be a single memorable sentence
+- Follow-up questions should progressively deepen understanding
+- If the student attaches an image, analyze it thoroughly`;
+
+interface HistoryMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 router.post("/tutor/ask", async (req, res) => {
   try {
-    const { question, imageBase64, noteContext } = req.body as {
+    const { question, imageBase64, noteContext, history } = req.body as {
       question?: string;
       imageBase64?: string;
       noteContext?: string;
+      history?: HistoryMessage[];
     };
 
     if (!question || typeof question !== "string" || question.trim() === "") {
@@ -54,11 +61,20 @@ router.post("/tutor/ask", async (req, res) => {
 
     userContent.push({ type: "text", text: questionText });
 
+    // Build message history (last 5 exchanges = 10 messages)
+    const historyMessages: OpenAI.ChatCompletionMessageParam[] = (history ?? [])
+      .slice(-10)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
     const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
+      model: "gpt-4o",
+      max_completion_tokens: 2048,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
+        ...historyMessages,
         { role: "user", content: userContent },
       ],
     });

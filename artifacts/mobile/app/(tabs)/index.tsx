@@ -72,12 +72,12 @@ function ImprovementBanner({ pct, colors }: {
 
 async function shareStreak(streak: number, totalXp: number, level: number, levelName: string) {
   const message =
-    `🔥 ${streak}-day study streak on StudyBrain!\n` +
+    `🔥 ${streak}-day study streak on Recallify!\n` +
     `⚡ Level ${level} ${levelName} • ${totalXp} XP earned\n` +
     `📚 Using spaced repetition to learn smarter, not harder.\n` +
-    `#StudyBrain #SpacedRepetition #Learning`;
+    `#Recallify #SpacedRepetition #Learning`;
   try {
-    await Share.share({ message, title: "My StudyBrain Streak" });
+    await Share.share({ message, title: "My Recallify Streak" });
   } catch {
     // user cancelled or error
   }
@@ -89,7 +89,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const {
     dueNotes, userStats, notes, revisionPlans, isLoading, refresh,
-    xpInfo, improvementPct, pendingLevelUp, dismissLevelUp,
+    xpInfo, improvementPct, pendingLevelUp, dismissLevelUp, shareAndEarnXp,
   } = useApp();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -126,7 +126,7 @@ export default function DashboardScreen() {
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
               Good{new Date().getHours() < 12 ? " morning" : new Date().getHours() < 17 ? " afternoon" : " evening"}
             </Text>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>StudyBrain</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Recallify</Text>
           </View>
           <StreakBadge streak={userStats.currentStreak} size="md" />
         </View>
@@ -144,12 +144,15 @@ export default function DashboardScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => shareStreak(userStats.currentStreak, xpInfo.totalXp, xpInfo.level, xpInfo.levelName)}
+              onPress={async () => {
+                await shareStreak(userStats.currentStreak, xpInfo.totalXp, xpInfo.level, xpInfo.levelName);
+                await shareAndEarnXp();
+              }}
               style={[styles.shareBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}
               activeOpacity={0.7}
             >
               <Feather name="share-2" size={16} color={colors.primary} />
-              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Share</Text>
+              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Share +10 XP</Text>
             </TouchableOpacity>
           </View>
           <XpBar

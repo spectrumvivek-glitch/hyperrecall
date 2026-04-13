@@ -14,18 +14,21 @@ import {
   RevisionLog,
   RevisionPlan,
   UserStats,
+  VacationSettings,
+  awardShareXp,
   completeRevision,
   createCategory,
   createNote,
   createRevisionPlan,
   deleteCategory,
   deleteNote,
-  getCategories,
   getDueNotes,
+  getCategories,
   getNotes,
   getRevisionLogs,
   getRevisionPlans,
   getUserStats,
+  getVacationSettings,
   saveUserStats,
   seedDefaultsIfNeeded,
   skipRevision,
@@ -54,12 +57,16 @@ interface AppContextValue {
   revisionPlans: RevisionPlan[];
   revisionLogs: RevisionLog[];
   userStats: UserStats;
+  vacationSettings: VacationSettings;
   dueNotes: { note: Note; plan: RevisionPlan }[];
   isLoading: boolean;
   xpInfo: XpInfo;
   improvementPct: number | null;
   pendingLevelUp: LevelUpEvent | null;
+  pendingXp: number;
+  streakMilestone: number | null;
   dismissLevelUp: () => void;
+  dismissStreakMilestone: () => void;
 
   addCategory: (name: string, color: string) => Promise<Category>;
   removeCategory: (id: string) => Promise<void>;
@@ -69,15 +76,18 @@ interface AppContextValue {
     categoryId: string,
     content: string,
     images: NoteImage[],
-    intervals: number[]
+    intervals: number[],
+    mode?: "custom" | "sm2"
   ) => Promise<Note>;
-  editNote: (id: string, updates: Partial<Note>, intervals?: number[]) => Promise<void>;
+  editNote: (id: string, updates: Partial<Note>, intervals?: number[], mode?: "custom" | "sm2") => Promise<void>;
   removeNote: (id: string) => Promise<void>;
 
-  markCompleted: (noteId: string) => Promise<void>;
+  markCompleted: (noteId: string, sm2Quality?: number) => Promise<number>;
   markSkipped: (noteId: string) => Promise<void>;
+  shareAndEarnXp: () => Promise<void>;
 
   refresh: () => Promise<void>;
+  refreshVacation: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -86,6 +96,8 @@ function buildXpInfo(stats: UserStats): XpInfo {
   const info = getXpProgress(stats.totalXp);
   return { totalXp: stats.totalXp, ...info };
 }
+
+const DEFAULT_VACATION: VacationSettings = { isActive: false, startDate: 0, endDate: 0, holidayRestActive: false };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -102,9 +114,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     yesterdayCompleted: 0,
     lastXpDate: 0,
   });
+  const [vacationSettings, setVacationSettings] = useState<VacationSettings>(DEFAULT_VACATION);
   const [dueNotes, setDueNotes] = useState<{ note: Note; plan: RevisionPlan }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingLevelUp, setPendingLevelUp] = useState<LevelUpEvent | null>(null);
+  const [pendingXp, setPendingXp] = useState(0);
+  const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
 
   const xpInfo = buildXpInfo(userStats);
   const improvementPct = calcImprovementPct(userStats.todayCompleted, userStats.yesterdayCompleted);
@@ -126,16 +141,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDueNotes(due);
   }, []);
 
+  const refreshVacation = useCallback(async () => {
+    const vac = await getVacationSettings();
+    setVacationSettings(vac);
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       await seedDefaultsIfNeeded();
-      await refresh();
+      await Promise.all([refresh(), refreshVacation()]);
       setIsLoading(false);
       const due = await getDueNotes();
       initNotificationsOnFirstLaunch(due.length).catch(() => {});
     };
     init();
-  }, [refresh]);
+  }, [refresh, refreshVacation]);
 
   const addCategory = useCallback(async (name: string, color: string) => {
     const cat = await createCategory(name, color);
@@ -153,18 +173,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     categoryId: string,
     content: string,
     images: NoteImage[],
-    intervals: number[]
+    intervals: number[],
+    mode: "custom" | "sm2" = "custom"
   ) => {
     const note = await createNote(title, categoryId, content, images);
-    await createRevisionPlan(note.id, intervals);
+    await createRevisionPlan(note.id, intervals, mode);
     await refresh();
     return note;
   }, [refresh]);
 
-  const editNote = useCallback(async (id: string, updates: Partial<Note>, intervals?: number[]) => {
+  const editNote = useCallback(async (id: string, updates: Partial<Note>, intervals?: number[], mode?: "custom" | "sm2") => {
     await updateNote(id, updates);
     if (intervals && intervals.length > 0) {
-      await createRevisionPlan(id, intervals);
+      await createRevisionPlan(id, intervals, mode ?? "custom");
     }
     await refresh();
   }, [refresh]);
@@ -174,9 +195,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refresh();
   }, [refresh]);
 
-  const markCompleted = useCallback(async (noteId: string) => {
-    const result = await completeRevision(noteId);
+  const markCompleted = useCallback(async (noteId: string, sm2Quality?: number): Promise<number> => {
+    const result = await completeRevision(noteId, sm2Quality);
     await refresh();
+    setPendingXp(result.xpGained);
+    if (result.streakMilestone) {
+      setStreakMilestone(result.streakMilestone);
+    }
     if (result.leveledUp) {
       const stats = await getUserStats();
       const info = getXpProgress(stats.totalXp);
@@ -186,6 +211,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         xpGained: result.xpGained,
       });
     }
+    return result.xpGained;
   }, [refresh]);
 
   const markSkipped = useCallback(async (noteId: string) => {
@@ -196,7 +222,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refresh();
   }, [refresh]);
 
+  const shareAndEarnXp = useCallback(async () => {
+    const result = await awardShareXp();
+    setPendingXp(result.xpGained);
+    await refresh();
+    if (result.leveledUp) {
+      const stats = await getUserStats();
+      const info = getXpProgress(stats.totalXp);
+      setPendingLevelUp({ newLevel: result.newLevel, levelName: info.levelName, xpGained: result.xpGained });
+    }
+  }, [refresh]);
+
   const dismissLevelUp = useCallback(() => setPendingLevelUp(null), []);
+  const dismissStreakMilestone = useCallback(() => setStreakMilestone(null), []);
 
   return (
     <AppContext.Provider
@@ -206,12 +244,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         revisionPlans,
         revisionLogs,
         userStats,
+        vacationSettings,
         dueNotes,
         isLoading,
         xpInfo,
         improvementPct,
         pendingLevelUp,
+        pendingXp,
+        streakMilestone,
         dismissLevelUp,
+        dismissStreakMilestone,
         addCategory,
         removeCategory,
         addNote,
@@ -219,7 +261,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         removeNote,
         markCompleted,
         markSkipped,
+        shareAndEarnXp,
         refresh,
+        refreshVacation,
       }}
     >
       {children}

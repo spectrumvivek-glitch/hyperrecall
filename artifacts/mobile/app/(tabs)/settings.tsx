@@ -23,16 +23,32 @@ import {
   saveNotificationSettings,
   scheduleDailyRevisionReminder,
 } from "@/lib/notifications";
+import {
+  activateHolidayRest,
+  activateVacation,
+  deactivateVacation,
+  formatDate,
+  startOfDay,
+} from "@/lib/storage";
 
 const CATEGORY_COLORS = [
   "#4f46e5", "#10b981", "#f59e0b", "#ec4899",
   "#3b82f6", "#ef4444", "#8b5cf6", "#06b6d4",
 ];
 
+function SectionCard({ children, style }: { children: React.ReactNode; style?: object }) {
+  const colors = useColors();
+  return (
+    <View style={[{ backgroundColor: colors.card, borderRadius: 14, borderColor: colors.border, borderWidth: 1, overflow: "hidden" }, style]}>
+      {children}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { categories, addCategory, removeCategory, notes, dueNotes } = useApp();
+  const { categories, addCategory, removeCategory, notes, dueNotes, vacationSettings, refreshVacation } = useApp();
   const [newCatName, setNewCatName] = useState("");
   const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
   const [showAddCat, setShowAddCat] = useState(false);
@@ -41,6 +57,13 @@ export default function SettingsScreen() {
   const [notifHour, setNotifHour] = useState(9);
   const [notifMinute, setNotifMinute] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
+
+  // Vacation mode state
+  const [vacLoading, setVacLoading] = useState(false);
+  const [vacStartText, setVacStartText] = useState("");
+  const [vacEndText, setVacEndText] = useState("");
+  const [showVacForm, setShowVacForm] = useState(false);
+  const [holidayLoading, setHolidayLoading] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -63,10 +86,7 @@ export default function SettingsScreen() {
       if (value) {
         const granted = await requestNotificationPermission();
         if (!granted) {
-          Alert.alert(
-            "Permission required",
-            "Please allow notifications in your device settings to receive revision reminders."
-          );
+          Alert.alert("Permission required", "Please allow notifications in your device settings.");
           setNotifLoading(false);
           return;
         }
@@ -126,23 +146,107 @@ export default function SettingsScreen() {
     }
   };
 
+  // Vacation mode handlers
+  const parseDate = (text: string): number | null => {
+    const d = new Date(text);
+    if (isNaN(d.getTime())) return null;
+    return startOfDay(d.getTime());
+  };
+
+  const handleActivateVacation = async () => {
+    const start = parseDate(vacStartText);
+    const end = parseDate(vacEndText);
+    if (!start || !end) {
+      Alert.alert("Invalid dates", "Please enter dates in YYYY-MM-DD format.");
+      return;
+    }
+    if (end <= start) {
+      Alert.alert("Invalid range", "End date must be after start date.");
+      return;
+    }
+    const days = Math.ceil((end - start) / (24 * 60 * 60 * 1000));
+    Alert.alert(
+      "Activate Vacation Mode?",
+      `All your revision dates will be shifted forward by ${days} day${days !== 1 ? "s" : ""}. Your streak will be protected.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Activate",
+          onPress: async () => {
+            setVacLoading(true);
+            try {
+              await activateVacation(start, end);
+              await refreshVacation();
+              setShowVacForm(false);
+              setVacStartText("");
+              setVacEndText("");
+              Alert.alert("Vacation Mode On", "Your revision schedule has been shifted. Enjoy your break!");
+            } finally {
+              setVacLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeactivateVacation = async () => {
+    Alert.alert("Deactivate Vacation Mode?", "Your revised schedule will remain as shifted.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Deactivate",
+        onPress: async () => {
+          setVacLoading(true);
+          try {
+            await deactivateVacation();
+            await refreshVacation();
+          } finally {
+            setVacLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleHolidayRest = async () => {
+    Alert.alert(
+      "Holiday Rest Mode",
+      "Today's due cards will be pushed to tomorrow. Use this for a single day off without losing your streak.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Take a Rest Day",
+          onPress: async () => {
+            setHolidayLoading(true);
+            try {
+              await activateHolidayRest();
+              await refreshVacation();
+              Alert.alert("Rest Day Activated", "Today's cards are postponed to tomorrow. See you then!");
+            } finally {
+              setHolidayLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const divider = (
+    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+  );
+
   return (
     <ScrollView
       style={[styles.scroll, { backgroundColor: colors.background }]}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: topPad + 16, paddingBottom: bottomPad + 100 },
-      ]}
+      contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: bottomPad + 100 }]}
       showsVerticalScrollIndicator={false}
     >
       <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
 
-      {/* Categories Section */}
+      {/* Categories */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Categories
-          </Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Categories</Text>
           <TouchableOpacity
             onPress={() => setShowAddCat(!showAddCat)}
             style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: colors.radius / 2 }]}
@@ -156,122 +260,78 @@ export default function SettingsScreen() {
         </View>
 
         {showAddCat && (
-          <View
-            style={[
-              styles.addCatForm,
-              {
-                backgroundColor: colors.card,
-                borderRadius: colors.radius,
-                borderColor: colors.border,
-                borderWidth: 1,
-              },
-            ]}
-          >
-            <TextInput
-              value={newCatName}
-              onChangeText={setNewCatName}
-              placeholder="Category name"
-              placeholderTextColor={colors.mutedForeground}
-              style={[
-                styles.catInput,
-                {
-                  color: colors.foreground,
-                  backgroundColor: colors.muted,
-                  borderRadius: colors.radius / 2,
-                  fontFamily: "Inter_400Regular",
-                },
-              ]}
-            />
-            <View style={styles.colorRow}>
-              {CATEGORY_COLORS.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => setSelectedColor(c)}
-                  style={[
-                    styles.colorDot,
-                    { backgroundColor: c },
-                    selectedColor === c && styles.colorDotSelected,
-                  ]}
-                  activeOpacity={0.8}
-                >
-                  {selectedColor === c && (
-                    <Feather name="check" size={12} color="#fff" />
-                  )}
-                </TouchableOpacity>
-              ))}
+          <SectionCard>
+            <View style={{ padding: 14, gap: 12 }}>
+              <TextInput
+                value={newCatName}
+                onChangeText={setNewCatName}
+                placeholder="Category name"
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.catInput, { color: colors.foreground, backgroundColor: colors.muted, borderRadius: colors.radius / 2 }]}
+              />
+              <View style={styles.colorRow}>
+                {CATEGORY_COLORS.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => setSelectedColor(c)}
+                    style={[styles.colorDot, { backgroundColor: c }, selectedColor === c && styles.colorDotSelected]}
+                    activeOpacity={0.8}
+                  >
+                    {selectedColor === c && <Feather name="check" size={12} color="#fff" />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity onPress={handleAddCategory} style={[styles.createBtn, { backgroundColor: colors.primary, borderRadius: colors.radius / 2 }]} activeOpacity={0.8}>
+                <Text style={[styles.createBtnText, { color: colors.primaryForeground }]}>Create Category</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={handleAddCategory}
-              style={[
-                styles.createBtn,
-                { backgroundColor: colors.primary, borderRadius: colors.radius / 2 },
-              ]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.createBtnText, { color: colors.primaryForeground }]}>
-                Create Category
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </SectionCard>
         )}
 
-        <View style={styles.catList}>
-          {categories.map((cat) => {
+        <SectionCard>
+          {categories.map((cat, i) => {
             const noteCount = notes.filter((n) => n.categoryId === cat.id).length;
             return (
-              <View
-                key={cat.id}
-                style={[
-                  styles.catRow,
-                  {
-                    backgroundColor: colors.card,
-                    borderRadius: colors.radius,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                  },
-                ]}
-              >
-                <View style={styles.catLeft}>
-                  <View
-                    style={[styles.catColorIndicator, { backgroundColor: cat.color }]}
-                  />
-                  <View>
-                    <Text style={[styles.catName, { color: colors.foreground }]}>
-                      {cat.name}
-                    </Text>
-                    <Text style={[styles.catCount, { color: colors.mutedForeground }]}>
-                      {noteCount} note{noteCount !== 1 ? "s" : ""}
-                    </Text>
+              <React.Fragment key={cat.id}>
+                {i > 0 && divider}
+                <View style={styles.catRow}>
+                  <View style={styles.catLeft}>
+                    <View style={[styles.catColorBar, { backgroundColor: cat.color }]} />
+                    <View>
+                      <Text style={[styles.catName, { color: colors.foreground }]}>{cat.name}</Text>
+                      <Text style={[styles.catCount, { color: colors.mutedForeground }]}>
+                        {noteCount} note{noteCount !== 1 ? "s" : ""}
+                      </Text>
+                    </View>
                   </View>
+                  <TouchableOpacity onPress={() => handleDeleteCategory(cat.id, cat.name)} style={styles.deleteBtn} activeOpacity={0.7}>
+                    <Feather name="trash-2" size={16} color={colors.destructive} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={() => handleDeleteCategory(cat.id, cat.name)}
-                  style={styles.deleteBtn}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="trash-2" size={16} color={colors.destructive} />
-                </TouchableOpacity>
-              </View>
+              </React.Fragment>
             );
           })}
-        </View>
+          {categories.length === 0 && (
+            <View style={styles.emptyCats}>
+              <Text style={[styles.emptyCatsText, { color: colors.mutedForeground }]}>No categories yet</Text>
+            </View>
+          )}
+        </SectionCard>
       </View>
 
-      {/* Notifications Section */}
+      {/* Notifications */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Notifications</Text>
-        <View style={[styles.notifCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.notifRow}>
-            <View style={styles.notifLeft}>
-              <View style={[styles.notifIcon, { backgroundColor: colors.primary + "18" }]}>
-                <Feather name="bell" size={18} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={[styles.notifLabel, { color: colors.foreground }]}>Daily Reminders</Text>
-                <Text style={[styles.notifSub, { color: colors.mutedForeground }]}>
-                  {notifEnabled ? `Remind at ${formatTime(notifHour, notifMinute)}` : "Tap to enable"}
-                </Text>
-              </View>
+        <SectionCard>
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + "18" }]}>
+              <Feather name="bell" size={18} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Daily Reminders</Text>
+              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+                {notifEnabled ? `Remind at ${formatTime(notifHour, notifMinute)}` : "Tap to enable"}
+              </Text>
             </View>
             <Switch
               value={notifEnabled}
@@ -284,17 +344,15 @@ export default function SettingsScreen() {
 
           {notifEnabled && Platform.OS !== "web" && (
             <>
-              <View style={[styles.notifDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.timePicker}>
-                <Text style={[styles.timeLabel, { color: colors.mutedForeground }]}>Reminder time</Text>
+              {divider}
+              <View style={{ padding: 14, gap: 10 }}>
+                <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>Reminder time</Text>
                 <View style={styles.timeControls}>
                   <View style={styles.timeUnit}>
                     <TouchableOpacity onPress={() => handleChangeHour(1)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
                       <Feather name="chevron-up" size={18} color={colors.foreground} />
                     </TouchableOpacity>
-                    <Text style={[styles.timeValue, { color: colors.foreground }]}>
-                      {notifHour.toString().padStart(2, "0")}
-                    </Text>
+                    <Text style={[styles.timeValue, { color: colors.foreground }]}>{notifHour.toString().padStart(2, "0")}</Text>
                     <TouchableOpacity onPress={() => handleChangeHour(-1)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
                       <Feather name="chevron-down" size={18} color={colors.foreground} />
                     </TouchableOpacity>
@@ -304,74 +362,164 @@ export default function SettingsScreen() {
                     <TouchableOpacity onPress={() => handleChangeMinute(5)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
                       <Feather name="chevron-up" size={18} color={colors.foreground} />
                     </TouchableOpacity>
-                    <Text style={[styles.timeValue, { color: colors.foreground }]}>
-                      {notifMinute.toString().padStart(2, "0")}
-                    </Text>
+                    <Text style={[styles.timeValue, { color: colors.foreground }]}>{notifMinute.toString().padStart(2, "0")}</Text>
                     <TouchableOpacity onPress={() => handleChangeMinute(-5)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
                       <Feather name="chevron-down" size={18} color={colors.foreground} />
                     </TouchableOpacity>
                   </View>
-                  <Text style={[styles.ampm, { color: colors.mutedForeground }]}>
-                    {notifHour >= 12 ? "PM" : "AM"}
-                  </Text>
+                  <Text style={[styles.ampm, { color: colors.mutedForeground }]}>{notifHour >= 12 ? "PM" : "AM"}</Text>
                 </View>
-              </View>
-              <View style={[styles.notifDivider, { backgroundColor: colors.border }]} />
-              <View style={[styles.notifHint, { backgroundColor: colors.primary + "10" }]}>
-                <Feather name="info" size={13} color={colors.primary} />
-                <Text style={[styles.notifHintText, { color: colors.primary }]}>
-                  You'll get a daily reminder at {formatTime(notifHour, notifMinute)} with how many cards are due.
-                </Text>
               </View>
             </>
           )}
 
           {Platform.OS === "web" && (
             <>
-              <View style={[styles.notifDivider, { backgroundColor: colors.border }]} />
-              <View style={[styles.notifHint, { backgroundColor: colors.warning + "15" }]}>
+              {divider}
+              <View style={[styles.hintRow, { backgroundColor: colors.warning + "12" }]}>
                 <Feather name="smartphone" size={13} color={colors.warning} />
-                <Text style={[styles.notifHintText, { color: colors.warning }]}>
+                <Text style={[styles.hintText, { color: colors.warning }]}>
                   Install via Expo Go on your phone to receive push notifications.
                 </Text>
               </View>
             </>
           )}
-        </View>
+        </SectionCard>
       </View>
 
-      {/* App Info */}
+      {/* Vacation & Rest Mode */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Breaks & Rest</Text>
+        </View>
+
+        {/* Vacation Mode */}
+        <SectionCard>
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: "#3b82f6" + "18" }]}>
+              <Feather name="umbrella" size={18} color="#3b82f6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Vacation Mode</Text>
+              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+                {vacationSettings.isActive
+                  ? `Active · returns ${formatDate(vacationSettings.endDate)}`
+                  : "Shift all reviews while you're away"}
+              </Text>
+            </View>
+            {vacationSettings.isActive ? (
+              <TouchableOpacity
+                onPress={handleDeactivateVacation}
+                disabled={vacLoading}
+                style={[styles.smallBtn, { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "40" }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.smallBtnText, { color: colors.destructive }]}>End</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setShowVacForm(!showVacForm)}
+                style={[styles.smallBtn, { backgroundColor: "#3b82f6" + "15", borderColor: "#3b82f6" + "40" }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.smallBtnText, { color: "#3b82f6" }]}>{showVacForm ? "Cancel" : "Plan"}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {showVacForm && !vacationSettings.isActive && (
+            <>
+              {divider}
+              <View style={{ padding: 14, gap: 10 }}>
+                <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>Start date (YYYY-MM-DD)</Text>
+                <TextInput
+                  value={vacStartText}
+                  onChangeText={setVacStartText}
+                  placeholder="e.g. 2025-12-20"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.dateInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                />
+                <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>End date (YYYY-MM-DD)</Text>
+                <TextInput
+                  value={vacEndText}
+                  onChangeText={setVacEndText}
+                  placeholder="e.g. 2026-01-05"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.dateInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                />
+                <TouchableOpacity
+                  onPress={handleActivateVacation}
+                  disabled={vacLoading}
+                  style={[styles.createBtn, { backgroundColor: "#3b82f6", borderRadius: colors.radius / 2, opacity: vacLoading ? 0.6 : 1 }]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.createBtnText, { color: "#fff" }]}>
+                    {vacLoading ? "Activating..." : "Activate Vacation Mode"}
+                  </Text>
+                </TouchableOpacity>
+                <View style={[styles.hintRow, { backgroundColor: "#3b82f6" + "12" }]}>
+                  <Feather name="info" size={12} color="#3b82f6" />
+                  <Text style={[styles.hintText, { color: "#3b82f6" }]}>
+                    All your revision dates will shift forward by the vacation duration. Your streak is protected.
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+        </SectionCard>
+
+        {/* Holiday Rest Mode */}
+        <SectionCard>
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: "#f59e0b" + "18" }]}>
+              <MaterialCommunityIcons name="weather-sunset" size={20} color="#f59e0b" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Holiday Rest</Text>
+              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+                Push today's reviews to tomorrow
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleHolidayRest}
+              disabled={holidayLoading}
+              style={[styles.smallBtn, { backgroundColor: "#f59e0b" + "15", borderColor: "#f59e0b" + "40", opacity: holidayLoading ? 0.6 : 1 }]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.smallBtnText, { color: "#f59e0b" }]}>Take</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.hintRow, { backgroundColor: "#f59e0b" + "10", margin: 0, borderTopWidth: 1, borderTopColor: colors.border }]}>
+            <Feather name="info" size={12} color="#f59e0b" />
+            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+              Use for a single rest day. Prevents streak loss and tomorrow's overload.
+            </Text>
+          </View>
+        </SectionCard>
+      </View>
+
+      {/* About */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
-        <View
-          style={[
-            styles.infoCard,
-            {
-              backgroundColor: colors.card,
-              borderRadius: colors.radius,
-              borderColor: colors.border,
-              borderWidth: 1,
-            },
-          ]}
-        >
+        <SectionCard>
           <View style={styles.infoRow}>
-            <Feather name="book" size={18} color={colors.primary} />
-            <Text style={[styles.infoLabel, { color: colors.foreground }]}>StudyBrain</Text>
+            <Feather name="zap" size={18} color={colors.primary} />
+            <Text style={[styles.infoLabel, { color: colors.foreground }]}>Recallify</Text>
             <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>v1.0.0</Text>
           </View>
-          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          {divider}
           <View style={styles.infoRow}>
             <Feather name="database" size={18} color={colors.mutedForeground} />
             <Text style={[styles.infoLabel, { color: colors.foreground }]}>Notes stored</Text>
             <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>{notes.length}</Text>
           </View>
-          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          {divider}
           <View style={styles.infoRow}>
             <Feather name="shield" size={18} color={colors.mutedForeground} />
             <Text style={[styles.infoLabel, { color: colors.foreground }]}>Data storage</Text>
             <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>Local only</Text>
           </View>
-        </View>
+        </SectionCard>
       </View>
     </ScrollView>
   );
@@ -382,76 +530,42 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 24 },
   title: { fontSize: 24, fontFamily: "Inter_700Bold" },
   section: { gap: 12 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  addBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
+  divider: { height: 1 },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6 },
   addBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  addCatForm: { padding: 14, gap: 12 },
-  catInput: {
-    padding: 12,
-    fontSize: 14,
-  },
+  catInput: { padding: 12, fontSize: 14, fontFamily: "Inter_400Regular" },
   colorRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-  colorDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  colorDotSelected: {
-    borderWidth: 3,
-    borderColor: "#ffffff",
-  },
+  colorDot: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  colorDotSelected: { borderWidth: 3, borderColor: "#ffffff" },
   createBtn: { paddingVertical: 12, alignItems: "center" },
   createBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  catList: { gap: 8 },
-  catRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-  },
+  catRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12 },
   catLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  catColorIndicator: { width: 16, height: 36, borderRadius: 4 },
+  catColorBar: { width: 4, height: 36, borderRadius: 2 },
   catName: { fontSize: 15, fontFamily: "Inter_500Medium" },
   catCount: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   deleteBtn: { padding: 8 },
-  infoCard: { overflow: "hidden" },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-  },
-  infoLabel: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
-  infoValue: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  infoDivider: { height: 1, marginLeft: 44 },
-  notifCard: { borderRadius: 12, borderWidth: 1, overflow: "hidden" },
-  notifRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
-  notifLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  notifIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  notifLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  notifSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  notifDivider: { height: 1 },
-  timePicker: { padding: 14, gap: 10 },
-  timeLabel: { fontSize: 12, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.5 },
+  emptyCats: { padding: 16, alignItems: "center" },
+  emptyCatsText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  settingRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  settingIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  settingLabel: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  settingSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  smallBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
+  smallBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  pickerLabel: { fontSize: 12, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.5 },
   timeControls: { flexDirection: "row", alignItems: "center", gap: 12 },
   timeUnit: { alignItems: "center", gap: 6 },
   timeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   timeValue: { fontSize: 24, fontFamily: "Inter_700Bold", minWidth: 36, textAlign: "center" },
   timeSep: { fontSize: 24, fontFamily: "Inter_700Bold", marginBottom: 4 },
   ampm: { fontSize: 16, fontFamily: "Inter_600SemiBold", marginLeft: 4, marginBottom: 4 },
-  notifHint: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12 },
-  notifHintText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  hintRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12 },
+  hintText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  dateInput: { padding: 12, fontSize: 14, fontFamily: "Inter_400Regular", borderRadius: 10, borderWidth: 1 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  infoLabel: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
+  infoValue: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });

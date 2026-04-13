@@ -31,6 +31,9 @@ export interface RevisionPlan {
   intervals: number[];
   currentStep: number;
   nextRevisionDate: number;
+  mode: "custom" | "sm2";
+  easeFactor: number;
+  lastInterval: number;
 }
 
 export interface RevisionLog {
@@ -39,6 +42,7 @@ export interface RevisionLog {
   noteTitle: string;
   date: number;
   status: "completed" | "skipped";
+  quality?: number;
 }
 
 export interface UserStats {
@@ -52,12 +56,20 @@ export interface UserStats {
   lastXpDate: number;
 }
 
+export interface VacationSettings {
+  isActive: boolean;
+  startDate: number;
+  endDate: number;
+  holidayRestActive: boolean;
+}
+
 const KEYS = {
   CATEGORIES: "sr_categories",
   NOTES: "sr_notes",
   REVISION_PLANS: "sr_revision_plans",
   REVISION_LOGS: "sr_revision_logs",
   USER_STATS: "sr_user_stats",
+  VACATION: "sr_vacation_settings",
 };
 
 function genId(): string {
@@ -138,7 +150,14 @@ export async function deleteNote(id: string): Promise<void> {
 // Revision Plans
 export async function getRevisionPlans(): Promise<RevisionPlan[]> {
   const raw = await AsyncStorage.getItem(KEYS.REVISION_PLANS);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  const plans = JSON.parse(raw) as RevisionPlan[];
+  return plans.map((p) => ({
+    mode: "custom" as const,
+    easeFactor: 2.5,
+    lastInterval: 1,
+    ...p,
+  }));
 }
 
 export async function saveRevisionPlans(plans: RevisionPlan[]): Promise<void> {
@@ -147,16 +166,21 @@ export async function saveRevisionPlans(plans: RevisionPlan[]): Promise<void> {
 
 export async function createRevisionPlan(
   noteId: string,
-  intervals: number[]
+  intervals: number[],
+  mode: "custom" | "sm2" = "custom"
 ): Promise<RevisionPlan> {
   const plans = await getRevisionPlans();
   const today = startOfDay(Date.now());
+  const firstInterval = intervals[0] ?? 1;
   const plan: RevisionPlan = {
     id: genId(),
     noteId,
     intervals,
     currentStep: 0,
-    nextRevisionDate: today + (intervals[0] || 1) * 24 * 60 * 60 * 1000,
+    nextRevisionDate: today + firstInterval * 24 * 60 * 60 * 1000,
+    mode,
+    easeFactor: 2.5,
+    lastInterval: firstInterval,
   };
   const existing = plans.findIndex((p) => p.noteId === noteId);
   if (existing !== -1) {
@@ -179,20 +203,57 @@ export async function getDueNotes(): Promise<{ note: Note; plan: RevisionPlan }[
     .filter((item) => !!item.note);
 }
 
+// SM-2 algorithm
+function computeSM2NextInterval(plan: RevisionPlan, quality: number): { nextInterval: number; newEaseFactor: number } {
+  let ef = plan.easeFactor;
+  let interval: number;
+
+  if (quality < 3) {
+    interval = 1;
+  } else {
+    if (plan.currentStep === 0) interval = 1;
+    else if (plan.currentStep === 1) interval = 6;
+    else interval = Math.round(plan.lastInterval * ef);
+  }
+
+  ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  ef = Math.max(1.3, ef);
+  interval = Math.max(1, interval);
+
+  return { nextInterval: interval, newEaseFactor: ef };
+}
+
 export async function completeRevision(
-  noteId: string
-): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number }> {
+  noteId: string,
+  sm2Quality?: number
+): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number; streakMilestone?: number }> {
   const plans = await getRevisionPlans();
   const idx = plans.findIndex((p) => p.noteId === noteId);
   if (idx === -1) return { xpGained: 0, leveledUp: false, newLevel: 1 };
   const plan = plans[idx];
-  const nextStep = Math.min(plan.currentStep + 1, plan.intervals.length - 1);
-  const daysUntilNext = plan.intervals[nextStep] || plan.intervals[plan.intervals.length - 1];
-  plan.currentStep = nextStep;
-  plan.nextRevisionDate = startOfDay(Date.now()) + daysUntilNext * 24 * 60 * 60 * 1000;
+
+  let nextInterval: number;
+  if (plan.mode === "sm2" && sm2Quality !== undefined) {
+    const { nextInterval: ni, newEaseFactor } = computeSM2NextInterval(plan, sm2Quality);
+    nextInterval = ni;
+    plan.easeFactor = newEaseFactor;
+    if (sm2Quality < 3) {
+      plan.currentStep = 0;
+    } else {
+      plan.currentStep += 1;
+    }
+    plan.lastInterval = nextInterval;
+  } else {
+    const nextStep = Math.min(plan.currentStep + 1, plan.intervals.length - 1);
+    nextInterval = plan.intervals[nextStep] || plan.intervals[plan.intervals.length - 1];
+    plan.currentStep = nextStep;
+    plan.lastInterval = nextInterval;
+  }
+
+  plan.nextRevisionDate = startOfDay(Date.now()) + nextInterval * 24 * 60 * 60 * 1000;
   plans[idx] = plan;
   await saveRevisionPlans(plans);
-  await logRevision(noteId, "completed");
+  await logRevision(noteId, "completed", sm2Quality);
   return await updateStreak();
 }
 
@@ -210,7 +271,7 @@ export async function saveRevisionLogs(logs: RevisionLog[]): Promise<void> {
   await AsyncStorage.setItem(KEYS.REVISION_LOGS, JSON.stringify(logs));
 }
 
-async function logRevision(noteId: string, status: "completed" | "skipped"): Promise<void> {
+async function logRevision(noteId: string, status: "completed" | "skipped", quality?: number): Promise<void> {
   const notes = await getNotes();
   const note = notes.find((n) => n.id === noteId);
   const logs = await getRevisionLogs();
@@ -220,6 +281,7 @@ async function logRevision(noteId: string, status: "completed" | "skipped"): Pro
     noteTitle: note?.title || "Unknown",
     date: Date.now(),
     status,
+    quality,
   };
   await saveRevisionLogs([...logs, log]);
 }
@@ -253,12 +315,15 @@ export async function saveUserStats(stats: UserStats): Promise<void> {
   await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(stats));
 }
 
-async function updateStreak(): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number }> {
+const STREAK_MILESTONES = [3, 7, 14, 30, 60, 90, 100, 180, 365];
+
+async function updateStreak(): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number; streakMilestone?: number }> {
   const stats = await getUserStats();
   const today = startOfDay(Date.now());
   const yesterday = today - 24 * 60 * 60 * 1000;
   const lastActive = startOfDay(stats.lastActiveDate);
   const lastXpDay = startOfDay(stats.lastXpDate || 0);
+  let streakMilestone: number | undefined;
 
   if (lastActive !== today) {
     if (lastActive === yesterday) {
@@ -278,13 +343,83 @@ async function updateStreak(): Promise<{ xpGained: number; leveledUp: boolean; n
   stats.todayCompleted += 1;
 
   const prevLevel = getLevelFromXp(stats.totalXp);
-  const xpGained = calcXpForAction(stats.currentStreak, false);
+  let xpGained = calcXpForAction(stats.currentStreak, false);
+
+  if (STREAK_MILESTONES.includes(stats.currentStreak)) {
+    xpGained += 50;
+    streakMilestone = stats.currentStreak;
+  }
+
   stats.totalXp += xpGained;
   const newLevel = getLevelFromXp(stats.totalXp);
   const leveledUp = newLevel > prevLevel;
 
   await saveUserStats(stats);
+  return { xpGained, leveledUp, newLevel, streakMilestone };
+}
+
+export async function awardShareXp(): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number }> {
+  const stats = await getUserStats();
+  const prevLevel = getLevelFromXp(stats.totalXp);
+  const xpGained = 10;
+  stats.totalXp += xpGained;
+  const newLevel = getLevelFromXp(stats.totalXp);
+  const leveledUp = newLevel > prevLevel;
+  await saveUserStats(stats);
   return { xpGained, leveledUp, newLevel };
+}
+
+export async function awardCategoryCompletionXp(categoryId: string): Promise<boolean> {
+  const [notes, plans, dueAll] = await Promise.all([getNotes(), getRevisionPlans(), getDueNotes()]);
+  const catNotes = notes.filter((n) => n.categoryId === categoryId);
+  if (catNotes.length === 0) return false;
+  const dueCatIds = new Set(dueAll.filter((d) => d.note.categoryId === categoryId).map((d) => d.note.id));
+  if (dueCatIds.size > 0) return false;
+  const stats = await getUserStats();
+  stats.totalXp += 100;
+  await saveUserStats(stats);
+  return true;
+}
+
+// Vacation Mode
+export async function getVacationSettings(): Promise<VacationSettings> {
+  const raw = await AsyncStorage.getItem(KEYS.VACATION);
+  if (raw) return JSON.parse(raw);
+  return { isActive: false, startDate: 0, endDate: 0, holidayRestActive: false };
+}
+
+export async function saveVacationSettings(settings: VacationSettings): Promise<void> {
+  await AsyncStorage.setItem(KEYS.VACATION, JSON.stringify(settings));
+}
+
+export async function activateVacation(startDate: number, endDate: number): Promise<void> {
+  const vacDays = Math.ceil((endDate - startDate) / (24 * 60 * 60 * 1000));
+  const shiftMs = vacDays * 24 * 60 * 60 * 1000;
+  const plans = await getRevisionPlans();
+  const shifted = plans.map((p) => ({ ...p, nextRevisionDate: p.nextRevisionDate + shiftMs }));
+  await saveRevisionPlans(shifted);
+  await saveVacationSettings({ isActive: true, startDate, endDate, holidayRestActive: false });
+}
+
+export async function deactivateVacation(): Promise<void> {
+  const settings = await getVacationSettings();
+  await saveVacationSettings({ ...settings, isActive: false });
+}
+
+export async function activateHolidayRest(): Promise<void> {
+  const shiftMs = 24 * 60 * 60 * 1000;
+  const plans = await getRevisionPlans();
+  const shifted = plans.map((p) => {
+    const today = startOfDay(Date.now());
+    const tomorrow = today + shiftMs;
+    if (p.nextRevisionDate < tomorrow) {
+      return { ...p, nextRevisionDate: p.nextRevisionDate + shiftMs };
+    }
+    return p;
+  });
+  await saveRevisionPlans(shifted);
+  const settings = await getVacationSettings();
+  await saveVacationSettings({ ...settings, holidayRestActive: false });
 }
 
 export function startOfDay(ts: number): number {

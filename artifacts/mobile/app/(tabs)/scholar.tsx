@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +30,11 @@ type ScholarResponse = {
   followUp: string[];
 };
 
+type HistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 type Message = {
   id: string;
   role: "user" | "scholar";
@@ -36,6 +42,7 @@ type Message = {
   imageUri?: string;
   response?: ScholarResponse;
   error?: string;
+  isTyping?: boolean;
 };
 
 function mkId() {
@@ -63,13 +70,43 @@ async function uriToBase64(uri: string): Promise<string> {
   return base64;
 }
 
-function StepCard({
-  steps,
-  colors,
-}: {
-  steps: string[];
-  colors: ReturnType<typeof useColors>;
-}) {
+function TypingDots({ colors }: { colors: ReturnType<typeof useColors> }) {
+  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+
+  useEffect(() => {
+    const animations = dots.map((dot, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 150),
+          Animated.spring(dot, { toValue: -6, useNativeDriver: true, tension: 300, friction: 8 }),
+          Animated.spring(dot, { toValue: 0, useNativeDriver: true, tension: 300, friction: 8 }),
+          Animated.delay(600),
+        ])
+      )
+    );
+    animations.forEach((a) => a.start());
+    return () => animations.forEach((a) => a.stop());
+  }, []);
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, padding: 4 }}>
+      {dots.map((dot, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 4,
+            backgroundColor: colors.primary,
+            transform: [{ translateY: dot }],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+function StepCard({ steps, colors }: { steps: string[]; colors: ReturnType<typeof useColors> }) {
   if (!steps.length) return null;
   return (
     <View style={[styles.stepsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -86,15 +123,7 @@ function StepCard({
   );
 }
 
-function FollowUpChips({
-  questions,
-  onTap,
-  colors,
-}: {
-  questions: string[];
-  onTap: (q: string) => void;
-  colors: ReturnType<typeof useColors>;
-}) {
+function FollowUpChips({ questions, onTap, colors }: { questions: string[]; onTap: (q: string) => void; colors: ReturnType<typeof useColors> }) {
   if (!questions.length) return null;
   return (
     <View style={styles.followUpWrap}>
@@ -114,21 +143,11 @@ function FollowUpChips({
   );
 }
 
-function ScholarBubble({
-  msg,
-  onFollowUp,
-  colors,
-}: {
-  msg: Message;
-  onFollowUp: (q: string) => void;
-  colors: ReturnType<typeof useColors>;
-}) {
+function ScholarBubble({ msg, onFollowUp, colors }: { msg: Message; onFollowUp: (q: string) => void; colors: ReturnType<typeof useColors> }) {
   if (msg.role === "user") {
     return (
       <View style={styles.userBubbleWrap}>
-        {msg.imageUri && (
-          <Image source={{ uri: msg.imageUri }} style={styles.attachedImage} />
-        )}
+        {msg.imageUri && <Image source={{ uri: msg.imageUri }} style={styles.attachedImage} />}
         <View style={[styles.userBubble, { backgroundColor: colors.primary }]}>
           <Text style={styles.userBubbleText}>{msg.question}</Text>
         </View>
@@ -145,6 +164,20 @@ function ScholarBubble({
     );
   }
 
+  if (msg.isTyping) {
+    return (
+      <View style={[styles.scholarBubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.scholarHeader}>
+          <View style={[styles.scholarAvatar, { backgroundColor: colors.primary + "20" }]}>
+            <Feather name="cpu" size={16} color={colors.primary} />
+          </View>
+          <Text style={[styles.scholarLabel, { color: colors.primary }]}>Scholar</Text>
+        </View>
+        <TypingDots colors={colors} />
+      </View>
+    );
+  }
+
   const r = msg.response!;
   return (
     <View style={[styles.scholarBubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -156,7 +189,6 @@ function ScholarBubble({
       </View>
 
       <Text style={[styles.explanationText, { color: colors.foreground }]}>{r.explanation}</Text>
-
       <StepCard steps={r.steps} colors={colors} />
 
       {r.summary ? (
@@ -177,6 +209,7 @@ export default function ScholarScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<HistoryMessage[]>([]);
   const [input, setInput] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -212,7 +245,13 @@ export default function ScholarScreen() {
       imageUri: imageUri ?? undefined,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const typingMsg: Message = {
+      id: mkId(),
+      role: "scholar",
+      isTyping: true,
+    };
+
+    setMessages((prev) => [...prev, userMsg, typingMsg]);
     setInput("");
     const capturedUri = imageUri;
     setImageUri(null);
@@ -229,7 +268,7 @@ export default function ScholarScreen() {
       const res = await fetch(`${API_BASE}/api/tutor/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, imageBase64 }),
+        body: JSON.stringify({ question: q, imageBase64, history: conversationHistory }),
       });
 
       if (!res.ok) {
@@ -244,19 +283,31 @@ export default function ScholarScreen() {
         role: "scholar",
         response: data,
       };
-      setMessages((prev) => [...prev, scholarMsg]);
+
+      setMessages((prev) => [...prev.filter((m) => !m.isTyping), scholarMsg]);
+
+      // Update conversation history (last 5 exchanges = 10 messages)
+      const assistantContent = [data.explanation, ...data.steps, data.summary].filter(Boolean).join(" | ");
+      setConversationHistory((prev) =>
+        [...prev, { role: "user", content: q }, { role: "assistant", content: assistantContent }].slice(-10)
+      );
     } catch (err) {
       const errorMsg: Message = {
         id: mkId(),
         role: "scholar",
         error: err instanceof Error ? err.message : "Something went wrong. Please try again.",
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      setMessages((prev) => [...prev.filter((m) => !m.isTyping), errorMsg]);
     } finally {
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
     }
   }
+
+  const handleClearChat = () => {
+    setMessages([]);
+    setConversationHistory([]);
+  };
 
   return (
     <KeyboardAvoidingView
@@ -268,10 +319,19 @@ export default function ScholarScreen() {
         <View style={[styles.headerIcon, { backgroundColor: colors.primary + "18" }]}>
           <Feather name="cpu" size={20} color={colors.primary} />
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Scholar AI</Text>
-          <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Your personal study tutor</Text>
+          <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
+            {conversationHistory.length > 0
+              ? `${conversationHistory.length / 2} exchange${conversationHistory.length / 2 !== 1 ? "s" : ""} in memory`
+              : "Your personal study tutor"}
+          </Text>
         </View>
+        {messages.length > 0 && (
+          <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn} activeOpacity={0.7}>
+            <Feather name="trash-2" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -288,7 +348,7 @@ export default function ScholarScreen() {
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Ask Scholar anything</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Get clear explanations, step-by-step breakdowns, and follow-up questions to deepen your understanding.
+              Get clear explanations, step-by-step breakdowns, and follow-up questions to deepen your understanding. Scholar remembers your last 5 exchanges.
             </Text>
             <View style={styles.suggestions}>
               {[
@@ -310,20 +370,8 @@ export default function ScholarScreen() {
         )}
 
         {messages.map((msg) => (
-          <ScholarBubble
-            key={msg.id}
-            msg={msg}
-            onFollowUp={(q) => sendQuestion(q)}
-            colors={colors}
-          />
+          <ScholarBubble key={msg.id} msg={msg} onFollowUp={(q) => sendQuestion(q)} colors={colors} />
         ))}
-
-        {loading && (
-          <View style={[styles.loadingBubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Scholar is thinking…</Text>
-          </View>
-        )}
       </ScrollView>
 
       <View style={[styles.inputArea, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad }]}>
@@ -356,12 +404,7 @@ export default function ScholarScreen() {
             disabled={loading || (!input.trim() && !imageUri)}
             style={[
               styles.sendBtn,
-              {
-                backgroundColor:
-                  loading || (!input.trim() && !imageUri)
-                    ? colors.muted
-                    : colors.primary,
-              },
+              { backgroundColor: loading || (!input.trim() && !imageUri) ? colors.muted : colors.primary },
             ]}
             activeOpacity={0.8}
           >
@@ -379,23 +422,11 @@ export default function ScholarScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-  },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
+  headerIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 18, fontWeight: "700" },
   headerSub: { fontSize: 12, marginTop: 1 },
+  clearBtn: { padding: 8 },
   messages: { flex: 1 },
   messageContent: { padding: 16, gap: 14 },
   emptyState: { alignItems: "center", paddingTop: 40, paddingHorizontal: 24 },
@@ -403,22 +434,13 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 20, fontWeight: "700", marginBottom: 8, textAlign: "center" },
   emptySubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 24 },
   suggestions: { width: "100%", gap: 10 },
-  suggestionChip: {
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
+  suggestionChip: { padding: 14, borderRadius: 12, borderWidth: 1 },
   suggestionText: { fontSize: 14, fontWeight: "500" },
   userBubbleWrap: { alignItems: "flex-end", gap: 8 },
   userBubble: { maxWidth: "80%", padding: 14, borderRadius: 16, borderBottomRightRadius: 4 },
   userBubbleText: { color: "#fff", fontSize: 15, lineHeight: 22 },
   attachedImage: { width: 160, height: 120, borderRadius: 10 },
-  scholarBubble: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
+  scholarBubble: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
   scholarHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   scholarAvatar: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   scholarLabel: { fontSize: 13, fontWeight: "700", letterSpacing: 0.3 },
@@ -436,8 +458,6 @@ const styles = StyleSheet.create({
   followUpText: { flex: 1, fontSize: 13, fontWeight: "500" },
   errorBubble: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 12, borderWidth: 1 },
   errorText: { flex: 1, fontSize: 14 },
-  loadingBubble: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 16, borderWidth: 1 },
-  loadingText: { fontSize: 14 },
   inputArea: { borderTopWidth: 1, padding: 12, gap: 8 },
   imagePreviewRow: { position: "relative", alignSelf: "flex-start" },
   imagePreview: { width: 80, height: 60, borderRadius: 8 },

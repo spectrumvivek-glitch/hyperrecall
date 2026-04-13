@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "StudyBrain",
+    "name": "Recallify",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.studybrain.app"
+      "bundleIdentifier": "com.recallify.app"
     },
     "android": {
       "package": "com.studybrain.app"

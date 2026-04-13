@@ -20,6 +20,8 @@ import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { NoteImage, generateId } from "@/lib/storage";
 
+const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
+
 export default function AddNoteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -30,7 +32,8 @@ export default function AddNoteScreen() {
   const [content, setContent] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || "");
   const [images, setImages] = useState<NoteImage[]>([]);
-  const [intervals, setIntervals] = useState<number[]>([1, 3, 7, 15, 30]);
+  const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);
+  const [revisionMode, setRevisionMode] = useState<"custom" | "sm2">("custom");
   const [isSaving, setIsSaving] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -67,7 +70,7 @@ export default function AddNoteScreen() {
       Alert.alert("Required", "Please enter a title for your note.");
       return;
     }
-    if (intervals.length === 0) {
+    if (revisionMode === "custom" && intervals.length === 0) {
       Alert.alert("Required", "Please add at least one revision interval.");
       return;
     }
@@ -78,7 +81,8 @@ export default function AddNoteScreen() {
         selectedCategory || categories[0]?.id || "",
         content.trim(),
         images,
-        intervals
+        revisionMode === "sm2" ? [1, 6, 14] : intervals,
+        revisionMode
       );
       router.back();
     } catch {
@@ -99,10 +103,7 @@ export default function AddNoteScreen() {
         <TouchableOpacity
           onPress={handleSave}
           disabled={isSaving}
-          style={[
-            styles.saveBtn,
-            { backgroundColor: colors.primary, borderRadius: colors.radius / 2, opacity: isSaving ? 0.6 : 1 },
-          ]}
+          style={[styles.saveBtn, { backgroundColor: colors.primary, borderRadius: colors.radius / 2, opacity: isSaving ? 0.6 : 1 }]}
           activeOpacity={0.8}
         >
           <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
@@ -113,39 +114,25 @@ export default function AddNoteScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: bottomPad + 40 },
-        ]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad + 40 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Title */}
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Title *
-          </Text>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title *</Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
             placeholder="Note title"
             placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.titleInput,
-              {
-                color: colors.foreground,
-                borderBottomColor: colors.border,
-                fontFamily: "Inter_600SemiBold",
-              },
-            ]}
+            style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.border, fontFamily: "Inter_600SemiBold" }]}
           />
         </View>
 
         {/* Category */}
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Category
-          </Text>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.categoryRow}>
               {categories.map((cat) => {
@@ -165,9 +152,7 @@ export default function AddNoteScreen() {
                     ]}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.categoryChipText, { color: isSelected ? "#fff" : cat.color }]}>
-                      {cat.name}
-                    </Text>
+                    <Text style={[styles.categoryChipText, { color: isSelected ? "#fff" : cat.color }]}>{cat.name}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -177,9 +162,7 @@ export default function AddNoteScreen() {
 
         {/* Content */}
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Notes / Content
-          </Text>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Notes / Content</Text>
           <TextInput
             value={content}
             onChangeText={setContent}
@@ -203,9 +186,7 @@ export default function AddNoteScreen() {
         {/* Images */}
         <View style={styles.field}>
           <View style={styles.fieldHeader}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-              Images ({images.length})
-            </Text>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Images ({images.length})</Text>
             <TouchableOpacity
               onPress={pickImage}
               style={[styles.addImageBtn, { borderColor: colors.primary, borderRadius: colors.radius / 2 }]}
@@ -220,15 +201,8 @@ export default function AddNoteScreen() {
               <View style={styles.imageRow}>
                 {images.map((img) => (
                   <View key={img.id} style={styles.imageWrapper}>
-                    <Image
-                      source={{ uri: img.uri }}
-                      style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      onPress={() => removeImage(img.id)}
-                      style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}
-                    >
+                    <Image source={{ uri: img.uri }} style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]} resizeMode="cover" />
+                    <TouchableOpacity onPress={() => removeImage(img.id)} style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}>
                       <Feather name="x" size={10} color="#fff" />
                     </TouchableOpacity>
                   </View>
@@ -238,9 +212,14 @@ export default function AddNoteScreen() {
           )}
         </View>
 
-        {/* Intervals */}
+        {/* Revision Settings */}
         <View style={styles.field}>
-          <IntervalPicker intervals={intervals} onChange={setIntervals} />
+          <IntervalPicker
+            intervals={intervals}
+            onChange={setIntervals}
+            mode={revisionMode}
+            onModeChange={setRevisionMode}
+          />
         </View>
       </ScrollView>
     </View>
@@ -249,73 +228,26 @@ export default function AddNoteScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   headerBtn: { padding: 4 },
-  headerTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-  },
-  saveBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-  },
+  headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  saveBtn: { paddingHorizontal: 16, paddingVertical: 7 },
   saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 20 },
   field: { gap: 8 },
-  fieldHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+  fieldHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   fieldLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  titleInput: {
-    fontSize: 20,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
+  titleInput: { fontSize: 20, paddingVertical: 8, borderBottomWidth: 1 },
   categoryRow: { flexDirection: "row", gap: 8 },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
+  categoryChip: { paddingHorizontal: 14, paddingVertical: 7 },
   categoryChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  contentInput: {
-    padding: 12,
-    minHeight: 100,
-    fontSize: 14,
-    lineHeight: 22,
-    borderWidth: 1,
-  },
-  addImageBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-  },
+  contentInput: { padding: 12, minHeight: 100, fontSize: 14, lineHeight: 22, borderWidth: 1 },
+  addImageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
   addImageText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   imageScroll: { marginTop: 4 },
   imageRow: { flexDirection: "row", gap: 8 },
   imageWrapper: { position: "relative" },
   imageThumbnail: { width: 80, height: 80 },
-  removeImageBtn: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  removeImageBtn: { position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
 });

@@ -85,7 +85,7 @@ export async function scheduleDailyRevisionReminder(
   if (dueCount === 0) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "StudyBrain — Keep it up! 🎉",
+        title: "Recallify — Keep it up! 🎉",
         body: "No cards due today. Add new notes to stay ahead.",
         sound: true,
       },
@@ -98,7 +98,7 @@ export async function scheduleDailyRevisionReminder(
   } else {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `StudyBrain — ${dueCount} card${dueCount > 1 ? "s" : ""} due today 📚`,
+        title: `Recallify — ${dueCount} card${dueCount > 1 ? "s" : ""} due today 📚`,
         body: "Time to revise! Tap to start your session.",
         sound: true,
       },
