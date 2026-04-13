@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -38,11 +39,11 @@ function XpBar({ xpIntoLevel, xpNeeded, progressPct, colors }: {
         </Text>
       </View>
       <View style={[xpStyles.track, { backgroundColor: colors.muted }]}>
-        <View
-          style={[
-            xpStyles.fill,
-            { backgroundColor: colors.primary, width: `${Math.round(progressPct * 100)}%` },
-          ]}
+        <LinearGradient
+          colors={["#6366F1", "#8B5CF6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[xpStyles.fill, { width: `${Math.max(3, Math.round(progressPct * 100))}%` }]}
         />
       </View>
     </View>
@@ -109,7 +110,7 @@ export default function DashboardScreen() {
         style={[styles.scroll, { backgroundColor: colors.background }]}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: topPad + 16, paddingBottom: bottomPad + 100 },
+          { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 },
         ]}
         refreshControl={
           <RefreshControl
@@ -124,19 +125,34 @@ export default function DashboardScreen() {
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-              Good{new Date().getHours() < 12 ? " morning" : new Date().getHours() < 17 ? " afternoon" : " evening"}
+              Good{new Date().getHours() < 12 ? " morning" : new Date().getHours() < 17 ? " afternoon" : " evening"} 👋
             </Text>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>Recallify</Text>
           </View>
           <StreakBadge streak={userStats.currentStreak} size="md" />
         </View>
 
-        {/* Level + XP Row */}
-        <View style={[styles.levelCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* Level + XP Card */}
+        <View
+          style={[
+            styles.levelCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.primary + "35",
+              shadowColor: colors.primary,
+            },
+          ]}
+        >
+          <View style={[styles.levelCardAccent, { backgroundColor: colors.primary + "10" }]} />
           <View style={styles.levelRow}>
-            <View style={[styles.levelBadge, { backgroundColor: colors.primary }]}>
+            <LinearGradient
+              colors={["#6366F1", "#8B5CF6"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.levelBadge}
+            >
               <Text style={styles.levelBadgeText}>Lv.{xpInfo.level}</Text>
-            </View>
+            </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={[styles.levelName, { color: colors.foreground }]}>{xpInfo.levelName}</Text>
               <Text style={[styles.xpLabel, { color: colors.mutedForeground }]}>
@@ -148,11 +164,11 @@ export default function DashboardScreen() {
                 await shareStreak(userStats.currentStreak, xpInfo.totalXp, xpInfo.level, xpInfo.levelName);
                 await shareAndEarnXp();
               }}
-              style={[styles.shareBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}
+              style={[styles.shareBtn, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "45" }]}
               activeOpacity={0.7}
             >
-              <Feather name="share-2" size={16} color={colors.primary} />
-              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Share +10 XP</Text>
+              <Feather name="share-2" size={15} color={colors.primary} />
+              <Text style={[styles.shareBtnText, { color: colors.primary }]}>+10 XP</Text>
             </TouchableOpacity>
           </View>
           <XpBar
@@ -195,10 +211,10 @@ export default function DashboardScreen() {
 
         {/* Today's Progress */}
         {userStats.todayCompleted > 0 && (
-          <View style={[styles.todayCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+          <View style={[styles.todayCard, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "35" }]}>
             <Feather name="zap" size={16} color={colors.primary} />
             <Text style={[styles.todayText, { color: colors.primary }]}>
-              <Text style={{ fontWeight: "700" }}>{userStats.todayCompleted}</Text> card{userStats.todayCompleted !== 1 ? "s" : ""} revised today
+              <Text style={{ fontWeight: "800" }}>{userStats.todayCompleted}</Text> card{userStats.todayCompleted !== 1 ? "s" : ""} revised today
               {userStats.todayCompleted > 0 && ` • +${userStats.todayCompleted * 10} XP`}
             </Text>
           </View>
@@ -208,22 +224,29 @@ export default function DashboardScreen() {
         {dueNotes.length > 0 && (
           <TouchableOpacity
             onPress={() => router.push("/revision")}
-            style={[styles.revisionBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
             activeOpacity={0.85}
+            style={[styles.revisionBtn, { shadowColor: colors.primary }]}
           >
-            <View style={styles.revisionBtnContent}>
-              <View>
-                <Text style={[styles.revisionBtnTitle, { color: colors.primaryForeground }]}>
-                  Start Revision Session
-                </Text>
-                <Text style={[styles.revisionBtnSub, { color: colors.primaryForeground + "cc" }]}>
-                  {dueNotes.length} note{dueNotes.length !== 1 ? "s" : ""} due • earn {dueNotes.length * 10}+ XP
-                </Text>
+            <LinearGradient
+              colors={["#6366F1", "#8B5CF6"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.revisionGradient}
+            >
+              <View style={styles.revisionBtnContent}>
+                <View>
+                  <Text style={styles.revisionBtnTitle}>
+                    Start Revision Session
+                  </Text>
+                  <Text style={styles.revisionBtnSub}>
+                    {dueNotes.length} note{dueNotes.length !== 1 ? "s" : ""} due • earn {dueNotes.length * 10}+ XP
+                  </Text>
+                </View>
+                <View style={styles.revisionBtnIcon}>
+                  <Feather name="arrow-right" size={22} color="#fff" />
+                </View>
               </View>
-              <View style={[styles.revisionBtnIcon, { backgroundColor: colors.primaryForeground + "20" }]}>
-                <Feather name="arrow-right" size={22} color={colors.primaryForeground} />
-              </View>
-            </View>
+            </LinearGradient>
           </TouchableOpacity>
         )}
 
@@ -232,7 +255,9 @@ export default function DashboardScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Due Today</Text>
-              <Text style={[styles.sectionCount, { color: colors.mutedForeground }]}>{dueNotes.length}</Text>
+              <View style={[styles.sectionBadge, { backgroundColor: colors.primary + "20" }]}>
+                <Text style={[styles.sectionCount, { color: colors.primary }]}>{dueNotes.length}</Text>
+              </View>
             </View>
             <View style={styles.noteList}>
               {dueNotes.slice(0, 5).map(({ note, plan }) => (
@@ -292,75 +317,103 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 16, gap: 16 },
+  content: { paddingHorizontal: 18, gap: 18 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  greeting: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  greeting: { fontSize: 13, fontWeight: "500" },
+  headerTitle: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
   levelCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    padding: 14,
-    gap: 10,
+    padding: 16,
+    gap: 12,
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  levelCardAccent: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    transform: [{ translateX: 40 }, { translateY: -40 }],
   },
   levelRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   levelBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  levelBadgeText: { color: "#fff", fontSize: 13, fontWeight: "800" },
-  levelName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  xpLabel: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  levelBadgeText: { color: "#fff", fontSize: 14, fontWeight: "800" },
+  levelName: { fontSize: 16, fontWeight: "700" },
+  xpLabel: { fontSize: 12, marginTop: 1 },
   shareBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
   },
-  shareBtnText: { fontSize: 13, fontWeight: "600" },
+  shareBtnText: { fontSize: 13, fontWeight: "700" },
   todayCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
   },
-  todayText: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  statsRow: { flexDirection: "row", gap: 8 },
-  revisionBtn: { overflow: "hidden" },
+  todayText: { fontSize: 14, fontWeight: "500", flex: 1 },
+  statsRow: { flexDirection: "row", gap: 10 },
+  revisionBtn: {
+    borderRadius: 18,
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  revisionGradient: {},
   revisionBtnContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    padding: 18,
   },
-  revisionBtnTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  revisionBtnSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
+  revisionBtnTitle: { fontSize: 17, fontWeight: "700", color: "#fff" },
+  revisionBtnSub: { fontSize: 13, color: "#ffffffbb", marginTop: 3 },
   revisionBtnIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#ffffff20",
   },
-  section: { gap: 12 },
+  section: { gap: 14 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  sectionCount: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  seeAll: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  noteList: { gap: 8 },
+  sectionTitle: { fontSize: 18, fontWeight: "700" },
+  sectionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  sectionCount: { fontSize: 13, fontWeight: "700" },
+  seeAll: { fontSize: 14, fontWeight: "600" },
+  noteList: { gap: 10 },
 });
 
 const xpStyles = StyleSheet.create({
-  wrap: { gap: 5 },
+  wrap: { gap: 7 },
   labelRow: { flexDirection: "row", justifyContent: "space-between" },
-  label: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  label: { fontSize: 11, fontWeight: "500" },
   track: { height: 8, borderRadius: 4, overflow: "hidden" },
   fill: { height: 8, borderRadius: 4 },
 });
@@ -369,10 +422,10 @@ const impStyles = StyleSheet.create({
   banner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
   },
-  text: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
+  text: { flex: 1, fontSize: 14, fontWeight: "500" },
 });

@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -17,9 +18,9 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
 
   return (
     <View style={styles.container}>
-      <View style={[styles.iconRing, { borderColor: colors.primary + "25", backgroundColor: colors.primary + "0d" }]}>
-        <View style={[styles.iconInner, { backgroundColor: colors.primary + "18" }]}>
-          <Feather name={icon} size={28} color={colors.primary} />
+      <View style={[styles.iconRing, { borderColor: colors.primary + "30", backgroundColor: colors.primary + "10" }]}>
+        <View style={[styles.iconInner, { backgroundColor: colors.primary + "20" }]}>
+          <Feather name={icon} size={30} color={colors.primary} />
         </View>
       </View>
       <View style={styles.textBlock}>
@@ -27,13 +28,16 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
         <Text style={[styles.description, { color: colors.mutedForeground }]}>{description}</Text>
       </View>
       {actionLabel && onAction && (
-        <TouchableOpacity
-          onPress={onAction}
-          style={[styles.action, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
-          activeOpacity={0.85}
-        >
-          <Feather name="plus" size={15} color={colors.primaryForeground} />
-          <Text style={[styles.actionText, { color: colors.primaryForeground }]}>{actionLabel}</Text>
+        <TouchableOpacity onPress={onAction} activeOpacity={0.82} style={styles.actionWrap}>
+          <LinearGradient
+            colors={["#6366F1", "#8B5CF6"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.action}
+          >
+            <Feather name="plus" size={16} color="#fff" />
+            <Text style={styles.actionText}>{actionLabel}</Text>
+          </LinearGradient>
         </TouchableOpacity>
       )}
     </View>
@@ -46,40 +50,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 40,
-    gap: 16,
+    gap: 20,
   },
   iconRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
   },
   iconInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
   },
-  textBlock: { alignItems: "center", gap: 6 },
-  title: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
+  textBlock: { alignItems: "center", gap: 8 },
+  title: { fontSize: 20, fontWeight: "700", textAlign: "center" },
   description: {
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 21,
+    lineHeight: 22,
     maxWidth: 260,
   },
-  action: {
+  actionWrap: {
+    borderRadius: 12,
+    overflow: "hidden",
     marginTop: 4,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+  },
+  action: {
+    paddingHorizontal: 24,
+    paddingVertical: 13,
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 8,
   },
-  actionText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  actionText: { fontSize: 15, fontWeight: "700", color: "#fff" },
 });

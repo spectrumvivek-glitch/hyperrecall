@@ -67,7 +67,7 @@ export default function NotesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 14, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { paddingTop: topPad + 18, backgroundColor: colors.background }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]}>Notes</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
@@ -80,8 +80,8 @@ export default function NotesScreen() {
           style={[styles.addBtn, { backgroundColor: colors.primary }]}
           activeOpacity={0.85}
         >
-          <Feather name="plus" size={18} color={colors.primaryForeground} />
-          <Text style={[styles.addBtnText, { color: colors.primaryForeground }]}>New</Text>
+          <Feather name="plus" size={18} color="#fff" />
+          <Text style={styles.addBtnText}>New</Text>
         </TouchableOpacity>
       </View>
 
@@ -125,7 +125,7 @@ export default function NotesScreen() {
                   borderColor: isSelected ? item.color : colors.border,
                 },
               ]}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
               {!isSelected && (
                 <View style={[styles.chipDot, { backgroundColor: item.color }]} />
@@ -159,8 +159,8 @@ export default function NotesScreen() {
                 style={[
                   styles.sortChip,
                   {
-                    backgroundColor: active ? colors.primary + "15" : "transparent",
-                    borderColor: active ? colors.primary + "40" : "transparent",
+                    backgroundColor: active ? colors.primary + "18" : "transparent",
+                    borderColor: active ? colors.primary + "50" : "transparent",
                   },
                 ]}
                 activeOpacity={0.7}
@@ -181,7 +181,7 @@ export default function NotesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: bottomPad + 100 },
+          { paddingBottom: bottomPad + 110 },
         ]}
         renderItem={({ item }) => {
           const plan = revisionPlans.find((p) => p.noteId === item.id);
@@ -218,27 +218,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 14,
     gap: 12,
   },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
+  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, marginTop: 2 },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 22,
   },
-  addBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  searchWrap: { paddingHorizontal: 16, paddingBottom: 10 },
+  addBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  searchWrap: { paddingHorizontal: 18, paddingBottom: 10 },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingVertical: 12,
     gap: 10,
     borderRadius: 14,
     borderWidth: 1,
@@ -246,11 +246,10 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
   },
   chipList: {},
   chipRow: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 10,
     gap: 8,
     flexDirection: "row",
@@ -259,13 +258,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
   },
   chipDot: { width: 7, height: 7, borderRadius: 4 },
-  chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  chipText: { fontSize: 13, fontWeight: "600" },
   chipCount: {
     paddingHorizontal: 6,
     paddingVertical: 1,
@@ -273,26 +272,26 @@ const styles = StyleSheet.create({
     minWidth: 18,
     alignItems: "center",
   },
-  chipCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  chipCountText: { fontSize: 11, fontWeight: "800" },
   sortRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 10,
     gap: 10,
     borderBottomWidth: 1,
   },
-  sortLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  sortLabel: { fontSize: 12, fontWeight: "600" },
   sortOptions: { flexDirection: "row", gap: 6 },
   sortChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
   },
-  sortChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  listContent: { paddingHorizontal: 16, paddingTop: 12 },
+  sortChipText: { fontSize: 12, fontWeight: "700" },
+  listContent: { paddingHorizontal: 18, paddingTop: 14 },
 });

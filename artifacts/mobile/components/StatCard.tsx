@@ -24,12 +24,12 @@ export function StatCard({ label, value, subtitle, icon, accentColor }: Props) {
           backgroundColor: colors.card,
           borderRadius: colors.radius,
           borderColor: colors.border,
-          borderWidth: 1,
+          shadowColor: accent,
         },
       ]}
     >
-      <View style={[styles.iconWrap, { backgroundColor: accent + "18" }]}>
-        <Feather name={icon ?? "activity"} size={16} color={accent} />
+      <View style={[styles.iconWrap, { backgroundColor: accent + "22" }]}>
+        <Feather name={icon ?? "activity"} size={18} color={accent} />
       </View>
       <Text style={[styles.value, { color: colors.foreground }]}>{value}</Text>
       <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
@@ -43,31 +43,36 @@ export function StatCard({ label, value, subtitle, icon, accentColor }: Props) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    padding: 14,
+    padding: 16,
     gap: 4,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 5,
   },
   iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   value: {
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    lineHeight: 28,
+    fontSize: 26,
+    fontWeight: "800",
+    lineHeight: 30,
   },
   label: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
   },
   subtitle: {
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    marginTop: 1,
+    fontWeight: "600",
+    marginTop: 2,
   },
 });

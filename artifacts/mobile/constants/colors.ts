@@ -1,75 +1,55 @@
 const colors = {
   light: {
     text: "#0f172a",
-    tint: "#4f46e5",
-
-    background: "#f4f6fb",
+    tint: "#6366F1",
+    background: "#F1F5F9",
     foreground: "#0f172a",
-
     card: "#ffffff",
     cardForeground: "#0f172a",
-
-    primary: "#4f46e5",
+    primary: "#6366F1",
     primaryForeground: "#ffffff",
-
     secondary: "#f1f5f9",
     secondaryForeground: "#334155",
-
     muted: "#eef1f8",
-    mutedForeground: "#8b98b1",
-
-    accent: "#ede9fe",
-    accentForeground: "#3730a3",
-
+    mutedForeground: "#64748B",
+    accent: "#22C55E",
+    accentForeground: "#ffffff",
     destructive: "#ef4444",
     destructiveForeground: "#ffffff",
-
-    success: "#10b981",
+    success: "#22C55E",
     successForeground: "#ffffff",
-
-    warning: "#f59e0b",
+    warning: "#F59E0B",
     warningForeground: "#ffffff",
-
-    border: "#e4e9f2",
-    input: "#e4e9f2",
+    border: "#E2E8F0",
+    input: "#E2E8F0",
   },
 
   dark: {
-    text: "#f1f5f9",
-    tint: "#818cf8",
-
-    background: "#0b1120",
-    foreground: "#f1f5f9",
-
-    card: "#151f30",
-    cardForeground: "#f1f5f9",
-
-    primary: "#818cf8",
-    primaryForeground: "#0b1120",
-
-    secondary: "#1a2640",
-    secondaryForeground: "#cbd5e1",
-
-    muted: "#1a2640",
-    mutedForeground: "#5b7087",
-
-    accent: "#25214a",
-    accentForeground: "#c7d2fe",
-
-    destructive: "#f87171",
-    destructiveForeground: "#0b1120",
-
-    success: "#34d399",
-    successForeground: "#0b1120",
-
-    warning: "#fbbf24",
-    warningForeground: "#0b1120",
-
-    border: "#1e2e44",
-    input: "#1e2e44",
+    text: "#F8FAFC",
+    tint: "#6366F1",
+    background: "#0F172A",
+    foreground: "#F8FAFC",
+    card: "#1E293B",
+    cardForeground: "#F8FAFC",
+    primary: "#6366F1",
+    primaryForeground: "#ffffff",
+    secondary: "#1E293B",
+    secondaryForeground: "#94A3B8",
+    muted: "#162032",
+    mutedForeground: "#94A3B8",
+    accent: "#22C55E",
+    accentForeground: "#ffffff",
+    destructive: "#EF4444",
+    destructiveForeground: "#ffffff",
+    success: "#22C55E",
+    successForeground: "#ffffff",
+    warning: "#F59E0B",
+    warningForeground: "#0F172A",
+    border: "#334155",
+    input: "#1E293B",
   },
 
-  radius: 14,
+  radius: 16,
 };
 
 export default colors;

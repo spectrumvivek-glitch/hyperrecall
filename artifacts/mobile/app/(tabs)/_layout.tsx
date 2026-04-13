@@ -17,15 +17,17 @@ function DueBadge({ count }: { count: number }) {
     <View
       style={{
         position: "absolute",
-        top: -4,
-        right: -8,
-        backgroundColor: "#ef4444",
+        top: -5,
+        right: -10,
+        backgroundColor: "#EF4444",
         borderRadius: 8,
-        minWidth: 16,
-        height: 16,
+        minWidth: 17,
+        height: 17,
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 3,
+        borderWidth: 1.5,
+        borderColor: "#0F172A",
       }}
     >
       <Text style={{ color: "#fff", fontSize: 9, fontWeight: "800" }}>
@@ -71,7 +73,7 @@ function ClassicTabLayout() {
   const colorScheme = useColorScheme();
   const safeAreaInsets = useSafeAreaInsets();
   const { dueNotes } = useApp();
-  const isDark = colorScheme === "dark";
+  const isDark = true;
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -79,32 +81,38 @@ function ClassicTabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarInactiveTintColor: "#475569",
         headerShown: false,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "600",
+          marginTop: 2,
+        },
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: isWeb ? 1 : 0,
-          borderTopColor: colors.border,
+          backgroundColor: isIOS ? "transparent" : "#0F172A",
+          borderTopWidth: 1,
+          borderTopColor: "#1E293B",
           elevation: 0,
           paddingBottom: safeAreaInsets.bottom,
-          ...(isWeb ? { height: 84 } : {}),
+          paddingTop: 8,
+          ...(isWeb ? { height: 88 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
+              intensity={95}
+              tint="dark"
               style={StyleSheet.absoluteFill}
             />
-          ) : isWeb ? (
+          ) : (
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
+                { backgroundColor: "#0F172A" },
               ]}
             />
-          ) : null,
+          ),
       }}
     >
       <Tabs.Screen

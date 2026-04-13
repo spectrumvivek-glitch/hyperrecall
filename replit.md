@@ -51,11 +51,22 @@ A spaced repetition study app at `artifacts/mobile/`.
 - `app/(tabs)/scholar.tsx` — AI tutor with conversation history + typing animation
 - `lib/xp.ts` — XP thresholds, level names, progress calculation
 
-### Colors
-- Primary: `#4f46e5` (indigo) / dark: `#818cf8`
-- Background: `#f8fafc` / dark: `#0f172a`
-- Card: `#ffffff` / dark: `#1e293b`
-- Success: `#10b981`, Warning: `#f59e0b`, Destructive: `#ef4444`
+### Design System — Premium Dark UI (always forced dark)
+- Background: `#0F172A`, Card: `#1E293B`, Muted: `#162032`
+- Primary: `#6366F1` (indigo), Accent/Success: `#22C55E`, Warning: `#F59E0B`, Destructive: `#EF4444`
+- Text: `#F8FAFC`, Muted text: `#94A3B8`, Border: `#334155`
+- Radius: 16px globally
+- Gradients: `#6366F1 → #8B5CF6` (primary), `#22C55E → #16A34A` (success)
+- Shadows use accent color as `shadowColor` for glow effect
+- `hooks/useColors.ts` always returns the dark palette (forced dark mode)
+
+### Reusable UI Components
+- `components/ui/PremiumCard.tsx` — card with glow shadow + border
+- `components/ui/PremiumButton.tsx` — gradient/solid/ghost/danger variants
+- `components/StatCard.tsx` — icon + value + label card with colored shadow
+- `components/NoteCard.tsx` — note preview with category accent bar, due badge, image strip
+- `components/StreakBadge.tsx` — fire icon + count badge (orange)
+- `components/EmptyState.tsx` — icon ring + title + description + gradient action button
 
 ## API Server
 

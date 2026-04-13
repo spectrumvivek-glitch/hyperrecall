@@ -1,7 +1,5 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
-  Dimensions,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,9 +12,6 @@ import { StreakBadge } from "@/components/StreakBadge";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { getDayLabel, startOfDay } from "@/lib/storage";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const BAR_WIDTH = 28;
 
 export default function AnalyticsScreen() {
   const colors = useColors();
@@ -75,7 +70,7 @@ export default function AnalyticsScreen() {
       style={[styles.scroll, { backgroundColor: colors.background }]}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: topPad + 16, paddingBottom: bottomPad + 100 },
+        { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 },
       ]}
       showsVerticalScrollIndicator={false}
     >
@@ -84,22 +79,22 @@ export default function AnalyticsScreen() {
 
       {/* Overview cards */}
       <View style={styles.overviewRow}>
-        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
+        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: "#FF6B00" }]}>
           <StreakBadge streak={userStats.currentStreak} size="lg" />
           <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Day Streak</Text>
         </View>
-        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
+        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.success }]}>
           <Text style={[styles.overviewValue, { color: colors.success }]}>{completionRate}%</Text>
-          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Completion Rate</Text>
+          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Completion</Text>
         </View>
-        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
+        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.primary }]}>
           <Text style={[styles.overviewValue, { color: colors.foreground }]}>{totalCompleted}</Text>
-          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Total Reviews</Text>
+          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Reviews</Text>
         </View>
       </View>
 
       {/* Chart */}
-      <View style={[styles.chartCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
+      <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.primary }]}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
           14-Day Activity
         </Text>
@@ -112,11 +107,11 @@ export default function AnalyticsScreen() {
             return (
               <View key={i} style={styles.barColumn}>
                 <View style={styles.barContainer}>
-                  <View style={[styles.barBackground, { backgroundColor: colors.muted, borderRadius: 4 }]}>
+                  <View style={[styles.barBackground, { backgroundColor: colors.muted, borderRadius: 6 }]}>
                     {totalHeight > 0 && (
                       <View style={[styles.barFill, {
                         height: `${totalHeight}%`,
-                        borderRadius: 4,
+                        borderRadius: 6,
                         overflow: "hidden",
                       }]}>
                         <View style={{ flex: completedHeight / (totalHeight || 1), backgroundColor: colors.primary }} />
@@ -151,33 +146,43 @@ export default function AnalyticsScreen() {
             By Category
           </Text>
           <View style={styles.categoryList}>
-            {categoryBreakdown.map((cat) => (
-              <View
-                key={cat.id}
-                style={[
-                  styles.categoryRow,
-                  { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 },
-                ]}
-              >
-                <View style={styles.catLeft}>
+            {categoryBreakdown.map((cat) => {
+              const pct = cat.reviewCount > 0
+                ? Math.round((cat.completedCount / cat.reviewCount) * 100)
+                : 0;
+              return (
+                <View
+                  key={cat.id}
+                  style={[
+                    styles.categoryRow,
+                    { backgroundColor: colors.card, borderColor: colors.border, shadowColor: cat.color },
+                  ]}
+                >
                   <View style={[styles.catColorBar, { backgroundColor: cat.color }]} />
-                  <View>
-                    <Text style={[styles.catName, { color: colors.foreground }]}>{cat.name}</Text>
-                    <Text style={[styles.catSub, { color: colors.mutedForeground }]}>
-                      {cat.noteCount} note{cat.noteCount !== 1 ? "s" : ""}
-                    </Text>
+                  <View style={styles.catContent}>
+                    <View style={styles.catTop}>
+                      <View style={styles.catLeft}>
+                        <Text style={[styles.catName, { color: colors.foreground }]}>{cat.name}</Text>
+                        <Text style={[styles.catSub, { color: colors.mutedForeground }]}>
+                          {cat.noteCount} note{cat.noteCount !== 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                      <View style={styles.catRight}>
+                        <Text style={[styles.catCompleted, { color: colors.success }]}>
+                          {cat.completedCount}
+                        </Text>
+                        <Text style={[styles.catTotal, { color: colors.mutedForeground }]}>
+                          /{cat.reviewCount}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.catProgressTrack, { backgroundColor: colors.muted }]}>
+                      <View style={[styles.catProgressFill, { width: `${pct}%`, backgroundColor: cat.color }]} />
+                    </View>
                   </View>
                 </View>
-                <View style={styles.catRight}>
-                  <Text style={[styles.catCompleted, { color: colors.success }]}>
-                    {cat.completedCount}
-                  </Text>
-                  <Text style={[styles.catTotal, { color: colors.mutedForeground }]}>
-                    /{cat.reviewCount}
-                  </Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       )}
@@ -187,24 +192,44 @@ export default function AnalyticsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 16, gap: 20 },
-  title: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  overviewRow: { flexDirection: "row", gap: 8 },
-  overviewCard: { flex: 1, padding: 14, alignItems: "center", gap: 6 },
-  overviewValue: { fontSize: 26, fontFamily: "Inter_700Bold" },
-  overviewLabel: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center" },
-  chartCard: { padding: 16, gap: 16 },
-  sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  content: { paddingHorizontal: 18, gap: 20 },
+  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
+  overviewRow: { flexDirection: "row", gap: 10 },
+  overviewCard: {
+    flex: 1,
+    padding: 16,
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  overviewValue: { fontSize: 28, fontWeight: "800" },
+  overviewLabel: { fontSize: 11, fontWeight: "600", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.5 },
+  chartCard: {
+    padding: 18,
+    gap: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  sectionTitle: { fontSize: 17, fontWeight: "700" },
   chart: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 4,
-    height: 120,
+    height: 130,
   },
   barColumn: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
+    gap: 5,
   },
   barContainer: {
     flex: 1,
@@ -212,7 +237,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   barBackground: {
-    height: 100,
+    height: 110,
     width: "100%",
     justifyContent: "flex-end",
   },
@@ -220,54 +245,61 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
   legend: {
     flexDirection: "row",
-    gap: 16,
+    gap: 18,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 7,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
   },
   legendText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
+    fontWeight: "500",
   },
-  section: { gap: 12 },
-  categoryList: { gap: 8 },
+  section: { gap: 14 },
+  categoryList: { gap: 10 },
   categoryRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-  },
-  catLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    alignItems: "stretch",
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   catColorBar: {
     width: 4,
-    height: 36,
-    borderRadius: 2,
   },
+  catContent: {
+    flex: 1,
+    padding: 14,
+    gap: 10,
+  },
+  catTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  catLeft: { gap: 2 },
   catName: {
     fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    fontWeight: "600",
   },
   catSub: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
   },
   catRight: {
     flexDirection: "row",
@@ -275,11 +307,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   catCompleted: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
+    fontSize: 20,
+    fontWeight: "800",
   },
   catTotal: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
+  },
+  catProgressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  catProgressFill: {
+    height: 4,
+    borderRadius: 2,
   },
 });

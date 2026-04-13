@@ -9,38 +9,44 @@ interface Props {
   size?: "sm" | "md" | "lg";
 }
 
+const STREAK_COLOR = "#FF6B00";
+const STREAK_GLOW = "#FF6B0030";
+
 export function StreakBadge({ streak, size = "md" }: Props) {
   const colors = useColors();
 
   const config = {
-    sm: { iconSize: 14, fontSize: 12, padding: 4 },
-    md: { iconSize: 18, fontSize: 16, padding: 6 },
-    lg: { iconSize: 24, fontSize: 22, padding: 8 },
+    sm: { iconSize: 14, fontSize: 13, padH: 8, padV: 4 },
+    md: { iconSize: 20, fontSize: 18, padH: 10, padV: 6 },
+    lg: { iconSize: 28, fontSize: 24, padH: 12, padV: 8 },
   }[size];
+
+  const isActive = streak > 0;
 
   return (
     <View
       style={[
         styles.container,
         {
-          backgroundColor: streak > 0 ? "#ff6b0015" : colors.muted,
-          paddingHorizontal: config.padding + 4,
-          paddingVertical: config.padding,
-          borderRadius: colors.radius,
+          backgroundColor: isActive ? STREAK_GLOW : colors.muted,
+          borderColor: isActive ? STREAK_COLOR + "50" : colors.border,
+          paddingHorizontal: config.padH,
+          paddingVertical: config.padV,
+          borderRadius: 20,
         },
       ]}
     >
       <MaterialCommunityIcons
         name="fire"
         size={config.iconSize}
-        color={streak > 0 ? "#ff6b00" : colors.mutedForeground}
+        color={isActive ? STREAK_COLOR : colors.mutedForeground}
       />
       <Text
         style={[
           styles.text,
           {
             fontSize: config.fontSize,
-            color: streak > 0 ? "#ff6b00" : colors.mutedForeground,
+            color: isActive ? STREAK_COLOR : colors.mutedForeground,
           },
         ]}
       >
@@ -55,8 +61,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    borderWidth: 1,
   },
   text: {
-    fontFamily: "Inter_700Bold",
+    fontWeight: "800",
   },
 });
