@@ -70,8 +70,8 @@ router.post("/tutor/ask", async (req, res) => {
       }));
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_completion_tokens: 2048,
+      model: "gpt-4o-mini",
+      max_completion_tokens: 800,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         ...historyMessages,

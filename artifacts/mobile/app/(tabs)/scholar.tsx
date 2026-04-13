@@ -265,11 +265,19 @@ export default function ScholarScreen() {
         imageBase64 = await uriToBase64(capturedUri);
       }
 
-      const res = await fetch(`${API_BASE}/api/tutor/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, imageBase64, history: conversationHistory }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/api/tutor/ask`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: q, imageBase64, history: conversationHistory }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
