@@ -407,13 +407,12 @@ export async function deactivateVacation(): Promise<void> {
 }
 
 export async function activateHolidayRest(): Promise<void> {
-  const shiftMs = 24 * 60 * 60 * 1000;
+  const today = startOfDay(Date.now());
+  const tomorrow = today + 24 * 60 * 60 * 1000;
   const plans = await getRevisionPlans();
   const shifted = plans.map((p) => {
-    const today = startOfDay(Date.now());
-    const tomorrow = today + shiftMs;
     if (p.nextRevisionDate < tomorrow) {
-      return { ...p, nextRevisionDate: p.nextRevisionDate + shiftMs };
+      return { ...p, nextRevisionDate: tomorrow };
     }
     return p;
   });
