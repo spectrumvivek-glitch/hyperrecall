@@ -406,13 +406,14 @@ export async function deactivateVacation(): Promise<void> {
   await saveVacationSettings({ ...settings, isActive: false });
 }
 
-export async function activateHolidayRest(): Promise<void> {
-  const today = startOfDay(Date.now());
-  const tomorrow = today + 24 * 60 * 60 * 1000;
+export async function activateHolidayRest(restDate: number): Promise<void> {
+  const restDayStart = startOfDay(restDate);
+  const nextDayStart = restDayStart + 24 * 60 * 60 * 1000;
   const plans = await getRevisionPlans();
   const shifted = plans.map((p) => {
-    if (p.nextRevisionDate < tomorrow) {
-      return { ...p, nextRevisionDate: tomorrow };
+    const dueDayStart = startOfDay(p.nextRevisionDate);
+    if (dueDayStart === restDayStart) {
+      return { ...p, nextRevisionDate: nextDayStart };
     }
     return p;
   });

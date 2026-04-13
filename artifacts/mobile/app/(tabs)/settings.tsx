@@ -64,6 +64,8 @@ export default function SettingsScreen() {
   const [vacEndText, setVacEndText] = useState("");
   const [showVacForm, setShowVacForm] = useState(false);
   const [holidayLoading, setHolidayLoading] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [holidayDateText, setHolidayDateText] = useState(todayStr);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -209,19 +211,31 @@ export default function SettingsScreen() {
   };
 
   const handleHolidayRest = async () => {
+    const parts = holidayDateText.trim().split("-");
+    if (parts.length !== 3 || parts.some((p) => isNaN(Number(p)))) {
+      Alert.alert("Invalid Date", "Please enter a valid date in YYYY-MM-DD format.");
+      return;
+    }
+    const restTs = new Date(`${holidayDateText}T00:00:00`).getTime();
+    if (isNaN(restTs)) {
+      Alert.alert("Invalid Date", "Please enter a valid date in YYYY-MM-DD format.");
+      return;
+    }
+    const restLabel = new Date(restTs).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    const nextDayLabel = new Date(restTs + 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
     Alert.alert(
       "Holiday Rest Mode",
-      "Today's due cards will be pushed to tomorrow. Use this for a single day off without losing your streak.",
+      `Cards scheduled for ${restLabel} will be pushed to ${nextDayLabel}. Your streak is protected.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Take a Rest Day",
+          text: "Confirm Rest Day",
           onPress: async () => {
             setHolidayLoading(true);
             try {
-              await activateHolidayRest();
+              await activateHolidayRest(restTs);
               await refreshVacation();
-              Alert.alert("Rest Day Activated", "Today's cards are postponed to tomorrow. See you then!");
+              Alert.alert("Rest Day Set", `Cards for ${restLabel} are moved to ${nextDayLabel}. Enjoy your break!`);
             } finally {
               setHolidayLoading(false);
             }
@@ -477,22 +491,44 @@ export default function SettingsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>Holiday Rest</Text>
               <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
-                Push today's reviews to tomorrow
+                Pick a day to skip — cards move to the next day
               </Text>
+            </View>
+          </View>
+          <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Feather name="calendar" size={15} color="#f59e0b" />
+              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground, flex: 0 }]}>Rest day</Text>
+              <TextInput
+                value={holidayDateText}
+                onChangeText={setHolidayDateText}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numbers-and-punctuation"
+                style={[
+                  styles.catInput,
+                  { flex: 1, color: colors.foreground, backgroundColor: colors.muted, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 10 },
+                ]}
+              />
             </View>
             <TouchableOpacity
               onPress={handleHolidayRest}
               disabled={holidayLoading}
-              style={[styles.smallBtn, { backgroundColor: "#f59e0b" + "15", borderColor: "#f59e0b" + "40", opacity: holidayLoading ? 0.6 : 1 }]}
-              activeOpacity={0.7}
+              style={[
+                styles.vacBtn,
+                { backgroundColor: "#f59e0b", borderRadius: 10, opacity: holidayLoading ? 0.6 : 1 },
+              ]}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.smallBtnText, { color: "#f59e0b" }]}>Take</Text>
+              <Text style={[styles.vacBtnText, { color: "#fff" }]}>
+                {holidayLoading ? "Applying…" : "Set Rest Day"}
+              </Text>
             </TouchableOpacity>
           </View>
           <View style={[styles.hintRow, { backgroundColor: "#f59e0b" + "10", margin: 0, borderTopWidth: 1, borderTopColor: colors.border }]}>
             <Feather name="info" size={12} color="#f59e0b" />
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Use for a single rest day. Prevents streak loss and tomorrow's overload.
+              Only cards scheduled for that exact day are shifted. Overdue cards are unaffected.
             </Text>
           </View>
         </SectionCard>
