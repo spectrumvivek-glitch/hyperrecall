@@ -1,4 +1,6 @@
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Font from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
@@ -34,9 +36,20 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = Font.useFonts({
+    ...Feather.font,
+    ...MaterialCommunityIcons.font,
+  });
+
   useEffect(() => {
-    SplashScreen.hideAsync().catch(() => {});
-  }, []);
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <SafeAreaProvider>
