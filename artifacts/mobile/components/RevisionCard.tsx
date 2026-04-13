@@ -158,7 +158,7 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
           <Feather name="clock" size={13} color={colors.mutedForeground} />
           <Text style={[styles.nextRevisionText, { color: colors.mutedForeground }]}>
             Next revision in{" "}
-            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
+            <Text style={{ color: colors.foreground }}>
               {nextInterval === 0 ? "today" : `${nextInterval} day${nextInterval !== 1 ? "s" : ""}`}
             </Text>{" "}
             if completed
@@ -228,31 +228,31 @@ const styles = StyleSheet.create({
   rightHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   categoryBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 3 },
   categoryDot: { width: 6, height: 6, borderRadius: 3 },
-  categoryText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  categoryText: { fontSize: 11 },
   sm2Badge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, borderWidth: 1 },
-  sm2BadgeText: { fontSize: 10, fontFamily: "Inter_700Bold" },
-  stepText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  sm2BadgeText: { fontSize: 10 },
+  stepText: { fontSize: 12 },
   progressBar: { height: 4, borderRadius: 2 },
   progressFill: { height: 4 },
-  title: { fontSize: 20, fontFamily: "Inter_700Bold", lineHeight: 28 },
+  title: { fontSize: 20, lineHeight: 28 },
   imageSection: { gap: 8 },
   imageScroll: { borderRadius: 8 },
   image: { width: SCREEN_WIDTH - 80, height: 200, backgroundColor: "#f1f5f9" },
   imageDots: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
   dot: { height: 6, borderRadius: 3 },
   contentSection: { gap: 4 },
-  content: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  content: { fontSize: 14, lineHeight: 22 },
   expandRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  expandText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  expandText: { fontSize: 13 },
   nextRevision: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10 },
-  nextRevisionText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+  nextRevisionText: { fontSize: 12, flex: 1 },
   actions: { flexDirection: "row", gap: 10, marginTop: 4 },
   skipBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, paddingVertical: 13 },
-  skipText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  skipText: { fontSize: 15 },
   completeBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 13 },
-  completeText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  completeText: { fontSize: 15 },
   sm2Panel: { gap: 12, marginTop: 4 },
-  sm2Question: { fontSize: 15, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  sm2Question: { fontSize: 15, textAlign: "center" },
   sm2Buttons: { flexDirection: "row", gap: 8 },
   sm2Btn: {
     flex: 1,
@@ -263,6 +263,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
   },
-  sm2BtnLabel: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  sm2BtnDesc: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
+  sm2BtnLabel: { fontSize: 13 },
+  sm2BtnDesc: { fontSize: 10, textAlign: "center" },
 });

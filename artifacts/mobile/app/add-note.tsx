@@ -126,7 +126,7 @@ export default function AddNoteScreen() {
             onChangeText={setTitle}
             placeholder="Note title"
             placeholderTextColor={colors.mutedForeground}
-            style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.border, fontFamily: "Inter_600SemiBold" }]}
+            style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.border }]}
           />
         </View>
 
@@ -177,7 +177,6 @@ export default function AddNoteScreen() {
                 backgroundColor: colors.muted,
                 borderRadius: colors.radius,
                 borderColor: colors.border,
-                fontFamily: "Inter_400Regular",
               },
             ]}
           />
@@ -230,21 +229,21 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   headerBtn: { padding: 4 },
-  headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  headerTitle: { flex: 1, fontSize: 17, textAlign: "center" },
   saveBtn: { paddingHorizontal: 16, paddingVertical: 7 },
-  saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  saveBtnText: { fontSize: 14 },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 20 },
   field: { gap: 8 },
   fieldHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  fieldLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  fieldLabel: { fontSize: 13 },
   titleInput: { fontSize: 20, paddingVertical: 8, borderBottomWidth: 1 },
   categoryRow: { flexDirection: "row", gap: 8 },
   categoryChip: { paddingHorizontal: 14, paddingVertical: 7 },
-  categoryChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  categoryChipText: { fontSize: 13 },
   contentInput: { padding: 12, minHeight: 100, fontSize: 14, lineHeight: 22, borderWidth: 1 },
   addImageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
-  addImageText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  addImageText: { fontSize: 13 },
   imageScroll: { marginTop: 4 },
   imageRow: { flexDirection: "row", gap: 8 },
   imageWrapper: { position: "relative" },

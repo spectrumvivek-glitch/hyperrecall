@@ -213,7 +213,7 @@ export function IntervalPicker({ intervals, onChange, mode = "custom", onModeCha
 const styles = StyleSheet.create({
   container: { gap: 12 },
   section: { gap: 8 },
-  label: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 },
+  label: { fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   modeToggle: {
     flexDirection: "row",
     borderRadius: 14,
@@ -231,8 +231,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "transparent",
   },
-  modeBtnTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  modeBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  modeBtnTitle: { fontSize: 13 },
+  modeBtnSub: { fontSize: 11, marginTop: 1 },
   sm2Hint: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  sm2HintText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  sm2HintText: { flex: 1, fontSize: 12, lineHeight: 18 },
   presets: { gap: 8 },
   presetBtn: {
     flexDirection: "row",
@@ -253,8 +253,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   presetDot: { width: 10, height: 10, borderRadius: 5 },
-  presetLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  presetDesc: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  presetLabel: { fontSize: 14 },
+  presetDesc: { fontSize: 11, marginTop: 1 },
   chips: { flexDirection: "row", gap: 6 },
   chip: {
     flexDirection: "row",
@@ -265,14 +265,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
-  chipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  chipText: { fontSize: 12 },
   addRow: { flexDirection: "row", gap: 8 },
   input: {
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
     borderWidth: 1,
   },
   addBtn: {

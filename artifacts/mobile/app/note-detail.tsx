@@ -195,7 +195,7 @@ export default function NoteDetailScreen() {
             <TextInput
               value={title}
               onChangeText={setTitle}
-              style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.border, fontFamily: "Inter_600SemiBold" }]}
+              style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.border }]}
             />
           </View>
         ) : (
@@ -251,7 +251,7 @@ export default function NoteDetailScreen() {
               onChangeText={setContent}
               multiline
               textAlignVertical="top"
-              style={[styles.contentInput, { color: colors.foreground, backgroundColor: colors.muted, borderRadius: colors.radius, borderColor: colors.border, fontFamily: "Inter_400Regular" }]}
+              style={[styles.contentInput, { color: colors.foreground, backgroundColor: colors.muted, borderRadius: colors.radius, borderColor: colors.border }]}
             />
           </View>
         ) : (
@@ -326,39 +326,39 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   headerBtn: { padding: 4 },
-  headerTitle: { flex: 1, fontSize: 16, fontFamily: "Inter_600SemiBold", textAlign: "center", marginHorizontal: 8 },
+  headerTitle: { flex: 1, fontSize: 16, textAlign: "center", marginHorizontal: 8 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   saveBtn: { paddingHorizontal: 14, paddingVertical: 6 },
-  saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  saveBtnText: { fontSize: 14 },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 16 },
   meta: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   categoryBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4 },
   categoryDot: { width: 6, height: 6, borderRadius: 3 },
-  categoryText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  categoryText: { fontSize: 12 },
   dueBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4 },
-  dueText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  noteTitle: { fontSize: 24, fontFamily: "Inter_700Bold", lineHeight: 32 },
-  noteContent: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 24 },
+  dueText: { fontSize: 12 },
+  noteTitle: { fontSize: 24, lineHeight: 32 },
+  noteContent: { fontSize: 15, lineHeight: 24 },
   noteImage: { width: 200, height: 150, marginRight: 8 },
   field: { gap: 8 },
   fieldHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  fieldLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  fieldLabel: { fontSize: 13 },
   titleInput: { fontSize: 20, paddingVertical: 8, borderBottomWidth: 1 },
   contentInput: { padding: 12, minHeight: 100, fontSize: 14, lineHeight: 22, borderWidth: 1 },
   addImageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1 },
-  addImageText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  addImageText: { fontSize: 13 },
   imageRow: { flexDirection: "row", gap: 8 },
   imageWrapper: { position: "relative" },
   imageThumbnail: { width: 80, height: 80 },
   removeImageBtn: { position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   planCard: { padding: 14, gap: 10 },
-  planTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  planTitle: { fontSize: 14 },
   intervalDisplay: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   intervalChip: { paddingHorizontal: 10, paddingVertical: 5 },
-  intervalChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  planSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  intervalChipText: { fontSize: 13 },
+  planSub: { fontSize: 12 },
   categoryRow: { flexDirection: "row", gap: 8 },
   categoryChip: { paddingHorizontal: 14, paddingVertical: 7 },
-  categoryChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  categoryChipText: { fontSize: 13 },
 });
