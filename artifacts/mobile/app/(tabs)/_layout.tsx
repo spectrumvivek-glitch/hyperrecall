@@ -1,11 +1,9 @@
 import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
@@ -37,43 +35,11 @@ function DueBadge({ count }: { count: number }) {
   );
 }
 
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Home</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="review">
-        <Icon sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }} />
-        <Label>Review</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="notes">
-        <Icon sf={{ default: "note.text", selected: "note.text" }} />
-        <Label>Notes</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="scholar">
-        <Icon sf={{ default: "brain", selected: "brain" }} />
-        <Label>Scholar</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="analytics">
-        <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Analytics</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="settings">
-        <Icon sf={{ default: "gear", selected: "gear" }} />
-        <Label>Settings</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
-
-function ClassicTabLayout() {
+export default function TabLayout() {
   const colors = useColors();
-  const colorScheme = useColorScheme();
   const safeAreaInsets = useSafeAreaInsets();
   const { dueNotes } = useApp();
-  const isDark = true;
+
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -107,10 +73,7 @@ function ClassicTabLayout() {
             />
           ) : (
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: "#0F172A" },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: "#0F172A" }]}
             />
           ),
       }}
@@ -193,11 +156,4 @@ function ClassicTabLayout() {
       />
     </Tabs>
   );
-}
-
-export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
 }
