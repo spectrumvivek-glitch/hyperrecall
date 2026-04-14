@@ -268,6 +268,17 @@ export async function completeRevision(
 
 export async function skipRevision(noteId: string): Promise<void> {
   await logRevision(noteId, "skipped");
+  // Push the note's due date to tomorrow so it leaves today's list
+  const plans = await getRevisionPlans();
+  const idx = plans.findIndex((p) => p.noteId === noteId);
+  if (idx !== -1) {
+    const tomorrow = startOfDay(Date.now()) + 24 * 60 * 60 * 1000;
+    // Only push forward — never move it backward if already scheduled later
+    if (plans[idx].nextRevisionDate < tomorrow) {
+      plans[idx] = { ...plans[idx], nextRevisionDate: tomorrow };
+      await saveRevisionPlans(plans);
+    }
+  }
 }
 
 // Revision Logs

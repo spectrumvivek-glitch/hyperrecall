@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert,
   Platform,
   RefreshControl,
   ScrollView,
@@ -267,26 +266,13 @@ export default function ReviewScreen() {
     }
   };
 
-  const handleSkip = async (noteId: string, title: string) => {
+  const handleSkip = async (noteId: string) => {
     if (busy) return;
-    if (Platform.OS === "web") {
-      if (window.confirm(`Skip "${title}"? It'll stay due until you mark it done.`)) {
-        setBusy(noteId);
-        await markSkipped(noteId);
-        setBusy(null);
-      }
-    } else {
-      Alert.alert("Skip revision?", `"${title}" will stay due until you mark it done.`, [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Skip",
-          onPress: async () => {
-            setBusy(noteId);
-            await markSkipped(noteId);
-            setBusy(null);
-          },
-        },
-      ]);
+    setBusy(noteId);
+    try {
+      await markSkipped(noteId);
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -371,7 +357,7 @@ export default function ReviewScreen() {
                   categoryName={name}
                   categoryColor={color}
                   onDone={(quality) => handleDone(note.id, quality)}
-                  onSkip={() => handleSkip(note.id, note.title)}
+                  onSkip={() => handleSkip(note.id)}
                   busy={busy === note.id}
                 />
               );
