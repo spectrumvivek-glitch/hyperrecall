@@ -24,6 +24,9 @@ export default function RevisionScreen() {
   const router = useRouter();
   const { dueNotes, markCompleted, markSkipped, pendingLevelUp, dismissLevelUp } = useApp();
 
+  // Snapshot due notes at session start so context refreshes don't shift the index
+  const [sessionNotes] = useState(() => [...dueNotes]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionCompleted, setSessionCompleted] = useState(0);
   const [sessionSkipped, setSessionSkipped] = useState(0);
@@ -36,7 +39,7 @@ export default function RevisionScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const handleComplete = async (sm2Quality?: number) => {
-    const item = dueNotes[currentIndex];
+    const item = sessionNotes[currentIndex];
     if (!item) return;
     const earned = await markCompleted(item.note.id, sm2Quality);
     setSessionCompleted((c) => c + 1);
@@ -47,7 +50,7 @@ export default function RevisionScreen() {
   };
 
   const handleSkip = async () => {
-    const item = dueNotes[currentIndex];
+    const item = sessionNotes[currentIndex];
     if (!item) return;
     await markSkipped(item.note.id);
     setSessionSkipped((s) => s + 1);
@@ -55,14 +58,14 @@ export default function RevisionScreen() {
   };
 
   const advance = () => {
-    if (currentIndex < dueNotes.length - 1) {
+    if (currentIndex < sessionNotes.length - 1) {
       setCurrentIndex((i) => i + 1);
     } else {
       setDone(true);
     }
   };
 
-  if (done || dueNotes.length === 0) {
+  if (done || sessionNotes.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topPad, paddingBottom: bottomPad }]}>
         <LevelUpModal
@@ -114,8 +117,8 @@ export default function RevisionScreen() {
     );
   }
 
-  const currentItem = dueNotes[currentIndex];
-  const progress = (currentIndex / dueNotes.length) * 100;
+  const currentItem = sessionNotes[currentIndex];
+  const progress = (currentIndex / sessionNotes.length) * 100;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -136,7 +139,7 @@ export default function RevisionScreen() {
         <View style={styles.progressSection}>
           <View style={styles.progressLabelRow}>
             <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
-              {currentIndex + 1} of {dueNotes.length}
+              {currentIndex + 1} of {sessionNotes.length}
             </Text>
             <View style={[styles.xpTag, { backgroundColor: colors.primary + "18" }]}>
               <Feather name="zap" size={11} color={colors.primary} />
@@ -158,7 +161,7 @@ export default function RevisionScreen() {
           plan={currentItem.plan}
           onComplete={handleComplete}
           onSkip={handleSkip}
-          isLast={currentIndex === dueNotes.length - 1}
+          isLast={currentIndex === sessionNotes.length - 1}
         />
       </ScrollView>
     </View>

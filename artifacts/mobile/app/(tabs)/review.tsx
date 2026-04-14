@@ -17,25 +17,52 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { RevisionPlan } from "@/lib/storage";
+
+const SM2_RATINGS = [
+  { quality: 2, label: "Hard", icon: "frown" as const, color: "#EF4444", desc: "Barely remembered" },
+  { quality: 4, label: "Good", icon: "meh" as const, color: "#F59E0B", desc: "Recalled with effort" },
+  { quality: 5, label: "Easy", icon: "smile" as const, color: "#22C55E", desc: "Perfect recall!" },
+];
 
 function DueCard({
   note,
+  plan,
   categoryName,
   categoryColor,
-  step,
   onDone,
   onSkip,
+  busy,
 }: {
   note: { id: string; title: string; content: string };
+  plan: RevisionPlan;
   categoryName: string;
   categoryColor: string;
-  step: number;
-  onDone: () => void;
+  onDone: (quality?: number) => void;
   onSkip: () => void;
+  busy: boolean;
 }) {
   const colors = useColors();
+  const [showRating, setShowRating] = useState(false);
+
+  const isSM2 = plan.mode === "sm2";
   const intervalLabels = ["Day 1", "Day 3", "Day 7", "Day 14", "Day 30", "Day 60", "Day 90"];
-  const stepLabel = intervalLabels[step] ?? `Step ${step + 1}`;
+  const stepLabel = isSM2
+    ? `Rep ${plan.currentStep + 1}`
+    : (intervalLabels[plan.currentStep] ?? `Step ${plan.currentStep + 1}`);
+
+  const handleDonePress = () => {
+    if (isSM2) {
+      setShowRating(true);
+    } else {
+      onDone();
+    }
+  };
+
+  const handleRate = (quality: number) => {
+    setShowRating(false);
+    onDone(quality);
+  };
 
   return (
     <View
@@ -43,53 +70,104 @@ function DueCard({
         cardStyles.card,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
-          shadowColor: categoryColor,
+          borderColor: showRating ? colors.warning + "50" : colors.border,
+          shadowColor: showRating ? colors.warning : categoryColor,
         },
       ]}
     >
       <View style={[cardStyles.categoryBar, { backgroundColor: categoryColor }]} />
       <View style={cardStyles.cardInner}>
-        <View style={cardStyles.top}>
-          <View style={{ flex: 1, gap: 5 }}>
-            <View style={cardStyles.meta}>
-              <View style={[cardStyles.catDot, { backgroundColor: categoryColor }]} />
-              <Text style={[cardStyles.catName, { color: colors.mutedForeground }]}>{categoryName}</Text>
-              <View style={[cardStyles.stepBadge, { backgroundColor: colors.primary + "20" }]}>
-                <Text style={[cardStyles.stepText, { color: colors.primary }]}>{stepLabel}</Text>
-              </View>
-            </View>
-            <Text style={[cardStyles.title, { color: colors.foreground }]} numberOfLines={2}>
-              {note.title}
+        {/* Top meta */}
+        <View style={cardStyles.meta}>
+          <View style={cardStyles.catRow}>
+            <View style={[cardStyles.catDot, { backgroundColor: categoryColor }]} />
+            <Text style={[cardStyles.catName, { color: colors.mutedForeground }]}>{categoryName}</Text>
+          </View>
+          <View style={[
+            cardStyles.stepBadge,
+            { backgroundColor: isSM2 ? colors.warning + "20" : colors.primary + "20" },
+          ]}>
+            {isSM2 && <Feather name="zap" size={10} color={colors.warning} />}
+            <Text style={[cardStyles.stepText, { color: isSM2 ? colors.warning : colors.primary }]}>
+              {stepLabel}
             </Text>
-            {note.content ? (
-              <Text style={[cardStyles.preview, { color: colors.mutedForeground }]} numberOfLines={2}>
-                {note.content}
-              </Text>
-            ) : null}
           </View>
         </View>
-        <View style={cardStyles.actions}>
-          <TouchableOpacity
-            onPress={onSkip}
-            style={[cardStyles.skipBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-            activeOpacity={0.7}
-          >
-            <Feather name="skip-forward" size={14} color={colors.mutedForeground} />
-            <Text style={[cardStyles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onDone} activeOpacity={0.82} style={cardStyles.doneWrap}>
-            <LinearGradient
-              colors={["#22C55E", "#16A34A"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={cardStyles.doneBtn}
+
+        {/* Title + content */}
+        <Text style={[cardStyles.title, { color: colors.foreground }]} numberOfLines={2}>
+          {note.title}
+        </Text>
+        {note.content ? (
+          <Text style={[cardStyles.preview, { color: colors.mutedForeground }]} numberOfLines={2}>
+            {note.content}
+          </Text>
+        ) : null}
+
+        {/* SM-2 rating panel */}
+        {showRating ? (
+          <View style={cardStyles.ratingPanel}>
+            <View style={cardStyles.ratingHeader}>
+              <Feather name="zap" size={14} color={colors.warning} />
+              <Text style={[cardStyles.ratingQuestion, { color: colors.foreground }]}>
+                How well did you recall this?
+              </Text>
+            </View>
+            <View style={cardStyles.ratingBtns}>
+              {SM2_RATINGS.map((r) => (
+                <TouchableOpacity
+                  key={r.quality}
+                  onPress={() => handleRate(r.quality)}
+                  disabled={busy}
+                  activeOpacity={0.75}
+                  style={[cardStyles.ratingBtn, { borderColor: r.color + "60", backgroundColor: r.color + "12" }]}
+                >
+                  <Feather name={r.icon} size={20} color={r.color} />
+                  <Text style={[cardStyles.ratingLabel, { color: r.color }]}>{r.label}</Text>
+                  <Text style={[cardStyles.ratingDesc, { color: colors.mutedForeground }]}>{r.desc}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowRating(false)}
+              style={cardStyles.cancelBtn}
+              activeOpacity={0.7}
             >
-              <Feather name="check" size={15} color="#fff" />
-              <Text style={cardStyles.doneText}>Done</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+              <Text style={[cardStyles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* Action buttons */
+          <View style={cardStyles.actions}>
+            <TouchableOpacity
+              onPress={onSkip}
+              disabled={busy}
+              style={[cardStyles.skipBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <Feather name="skip-forward" size={14} color={colors.mutedForeground} />
+              <Text style={[cardStyles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleDonePress}
+              disabled={busy}
+              activeOpacity={0.82}
+              style={cardStyles.doneWrap}
+            >
+              <LinearGradient
+                colors={isSM2 ? ["#F59E0B", "#D97706"] : ["#22C55E", "#16A34A"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={cardStyles.doneBtn}
+              >
+                <Feather name={isSM2 ? "zap" : "check"} size={15} color="#fff" />
+                <Text style={cardStyles.doneText}>
+                  {isSM2 ? "Rate Recall" : "Done"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -106,22 +184,23 @@ const cardStyles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
-  categoryBar: {
-    width: 4,
-  },
-  cardInner: {
-    flex: 1,
-    padding: 16,
-    gap: 14,
-  },
-  top: { flexDirection: "row", gap: 10 },
-  meta: { flexDirection: "row", alignItems: "center", gap: 6 },
-  catDot: { width: 8, height: 8, borderRadius: 4 },
+  categoryBar: { width: 4 },
+  cardInner: { flex: 1, padding: 14, gap: 10 },
+  meta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  catRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  catDot: { width: 7, height: 7, borderRadius: 4 },
   catName: { fontSize: 12, fontWeight: "500" },
-  stepBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  stepBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
   stepText: { fontSize: 11, fontWeight: "700" },
-  title: { fontSize: 16, fontWeight: "700", lineHeight: 22 },
-  preview: { fontSize: 13, lineHeight: 19 },
+  title: { fontSize: 15, fontWeight: "700", lineHeight: 21 },
+  preview: { fontSize: 13, lineHeight: 18 },
   actions: { flexDirection: "row", gap: 10 },
   skipBtn: {
     flex: 1,
@@ -134,11 +213,7 @@ const cardStyles = StyleSheet.create({
     borderWidth: 1,
   },
   skipText: { fontSize: 14, fontWeight: "600" },
-  doneWrap: {
-    flex: 2,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
+  doneWrap: { flex: 2, borderRadius: 12, overflow: "hidden" },
   doneBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -147,16 +222,32 @@ const cardStyles = StyleSheet.create({
     paddingVertical: 11,
   },
   doneText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  ratingPanel: { gap: 10 },
+  ratingHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  ratingQuestion: { fontSize: 14, fontWeight: "600" },
+  ratingBtns: { flexDirection: "row", gap: 8 },
+  ratingBtn: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  ratingLabel: { fontSize: 13, fontWeight: "700" },
+  ratingDesc: { fontSize: 10, textAlign: "center" },
+  cancelBtn: { alignItems: "center", paddingVertical: 4 },
+  cancelText: { fontSize: 13 },
 });
 
 export default function ReviewScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { dueNotes, categories, revisionPlans, isLoading, refresh, markCompleted, markSkipped } = useApp();
+  const { dueNotes, categories, isLoading, refresh, markCompleted, markSkipped } = useApp();
 
-  const [completing, setCompleting] = useState<string | null>(null);
-  const [skipping, setSkipping] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -166,39 +257,33 @@ export default function ReviewScreen() {
     return { name: cat?.name ?? "General", color: cat?.color ?? "#6366F1" };
   };
 
-  const getPlanStep = (noteId: string) => {
-    const plan = revisionPlans.find((p) => p.noteId === noteId);
-    return plan?.currentStep ?? 0;
-  };
-
-  const handleDone = async (noteId: string) => {
-    if (completing) return;
-    setCompleting(noteId);
+  const handleDone = async (noteId: string, quality?: number) => {
+    if (busy) return;
+    setBusy(noteId);
     try {
-      await markCompleted(noteId);
+      await markCompleted(noteId, quality);
     } finally {
-      setCompleting(null);
+      setBusy(null);
     }
   };
 
   const handleSkip = async (noteId: string, title: string) => {
-    if (skipping) return;
+    if (busy) return;
     if (Platform.OS === "web") {
       if (window.confirm(`Skip "${title}"? It'll stay due until you mark it done.`)) {
-        setSkipping(noteId);
+        setBusy(noteId);
         await markSkipped(noteId);
-        setSkipping(null);
+        setBusy(null);
       }
     } else {
       Alert.alert("Skip revision?", `"${title}" will stay due until you mark it done.`, [
         { text: "Cancel", style: "cancel" },
         {
           text: "Skip",
-          style: "default",
           onPress: async () => {
-            setSkipping(noteId);
+            setBusy(noteId);
             await markSkipped(noteId);
-            setSkipping(null);
+            setBusy(null);
           },
         },
       ]);
@@ -255,9 +340,7 @@ export default function ReviewScreen() {
             >
               <View style={styles.sessionBtnContent}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.sessionBtnTitle}>
-                    Start Full Session
-                  </Text>
+                  <Text style={styles.sessionBtnTitle}>Start Full Session</Text>
                   <Text style={styles.sessionBtnSub}>
                     Review all {dueNotes.length} cards one by one • earn {dueNotes.length * 10}+ XP
                   </Text>
@@ -269,7 +352,7 @@ export default function ReviewScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Divider with label */}
+          {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <Text style={[styles.dividerLabel, { color: colors.mutedForeground }]}>or mark individually</Text>
@@ -284,11 +367,12 @@ export default function ReviewScreen() {
                 <DueCard
                   key={note.id}
                   note={note}
+                  plan={plan}
                   categoryName={name}
                   categoryColor={color}
-                  step={plan.currentStep}
-                  onDone={() => handleDone(note.id)}
+                  onDone={(quality) => handleDone(note.id, quality)}
                   onSkip={() => handleSkip(note.id, note.title)}
+                  busy={busy === note.id}
                 />
               );
             })}
