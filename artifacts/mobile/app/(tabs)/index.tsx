@@ -24,6 +24,7 @@ import { BadgeCard } from "@/components/BadgeCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
+import { Note, RevisionPlan } from "@/lib/storage";
 
 function XpBar({ xpIntoLevel, xpNeeded, progressPct, colors }: {
   xpIntoLevel: number;
@@ -111,6 +112,124 @@ function NewBadgeBanner({
       </View>
       <Feather name="x" size={16} color={colors.mutedForeground} />
     </TouchableOpacity>
+  );
+}
+
+function UpcomingReviews({
+  notes,
+  revisionPlans,
+  colors,
+}: {
+  notes: Note[];
+  revisionPlans: RevisionPlan[];
+  colors: ReturnType<typeof useColors>;
+}) {
+  // Compute start of today in ms
+  const todayMs = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  })();
+
+  // Build day buckets for next 7 days
+  type Bucket = { label: string; shortLabel: string; daysAhead: number; items: { title: string; id: string }[] };
+  const buckets: Bucket[] = [];
+
+  for (let d = 1; d <= 7; d++) {
+    const dayStart = todayMs + d * 86_400_000;
+    const dayEnd = dayStart + 86_400_000;
+    const items = revisionPlans
+      .filter((p) => p.nextRevisionDate >= dayStart && p.nextRevisionDate < dayEnd)
+      .map((p) => {
+        const n = notes.find((n) => n.id === p.noteId);
+        return n ? { title: n.title, id: n.id } : null;
+      })
+      .filter(Boolean) as { title: string; id: string }[];
+
+    if (items.length > 0) {
+      const date = new Date(dayStart);
+      const label =
+        d === 1
+          ? "Tomorrow"
+          : date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+      const shortLabel =
+        d === 1
+          ? "Tmrw"
+          : date.toLocaleDateString("en-US", { weekday: "short" });
+      buckets.push({ label, shortLabel, daysAhead: d, items });
+    }
+  }
+
+  if (buckets.length === 0) return null;
+
+  const totalUpcoming = buckets.reduce((s, b) => s + b.items.length, 0);
+
+  return (
+    <View style={[upStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      {/* Header */}
+      <View style={upStyles.header}>
+        <View style={upStyles.headerLeft}>
+          <View style={[upStyles.iconWrap, { backgroundColor: colors.primary + "18" }]}>
+            <Feather name="calendar" size={15} color={colors.primary} />
+          </View>
+          <Text style={[upStyles.title, { color: colors.foreground }]}>Upcoming Reviews</Text>
+        </View>
+        <View style={[upStyles.totalPill, { backgroundColor: colors.primary + "18" }]}>
+          <Text style={[upStyles.totalText, { color: colors.primary }]}>{totalUpcoming} notes</Text>
+        </View>
+      </View>
+
+      {/* Day rows */}
+      <View style={upStyles.rows}>
+        {buckets.map((bucket, i) => (
+          <View key={bucket.daysAhead}>
+            {i > 0 && <View style={[upStyles.divider, { backgroundColor: colors.border }]} />}
+            <View style={upStyles.row}>
+              {/* Day chip */}
+              <View style={[
+                upStyles.dayChip,
+                {
+                  backgroundColor: bucket.daysAhead === 1 ? colors.warning + "18" : colors.muted,
+                  borderColor: bucket.daysAhead === 1 ? colors.warning + "40" : colors.border,
+                },
+              ]}>
+                <Text style={[
+                  upStyles.dayChipText,
+                  { color: bucket.daysAhead === 1 ? colors.warning : colors.mutedForeground },
+                ]}>
+                  {bucket.shortLabel}
+                </Text>
+              </View>
+
+              {/* Note titles */}
+              <View style={upStyles.noteList}>
+                {bucket.items.slice(0, 2).map((item) => (
+                  <Text
+                    key={item.id}
+                    numberOfLines={1}
+                    style={[upStyles.noteTitle, { color: colors.foreground }]}
+                  >
+                    {item.title}
+                  </Text>
+                ))}
+                {bucket.items.length > 2 && (
+                  <Text style={[upStyles.moreText, { color: colors.mutedForeground }]}>
+                    +{bucket.items.length - 2} more
+                  </Text>
+                )}
+              </View>
+
+              {/* Count badge */}
+              <View style={[upStyles.countBadge, { backgroundColor: colors.muted }]}>
+                <Text style={[upStyles.countText, { color: colors.mutedForeground }]}>
+                  {bucket.items.length}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -364,6 +483,11 @@ export default function DashboardScreen() {
           </View>
         )}
 
+        {/* Upcoming Reviews */}
+        {revisionPlans.length > 0 && (
+          <UpcomingReviews notes={notes} revisionPlans={revisionPlans} colors={colors} />
+        )}
+
         {notes.length === 0 && !isLoading && (
           <EmptyState
             icon="book-open"
@@ -545,4 +669,65 @@ const impStyles = StyleSheet.create({
     borderWidth: 1,
   },
   text: { flex: 1, fontSize: 14, fontWeight: "500" },
+});
+
+const upStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  iconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: { fontSize: 16, fontWeight: "700" },
+  totalPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  totalText: { fontSize: 12, fontWeight: "700" },
+  rows: { gap: 0 },
+  divider: { height: 1, marginVertical: 10 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  dayChip: {
+    minWidth: 46,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  dayChipText: { fontSize: 11, fontWeight: "700" },
+  noteList: { flex: 1, gap: 2 },
+  noteTitle: { fontSize: 13, fontWeight: "500" },
+  moreText: { fontSize: 12 },
+  countBadge: {
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 7,
+  },
+  countText: { fontSize: 12, fontWeight: "700" },
 });
