@@ -36,9 +36,9 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.12,
     shadowRadius: 16,
-    elevation: 6,
+    elevation: 4,
     overflow: "hidden",
   },
 });

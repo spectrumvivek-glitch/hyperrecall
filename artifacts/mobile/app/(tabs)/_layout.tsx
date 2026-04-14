@@ -25,7 +25,7 @@ function DueBadge({ count }: { count: number }) {
         justifyContent: "center",
         paddingHorizontal: 3,
         borderWidth: 1.5,
-        borderColor: "#0F172A",
+        borderColor: "#D7DEE8",
       }}
     >
       <Text style={{ color: "#fff", fontSize: 9, fontWeight: "800" }}>
@@ -47,7 +47,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: "#475569",
+        tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         tabBarLabelStyle: {
           fontSize: 10,
@@ -56,9 +56,9 @@ export default function TabLayout() {
         },
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : "#0F172A",
+          backgroundColor: isIOS ? "transparent" : "#F8FAFC",
           borderTopWidth: 1,
-          borderTopColor: "#1E293B",
+          borderTopColor: colors.border,
           elevation: 0,
           paddingBottom: safeAreaInsets.bottom,
           paddingTop: 8,
@@ -68,12 +68,12 @@ export default function TabLayout() {
           isIOS ? (
             <BlurView
               intensity={95}
-              tint="dark"
+              tint="light"
               style={StyleSheet.absoluteFill}
             />
           ) : (
             <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: "#0F172A" }]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: "#F8FAFC" }]}
             />
           ),
       }}
