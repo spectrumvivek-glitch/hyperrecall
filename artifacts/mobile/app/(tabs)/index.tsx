@@ -364,34 +364,6 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Recent Notes */}
-        {notes.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Notes</Text>
-              <TouchableOpacity onPress={() => router.push("/notes")}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.noteList}>
-              {[...notes]
-                .sort((a, b) => b.updatedAt - a.updatedAt)
-                .slice(0, 3)
-                .map((note) => {
-                  const plan = revisionPlans.find((p) => p.noteId === note.id);
-                  return (
-                    <NoteCard
-                      key={note.id}
-                      note={note}
-                      plan={plan}
-                      onPress={() => router.push({ pathname: "/note-detail", params: { id: note.id } })}
-                    />
-                  );
-                })}
-            </View>
-          </View>
-        )}
-
         {notes.length === 0 && !isLoading && (
           <EmptyState
             icon="book-open"
