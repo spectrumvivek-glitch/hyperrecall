@@ -119,18 +119,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="scholar"
-        options={{
-          title: "Scholar",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="brain" tintColor={color} size={24} />
-            ) : (
-              <Feather name="cpu" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
         name="analytics"
         options={{
           title: "Analytics",
