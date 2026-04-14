@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
   Platform,
@@ -9,9 +10,101 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StreakBadge } from "@/components/StreakBadge";
+import { BadgesGrid } from "@/components/BadgeCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { getDayLabel, startOfDay } from "@/lib/storage";
+
+// Deterministic mock leaderboard users
+const MOCK_USERS = [
+  { name: "Priya S.", reviews: 312, streak: 42, avatar: "P" },
+  { name: "James K.", reviews: 278, streak: 31, avatar: "J" },
+  { name: "Meera R.", reviews: 245, streak: 28, avatar: "M" },
+  { name: "David L.", reviews: 198, streak: 19, avatar: "D" },
+  { name: "Ananya G.", reviews: 165, streak: 15, avatar: "A" },
+  { name: "Tom H.", reviews: 142, streak: 11, avatar: "T" },
+  { name: "Sarah W.", reviews: 118, streak: 8, avatar: "S" },
+  { name: "Raj P.", reviews: 89, streak: 6, avatar: "R" },
+  { name: "Emma B.", reviews: 64, streak: 4, avatar: "E" },
+];
+
+const RANK_COLORS = ["#F59E0B", "#94A3B8", "#CD7C32"];
+
+function LeaderboardRow({
+  rank,
+  name,
+  avatar,
+  reviews,
+  streak,
+  isYou,
+  colors,
+}: {
+  rank: number;
+  name: string;
+  avatar: string;
+  reviews: number;
+  streak: number;
+  isYou: boolean;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const rankColor = rank <= 3 ? RANK_COLORS[rank - 1] : colors.mutedForeground;
+  return (
+    <View
+      style={[
+        lbStyles.row,
+        {
+          backgroundColor: isYou ? colors.primary + "12" : colors.card,
+          borderColor: isYou ? colors.primary + "50" : colors.border,
+        },
+      ]}
+    >
+      <View style={[lbStyles.rankWrap, { width: 28 }]}>
+        {rank <= 3 ? (
+          <Text style={[lbStyles.rankMedal, { color: rankColor }]}>
+            {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
+          </Text>
+        ) : (
+          <Text style={[lbStyles.rankNum, { color: colors.mutedForeground }]}>
+            {rank}
+          </Text>
+        )}
+      </View>
+      <View
+        style={[
+          lbStyles.avatar,
+          {
+            backgroundColor: isYou ? colors.primary + "25" : colors.muted,
+            borderColor: isYou ? colors.primary + "60" : colors.border,
+          },
+        ]}
+      >
+        <Text style={[lbStyles.avatarText, { color: isYou ? colors.primary : colors.mutedForeground }]}>
+          {avatar}
+        </Text>
+      </View>
+      <View style={{ flex: 1, gap: 1 }}>
+        <View style={styles.nameRow}>
+          <Text style={[lbStyles.name, { color: colors.foreground }]}>
+            {name}
+          </Text>
+          {isYou && (
+            <View style={[lbStyles.youChip, { backgroundColor: colors.primary + "20" }]}>
+              <Text style={[lbStyles.youText, { color: colors.primary }]}>You</Text>
+            </View>
+          )}
+        </View>
+        <Text style={[lbStyles.streak, { color: colors.mutedForeground }]}>
+          🔥 {streak}-day streak
+        </Text>
+      </View>
+      <Text style={[lbStyles.reviews, { color: isYou ? colors.primary : colors.foreground }]}>
+        {reviews}
+        {"\n"}
+        <Text style={[lbStyles.reviewsLabel, { color: colors.mutedForeground }]}>reviews</Text>
+      </Text>
+    </View>
+  );
+}
 
 export default function AnalyticsScreen() {
   const colors = useColors();
@@ -65,6 +158,27 @@ export default function AnalyticsScreen() {
       ? Math.round((totalCompleted / (totalCompleted + totalSkipped)) * 100)
       : 0;
 
+  // Build leaderboard with real user mixed in
+  const leaderboard = useMemo(() => {
+    const realUser = {
+      name: "You",
+      avatar: "★",
+      reviews: userStats.totalCompleted,
+      streak: userStats.currentStreak,
+      isYou: true,
+    };
+    const combined = [
+      ...MOCK_USERS.map((u) => ({ ...u, isYou: false })),
+      realUser,
+    ]
+      .sort((a, b) => b.reviews - a.reviews)
+      .slice(0, 10)
+      .map((user, i) => ({ ...user, rank: i + 1 }));
+    return combined;
+  }, [userStats.totalCompleted, userStats.currentStreak]);
+
+  const yourRank = leaderboard.find((u) => u.isYou)?.rank ?? "-";
+
   return (
     <ScrollView
       style={[styles.scroll, { backgroundColor: colors.background }]}
@@ -90,6 +204,26 @@ export default function AnalyticsScreen() {
         <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.primary }]}>
           <Text style={[styles.overviewValue, { color: colors.foreground }]}>{totalCompleted}</Text>
           <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Reviews</Text>
+        </View>
+      </View>
+
+      {/* Leaderboard */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleRow}>
+            <Feather name="award" size={18} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Leaderboard</Text>
+          </View>
+          <View style={[styles.rankChip, { backgroundColor: colors.primary + "15" }]}>
+            <Text style={[styles.rankChipText, { color: colors.primary }]}>
+              Rank #{yourRank}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.leaderboardList}>
+          {leaderboard.map((user) => (
+            <LeaderboardRow key={user.name} {...user} colors={colors} />
+          ))}
         </View>
       </View>
 
@@ -137,6 +271,20 @@ export default function AnalyticsScreen() {
             <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Skipped</Text>
           </View>
         </View>
+      </View>
+
+      {/* Badges Section */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleRow}>
+            <Feather name="star" size={18} color={colors.warning} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Badges</Text>
+          </View>
+          <Text style={[styles.badgeCount, { color: colors.mutedForeground }]}>
+            {(userStats.earnedBadges ?? []).length} earned
+          </Text>
+        </View>
+        <BadgesGrid earnedBadges={userStats.earnedBadges ?? []} />
       </View>
 
       {/* Category breakdown */}
@@ -209,6 +357,37 @@ const styles = StyleSheet.create({
   },
   overviewValue: { fontSize: 28, fontWeight: "800" },
   overviewLabel: { fontSize: 11, fontWeight: "600", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.5 },
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  rankChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  rankChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  badgeCount: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  leaderboardList: { gap: 8 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   chartCard: {
     padding: 18,
     gap: 16,
@@ -321,5 +500,65 @@ const styles = StyleSheet.create({
   catProgressFill: {
     height: 4,
     borderRadius: 2,
+  },
+});
+
+const lbStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  rankWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rankMedal: {
+    fontSize: 18,
+  },
+  rankNum: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  name: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  youChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  youText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  streak: {
+    fontSize: 11,
+  },
+  reviews: {
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "right",
+    lineHeight: 18,
+  },
+  reviewsLabel: {
+    fontSize: 10,
+    fontWeight: "500",
   },
 });

@@ -19,8 +19,11 @@ import { LevelUpModal } from "@/components/LevelUpModal";
 import { NoteCard } from "@/components/NoteCard";
 import { StatCard } from "@/components/StatCard";
 import { StreakBadge } from "@/components/StreakBadge";
+import { DailyProgressBar, DeckProgressBar } from "@/components/DailyProgressBar";
+import { BadgeCard } from "@/components/BadgeCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
 
 function XpBar({ xpIntoLevel, xpNeeded, progressPct, colors }: {
   xpIntoLevel: number;
@@ -71,6 +74,46 @@ function ImprovementBanner({ pct, colors }: {
   );
 }
 
+function NewBadgeBanner({
+  badgeIds,
+  onDismiss,
+  colors,
+}: {
+  badgeIds: string[];
+  onDismiss: () => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const badge = getBadgeDef(badgeIds[0]);
+  if (!badge) return null;
+  return (
+    <TouchableOpacity
+      onPress={onDismiss}
+      activeOpacity={0.85}
+      style={[
+        styles.badgeBanner,
+        { backgroundColor: badge.color + "15", borderColor: badge.color + "50" },
+      ]}
+    >
+      <View style={[styles.badgeBannerIcon, { backgroundColor: badge.color + "25" }]}>
+        <Feather name={badge.icon as any} size={20} color={badge.color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.badgeBannerTitle, { color: badge.color }]}>
+          🏅 Badge Unlocked!
+        </Text>
+        <Text style={[styles.badgeBannerName, { color: colors.foreground }]}>
+          {badge.name}
+          {badgeIds.length > 1 ? ` +${badgeIds.length - 1} more` : ""}
+        </Text>
+        <Text style={[styles.badgeBannerDesc, { color: colors.mutedForeground }]}>
+          {badge.description}
+        </Text>
+      </View>
+      <Feather name="x" size={16} color={colors.mutedForeground} />
+    </TouchableOpacity>
+  );
+}
+
 async function shareStreak(streak: number, totalXp: number, level: number, levelName: string) {
   const message =
     `🔥 ${streak}-day study streak on Recallify!\n` +
@@ -91,10 +134,16 @@ export default function DashboardScreen() {
   const {
     dueNotes, userStats, notes, revisionPlans, isLoading, refresh,
     xpInfo, improvementPct, pendingLevelUp, dismissLevelUp, shareAndEarnXp,
+    newBadges, dismissNewBadges,
   } = useApp();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+
+  const recentBadges = (userStats.earnedBadges ?? [])
+    .slice(-4)
+    .map((id) => getBadgeDef(id))
+    .filter(Boolean) as ReturnType<typeof getBadgeDef>[];
 
   return (
     <>
@@ -131,6 +180,11 @@ export default function DashboardScreen() {
           </View>
           <StreakBadge streak={userStats.currentStreak} size="md" />
         </View>
+
+        {/* New Badge Banner */}
+        {newBadges.length > 0 && (
+          <NewBadgeBanner badgeIds={newBadges} onDismiss={dismissNewBadges} colors={colors} />
+        )}
 
         {/* Level + XP Card */}
         <View
@@ -209,6 +263,18 @@ export default function DashboardScreen() {
           />
         </View>
 
+        {/* Progress Bars */}
+        <DailyProgressBar
+          completed={userStats.todayCompleted}
+          goal={userStats.dailyGoal ?? 10}
+        />
+        {notes.length > 0 && (
+          <DeckProgressBar
+            notesWithPlans={revisionPlans.length}
+            totalNotes={notes.length}
+          />
+        )}
+
         {/* Today's Progress */}
         {userStats.todayCompleted > 0 && (
           <View style={[styles.todayCard, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "35" }]}>
@@ -217,6 +283,31 @@ export default function DashboardScreen() {
               <Text style={{ fontWeight: "800" }}>{userStats.todayCompleted}</Text> note{userStats.todayCompleted !== 1 ? "s" : ""} revised today
               {userStats.todayCompleted > 0 && ` • +${userStats.todayCompleted * 10} XP`}
             </Text>
+          </View>
+        )}
+
+        {/* Recent Badges */}
+        {recentBadges.length > 0 && (
+          <View style={[styles.badgesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Badges</Text>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/analytics")}>
+                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.recentBadgesRow}>
+              {recentBadges.map((badge) => (
+                <BadgeCard key={badge!.id} badge={badge!} earned size="md" />
+              ))}
+              {(userStats.earnedBadges ?? []).length < ALL_BADGES.length && (
+                <View style={[styles.lockedBadge, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Feather name="lock" size={18} color={colors.mutedForeground} />
+                  <Text style={[styles.lockedCount, { color: colors.mutedForeground }]}>
+                    +{ALL_BADGES.length - (userStats.earnedBadges ?? []).length}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
@@ -372,6 +463,60 @@ const styles = StyleSheet.create({
   },
   todayText: { fontSize: 14, fontWeight: "500", flex: 1 },
   statsRow: { flexDirection: "row", gap: 10 },
+  badgesCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+  },
+  recentBadgesRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  lockedBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  lockedCount: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  badgeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  badgeBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeBannerTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  badgeBannerName: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 1,
+  },
+  badgeBannerDesc: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   revisionBtn: {
     borderRadius: 18,
     overflow: "hidden",

@@ -26,7 +26,15 @@ A spaced repetition study app at `artifacts/mobile/`.
 - Daily streak tracking + streak milestone bonuses (+50 XP at 3,7,14,30,60,90,100,180,365-day streaks)
 - Revision session flow (complete/skip) with floating +XP animation
 - **Scholar AI tutor**: GPT-4o powered, conversation memory (last 5 exchanges), text + image support, animated typing dots, structured JSON responses
-- **Gamification**: XP system, level progression (10 level names), share streak (+10 XP), category completion (+100 XP)
+- **Gamification (full system)**:
+  - XP system, level progression (10 level names), share streak (+10 XP), category completion (+100 XP)
+  - **17 Badges** across 4 rarities (common/rare/epic/legendary): First Step, On Fire, Week Warrior, Fortnight, Monthly Hero, Century Streak, Getting Started, Reviewer, Centurion, Dedication, Legend, Rising Scholar, Master Mind, Grandmaster, Perfect Day, XP Hunter, XP Legend
+  - Badges awarded automatically after each review in `updateStreak()` via `checkNewBadges()` in `lib/badges.ts`
+  - New badge toast banner on Home tab when badge is unlocked, dismissable
+  - **Leaderboard** on Analytics tab: user ranked among 9 deterministic mock users sorted by total reviews (top 10), 🥇🥈🥉 medals for top 3
+  - **Daily Progress Bar** on Home tab: shows today's reviews / daily goal (default 10)
+  - **Deck Progress Bar** on Home tab: shows notes with revision plans / total notes
+  - **Badges Grid** on Analytics tab: all 17 badges shown (earned highlighted with color, locked grayed)
 - **Vacation Mode**: shift all revision dates by vacation duration to protect streak
 - **Holiday Rest Mode**: push today's due cards to tomorrow (single rest day)
 - **Custom Notification Time**: daily reminder at user-chosen time (default 9:00 AM)
@@ -72,7 +80,11 @@ A spaced repetition study app at `artifacts/mobile/`.
 
 At `artifacts/api-server/`. Express server at port 8080.
 
-- `POST /api/tutor/ask` — Scholar AI endpoint, accepts `{ question, imageBase64?, noteContext?, history? }`. Uses GPT-4o via Replit AI integrations. Returns structured JSON with explanation, steps, summary, followUp questions.
+- `POST /api/tutor/ask` — Scholar AI endpoint (ChatGPT gpt-5.2), accepts `{ question, imageBase64?, noteContext?, history? }`. Returns structured JSON with explanation, steps, summary, followUp questions.
+- `GET /api/gamification/badges` — returns all 17 badge definitions
+- `GET /api/gamification/leaderboard?totalReviews=&currentStreak=` — returns top-10 leaderboard with user injected
+- `GET /api/gamification/progress?totalCompleted=&todayCompleted=&dailyGoal=&totalNotes=&scheduledNotes=` — returns daily + deck progress
+- `POST /api/gamification/review` — accepts user stats, returns newly earned badges
 
 ## Key Commands
 

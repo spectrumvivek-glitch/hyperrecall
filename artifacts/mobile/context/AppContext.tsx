@@ -65,8 +65,10 @@ interface AppContextValue {
   pendingLevelUp: LevelUpEvent | null;
   pendingXp: number;
   streakMilestone: number | null;
+  newBadges: string[];
   dismissLevelUp: () => void;
   dismissStreakMilestone: () => void;
+  dismissNewBadges: () => void;
 
   addCategory: (name: string, color: string) => Promise<Category>;
   removeCategory: (id: string) => Promise<void>;
@@ -113,6 +115,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     todayCompleted: 0,
     yesterdayCompleted: 0,
     lastXpDate: 0,
+    earnedBadges: [],
+    dailyGoal: 10,
   });
   const [vacationSettings, setVacationSettings] = useState<VacationSettings>(DEFAULT_VACATION);
   const [dueNotes, setDueNotes] = useState<{ note: Note; plan: RevisionPlan }[]>([]);
@@ -120,6 +124,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [pendingLevelUp, setPendingLevelUp] = useState<LevelUpEvent | null>(null);
   const [pendingXp, setPendingXp] = useState(0);
   const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
+  const [newBadges, setNewBadges] = useState<string[]>([]);
 
   const xpInfo = buildXpInfo(userStats);
   const improvementPct = calcImprovementPct(userStats.todayCompleted, userStats.yesterdayCompleted);
@@ -199,6 +204,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const result = await completeRevision(noteId, sm2Quality);
     await refresh();
     setPendingXp(result.xpGained);
+    if (result.newBadges && result.newBadges.length > 0) {
+      setNewBadges(result.newBadges);
+    }
     if (result.streakMilestone) {
       setStreakMilestone(result.streakMilestone);
     }
@@ -235,6 +243,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const dismissLevelUp = useCallback(() => setPendingLevelUp(null), []);
   const dismissStreakMilestone = useCallback(() => setStreakMilestone(null), []);
+  const dismissNewBadges = useCallback(() => setNewBadges([]), []);
 
   return (
     <AppContext.Provider
@@ -252,8 +261,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pendingLevelUp,
         pendingXp,
         streakMilestone,
+        newBadges,
         dismissLevelUp,
         dismissStreakMilestone,
+        dismissNewBadges,
         addCategory,
         removeCategory,
         addNote,

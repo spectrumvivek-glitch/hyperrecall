@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { calcXpForAction, getLevelFromXp } from "./xp";
+import { checkNewBadges } from "./badges";
 
 export interface Category {
   id: string;
@@ -54,6 +55,8 @@ export interface UserStats {
   todayCompleted: number;
   yesterdayCompleted: number;
   lastXpDate: number;
+  earnedBadges: string[];
+  dailyGoal: number;
 }
 
 export interface VacationSettings {
@@ -226,10 +229,16 @@ function computeSM2NextInterval(plan: RevisionPlan, quality: number): { nextInte
 export async function completeRevision(
   noteId: string,
   sm2Quality?: number
-): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number; streakMilestone?: number }> {
+): Promise<{
+  xpGained: number;
+  leveledUp: boolean;
+  newLevel: number;
+  streakMilestone?: number;
+  newBadges: string[];
+}> {
   const plans = await getRevisionPlans();
   const idx = plans.findIndex((p) => p.noteId === noteId);
-  if (idx === -1) return { xpGained: 0, leveledUp: false, newLevel: 1 };
+  if (idx === -1) return { xpGained: 0, leveledUp: false, newLevel: 1, newBadges: [] };
   const plan = plans[idx];
 
   let nextInterval: number;
@@ -296,6 +305,8 @@ export async function getUserStats(): Promise<UserStats> {
       todayCompleted: 0,
       yesterdayCompleted: 0,
       lastXpDate: 0,
+      earnedBadges: [],
+      dailyGoal: 10,
       ...parsed,
     };
   }
@@ -308,6 +319,8 @@ export async function getUserStats(): Promise<UserStats> {
     todayCompleted: 0,
     yesterdayCompleted: 0,
     lastXpDate: 0,
+    earnedBadges: [],
+    dailyGoal: 10,
   };
 }
 
@@ -317,7 +330,13 @@ export async function saveUserStats(stats: UserStats): Promise<void> {
 
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 90, 100, 180, 365];
 
-async function updateStreak(): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number; streakMilestone?: number }> {
+async function updateStreak(): Promise<{
+  xpGained: number;
+  leveledUp: boolean;
+  newLevel: number;
+  streakMilestone?: number;
+  newBadges: string[];
+}> {
   const stats = await getUserStats();
   const today = startOfDay(Date.now());
   const yesterday = today - 24 * 60 * 60 * 1000;
@@ -354,8 +373,24 @@ async function updateStreak(): Promise<{ xpGained: number; leveledUp: boolean; n
   const newLevel = getLevelFromXp(stats.totalXp);
   const leveledUp = newLevel > prevLevel;
 
+  // Check for newly earned badges
+  const newBadges = checkNewBadges(
+    {
+      currentStreak: stats.currentStreak,
+      totalCompleted: stats.totalCompleted,
+      todayCompleted: stats.todayCompleted,
+      totalXp: stats.totalXp,
+    },
+    newLevel,
+    stats.earnedBadges
+  );
+
+  if (newBadges.length > 0) {
+    stats.earnedBadges = [...(stats.earnedBadges ?? []), ...newBadges];
+  }
+
   await saveUserStats(stats);
-  return { xpGained, leveledUp, newLevel, streakMilestone };
+  return { xpGained, leveledUp, newLevel, streakMilestone, newBadges };
 }
 
 export async function awardShareXp(): Promise<{ xpGained: number; leveledUp: boolean; newLevel: number }> {
