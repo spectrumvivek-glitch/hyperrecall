@@ -171,7 +171,7 @@ function ScholarBubble({ msg, onFollowUp, colors }: { msg: Message; onFollowUp: 
           <View style={[styles.scholarAvatar, { backgroundColor: colors.primary + "20" }]}>
             <Feather name="cpu" size={16} color={colors.primary} />
           </View>
-          <Text style={[styles.scholarLabel, { color: colors.primary }]}>Scholar</Text>
+          <Text style={[styles.scholarLabel, { color: colors.primary }]}>ChatGPT Scholar</Text>
         </View>
         <TypingDots colors={colors} />
       </View>
@@ -185,7 +185,7 @@ function ScholarBubble({ msg, onFollowUp, colors }: { msg: Message; onFollowUp: 
         <View style={[styles.scholarAvatar, { backgroundColor: colors.primary + "20" }]}>
           <Feather name="cpu" size={16} color={colors.primary} />
         </View>
-        <Text style={[styles.scholarLabel, { color: colors.primary }]}>Scholar</Text>
+        <Text style={[styles.scholarLabel, { color: colors.primary }]}>ChatGPT Scholar</Text>
       </View>
 
       <Text style={[styles.explanationText, { color: colors.foreground }]}>{r.explanation}</Text>
@@ -328,7 +328,7 @@ export default function ScholarScreen() {
           <Feather name="cpu" size={20} color={colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Scholar AI</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>ChatGPT Scholar</Text>
           <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
             {conversationHistory.length > 0
               ? `${conversationHistory.length / 2} exchange${conversationHistory.length / 2 !== 1 ? "s" : ""} in memory`
@@ -354,9 +354,9 @@ export default function ScholarScreen() {
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.primary + "18" }]}>
               <Feather name="book-open" size={32} color={colors.primary} />
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Ask Scholar anything</Text>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Ask ChatGPT Scholar anything</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Get clear explanations, step-by-step breakdowns, and follow-up questions to deepen your understanding. Scholar remembers your last 5 exchanges.
+              Get clear explanations, step-by-step breakdowns, and follow-up questions to deepen your understanding. ChatGPT Scholar remembers your last 5 exchanges.
             </Text>
             <View style={styles.suggestions}>
               {[

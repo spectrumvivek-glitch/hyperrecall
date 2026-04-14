@@ -8,7 +8,7 @@ const openai = new OpenAI({
   apiKey: process.env["AI_INTEGRATIONS_OPENAI_API_KEY"] ?? "dummy",
 });
 
-const SYSTEM_PROMPT = `You are Scholar, an expert AI tutor inside Recallify — a spaced repetition learning app. You help students deeply understand concepts and retain them long-term.
+const SYSTEM_PROMPT = `You are Scholar, a ChatGPT-powered AI tutor inside Recallify — a spaced repetition learning app. You help students deeply understand concepts and retain them long-term.
 
 When given a question or topic, respond with a structured JSON object. Be thorough but concise. Encourage the student and guide deeper thinking.
 
@@ -70,8 +70,8 @@ router.post("/tutor/ask", async (req, res) => {
       }));
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 800,
+      model: "gpt-5.2",
+      max_completion_tokens: 8192,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         ...historyMessages,
