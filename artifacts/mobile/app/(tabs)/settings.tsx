@@ -225,7 +225,7 @@ export default function SettingsScreen() {
     const nextDayLabel = new Date(restTs + 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
     Alert.alert(
       "Holiday Rest Mode",
-      `Cards scheduled for ${restLabel} will be pushed to ${nextDayLabel}. Your streak is protected.`,
+      `Notes scheduled for ${restLabel} will be pushed to ${nextDayLabel}. Your streak is protected.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -235,7 +235,7 @@ export default function SettingsScreen() {
             try {
               await activateHolidayRest(restTs);
               await refreshVacation();
-              Alert.alert("Rest Day Set", `Cards for ${restLabel} are moved to ${nextDayLabel}. Enjoy your break!`);
+              Alert.alert("Rest Day Set", `Notes for ${restLabel} are moved to ${nextDayLabel}. Enjoy your break!`);
             } finally {
               setHolidayLoading(false);
             }
@@ -491,7 +491,7 @@ export default function SettingsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>Holiday Rest</Text>
               <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
-                Pick a day to skip — cards move to the next day
+                Pick a day to skip — notes move to the next day
               </Text>
             </View>
           </View>
@@ -528,7 +528,7 @@ export default function SettingsScreen() {
           <View style={[styles.hintRow, { backgroundColor: "#f59e0b" + "10", margin: 0, borderTopWidth: 1, borderTopColor: colors.border }]}>
             <Feather name="info" size={12} color="#f59e0b" />
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Only cards scheduled for that exact day are shifted. Overdue cards are unaffected.
+              Only notes scheduled for that exact day are shifted. Overdue notes are unaffected.
             </Text>
           </View>
         </SectionCard>

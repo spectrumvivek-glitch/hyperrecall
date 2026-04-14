@@ -213,8 +213,8 @@ export default function DashboardScreen() {
         {userStats.todayCompleted > 0 && (
           <View style={[styles.todayCard, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "35" }]}>
             <Feather name="zap" size={16} color={colors.primary} />
-            <Text style={[styles.todayText, { color: colors.primary }]}>
-              <Text style={{ fontWeight: "800" }}>{userStats.todayCompleted}</Text> card{userStats.todayCompleted !== 1 ? "s" : ""} revised today
+              <Text style={[styles.todayText, { color: colors.primary }]}>
+              <Text style={{ fontWeight: "800" }}>{userStats.todayCompleted}</Text> note{userStats.todayCompleted !== 1 ? "s" : ""} revised today
               {userStats.todayCompleted > 0 && ` • +${userStats.todayCompleted * 10} XP`}
             </Text>
           </View>

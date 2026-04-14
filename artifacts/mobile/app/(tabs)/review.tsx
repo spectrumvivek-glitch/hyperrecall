@@ -308,7 +308,7 @@ export default function ReviewScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>Due Today</Text>
           {dueNotes.length > 0 && (
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              {dueNotes.length} card{dueNotes.length !== 1 ? "s" : ""} to review
+              {dueNotes.length} note{dueNotes.length !== 1 ? "s" : ""} to review
             </Text>
           )}
         </View>
@@ -342,7 +342,7 @@ export default function ReviewScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.sessionBtnTitle}>Start Full Session</Text>
                   <Text style={styles.sessionBtnSub}>
-                    Review all {dueNotes.length} cards one by one • earn {dueNotes.length * 10}+ XP
+                    Review all {dueNotes.length} notes one by one • earn {dueNotes.length * 10}+ XP
                   </Text>
                 </View>
                 <View style={styles.sessionIcon}>
@@ -384,7 +384,7 @@ export default function ReviewScreen() {
         <EmptyState
           icon="check-circle"
           title="All caught up!"
-          description="No cards are due for review today. Great work keeping up with your schedule."
+          description="No notes are due for review today. Great work keeping up with your schedule."
           actionLabel="Browse Notes"
           onAction={() => router.push("/notes")}
         />

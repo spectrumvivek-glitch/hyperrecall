@@ -117,11 +117,11 @@ export async function scheduleDailyRevisionReminder(
       dueCount === 0
         ? {
             title: "Recallify — Keep it up! 🎉",
-            body: "No cards due today. Add new notes to stay ahead.",
+            body: "No notes due today. Add new notes to stay ahead.",
             sound: true,
           }
         : {
-            title: `Recallify — ${dueCount} card${dueCount > 1 ? "s" : ""} due today 📚`,
+            title: `Recallify — ${dueCount} note${dueCount > 1 ? "s" : ""} due today 📚`,
             body: "Time to revise! Tap to start your session.",
             sound: true,
           };
