@@ -54,6 +54,8 @@ export default function SettingsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
+  const divider = <View style={[styles.divider, { backgroundColor: colors.border }]} />;
+
   useEffect(() => {
     getNotificationSettings().then(({ enabled, hour, minute }) => {
       setNotifEnabled(enabled);
@@ -318,6 +320,7 @@ const styles = StyleSheet.create({
   section: { gap: 12 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 17 },
+  divider: { height: 1 },
   addBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6 },
   addBtnText: { fontSize: 13 },
   catInput: { padding: 12, fontSize: 14 },
