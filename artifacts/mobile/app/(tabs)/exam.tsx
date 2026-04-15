@@ -582,7 +582,7 @@ function ExamCard({
 
 function PlanBreaksCard() {
   const colors = useColors();
-  const { refresh } = useApp();
+  const { refresh, refreshVacation } = useApp();
   const [vacationSettings, setVacationSettings] = useState({ isActive: false, startDate: 0, endDate: 0, holidayRestActive: false });
   const [vacLoading, setVacLoading] = useState(false);
   const [vacStartText, setVacStartText] = useState("");
@@ -602,10 +602,11 @@ function PlanBreaksCard() {
     return startOfDay(d.getTime());
   };
 
-  // Reload vacation state AND refresh global app state (dueNotes etc.)
+  // Reload vacation state AND refresh global app state (dueNotes, vacationSettings in context etc.)
   const reloadAll = async () => {
-    setVacationSettings(await getVacationSettings());
-    await refresh();
+    const latest = await getVacationSettings();
+    setVacationSettings(latest);
+    await Promise.all([refresh(), refreshVacation()]);
   };
 
   // After any shift, reschedule notifications with the new due count
