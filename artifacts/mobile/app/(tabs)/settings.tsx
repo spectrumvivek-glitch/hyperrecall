@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import {
   cancelAllRevisionNotifications,
@@ -42,6 +43,20 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { categories, addCategory, removeCategory, notes, dueNotes } = useApp();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          await signOut().catch(() => {});
+        },
+      },
+    ]);
+  };
   const [newCatName, setNewCatName] = useState("");
   const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
   const [showAddCat, setShowAddCat] = useState(false);
@@ -286,7 +301,33 @@ export default function SettingsScreen() {
         </SectionCard>
       </View>
 
-      {/* About */}
+      {/* Account */}
+      {user && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Account</Text>
+          <SectionCard>
+            <View style={styles.infoRow}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Feather name="user" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingLabel, { color: colors.foreground }]}>Signed in</Text>
+                <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {user.email}
+                </Text>
+              </View>
+            </View>
+            {divider}
+            <TouchableOpacity onPress={handleSignOut} style={styles.infoRow} activeOpacity={0.7}>
+              <View style={[styles.settingIcon, { backgroundColor: "#EF444418" }]}>
+                <Feather name="log-out" size={18} color="#EF4444" />
+              </View>
+              <Text style={[styles.settingLabel, { color: "#EF4444" }]}>Sign Out</Text>
+            </TouchableOpacity>
+          </SectionCard>
+        </View>
+      )}
+
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
         <SectionCard>
@@ -305,7 +346,7 @@ export default function SettingsScreen() {
           <View style={styles.infoRow}>
             <Feather name="shield" size={18} color={colors.mutedForeground} />
             <Text style={[styles.infoLabel, { color: colors.foreground }]}>Data storage</Text>
-            <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>Local only</Text>
+            <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>Firebase + Local</Text>
           </View>
         </SectionCard>
       </View>

@@ -1,0 +1,54 @@
+module.exports = {
+  expo: {
+    name: "Recallify",
+    slug: "mobile",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/icon.png",
+    scheme: "mobile",
+    userInterfaceStyle: "automatic",
+    newArchEnabled: true,
+    splash: {
+      image: "./assets/images/icon.png",
+      resizeMode: "contain",
+      backgroundColor: "#0f172a",
+    },
+    ios: {
+      supportsTablet: false,
+      bundleIdentifier: "com.recallify.app",
+    },
+    android: {
+      package: "com.studybrain.app",
+    },
+    web: {
+      favicon: "./assets/images/icon.png",
+    },
+    plugins: [
+      [
+        "expo-router",
+        {
+          origin: "https://replit.com/",
+        },
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/images/icon.png",
+          color: "#4f46e5",
+          sounds: [],
+        },
+      ],
+    ],
+    experiments: {
+      typedRoutes: true,
+      reactCompiler: true,
+    },
+    extra: {
+      firebaseApiKey: process.env.GOOGLE_API_KEY ?? "",
+      googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "",
+    },
+  },
+};

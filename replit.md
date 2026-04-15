@@ -35,28 +35,44 @@ A spaced repetition study app at `artifacts/mobile/`.
   - **Daily Progress Bar** on Home tab: shows today's reviews / daily goal (default 10)
   - **Deck Progress Bar** on Home tab: shows notes with revision plans / total notes
   - **Badges Grid** on Analytics tab: all 17 badges shown (earned highlighted with color, locked grayed)
-- **Vacation Mode**: shift all revision dates by vacation duration to protect streak
-- **Holiday Rest Mode**: push today's due cards to tomorrow (single rest day)
 - **Custom Notification Time**: daily reminder at user-chosen time (default 9:00 AM)
 - Push notifications via expo-notifications (default enabled on first launch)
 - 14-day activity chart in Analytics tab
 - Category breakdown analytics
-- Offline-first with AsyncStorage only
+- Offline-first with AsyncStorage; Firebase for cloud auth + notes
+
+### Firebase Integration
+- **Auth**: Email/password signup/login via Firebase Authentication; persistent sessions via AsyncStorage
+- **Google Sign-In**: Implemented via `expo-web-browser` OAuth flow; requires `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` env var set to the Firebase project's Web OAuth 2.0 client ID
+- **Firestore**: collections — `users/{uid}`, `notes/{noteId}`, `reviews/{reviewId}`
+- **Security**: Firestore Security Rules enforce `request.auth.uid == resource.data.userId`
+- **API key**: `GOOGLE_API_KEY` secret forwarded as `EXPO_PUBLIC_FIREBASE_API_KEY` in the dev script
+- **Config**: `app.config.js` (replaces `app.json`); `lib/firebase.ts`; `lib/firestore.ts`
+- **Auth Context**: `context/AuthContext.tsx` — provides `user`, `signIn`, `signUp`, `signInWithGoogle`, `signOut`
+- **Auth Gate**: `app/(auth)/login.tsx` shown when user is not logged in; `app/_layout.tsx` handles redirect
+
+### Firestore Functions (lib/firestore.ts)
+- `createUserProfile(userId, email)` — upserts user doc in `users` collection
+- `saveNote(userId, content)` — adds to `notes` collection, returns doc ID
+- `getUserNotes(userId)` — queries notes filtered by userId
+- `scheduleReview(userId, noteId, nextReviewDate)` — adds to `reviews` collection, returns doc ID
 
 ### App Architecture
+- Auth: `AuthProvider` wraps everything; redirects unauthenticated users to `/(auth)/login`
 - State: React Context (`context/AppContext.tsx`) + AsyncStorage (`lib/storage.ts`)
 - Navigation: Expo Router (file-based) with tab layout
-- Tabs: Home (Dashboard), Review, Notes, Scholar, Analytics, Settings
+- Tabs: Home (Dashboard), Revise, Notes, Exam Mode, Analytics, Settings
 - Modal screens: Revision session, Add Note, Note Detail
 
 ### Key Files
-- `lib/storage.ts` — All data operations, SM-2 algorithm, vacation mode, XP/streak milestones
-- `context/AppContext.tsx` — Global state, markCompleted returns XP earned
-- `components/RevisionCard.tsx` — SM-2 rating UI (Hard/Good/Easy) + progress + custom mode
-- `components/IntervalPicker.tsx` — Mode toggle (Simple/Smart) + CLASSIC/AGGRESSIVE/RELAXED presets
+- `lib/storage.ts` — All local data operations, XP/streak milestones
+- `lib/firebase.ts` — Firebase app + auth + Firestore initialization
+- `lib/firestore.ts` — Cloud CRUD: createUserProfile, saveNote, getUserNotes, scheduleReview
+- `context/AuthContext.tsx` — Firebase auth state, signIn/signUp/signInWithGoogle/signOut
+- `context/AppContext.tsx` — Global local state, markCompleted returns XP earned
+- `app/(auth)/login.tsx` — Login + Sign Up screen (tab-toggled, single file)
+- `app/(tabs)/settings.tsx` — Account section (signed-in email + Sign Out), categories, notifications
 - `components/FloatingXP.tsx` — Animated +XP badge on revision complete
-- `app/(tabs)/settings.tsx` — Categories, notifications, Breaks & Rest section
-- `app/(tabs)/scholar.tsx` — AI tutor with conversation history + typing animation
 - `lib/xp.ts` — XP thresholds, level names, progress calculation
 
 ### Design System — Premium Dark UI (always forced dark)
