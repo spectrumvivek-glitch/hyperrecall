@@ -221,18 +221,29 @@ export default function AnalyticsScreen() {
   // Build leaderboard with real user mixed in — rotates every 30 s via lbTick
   const leaderboard = useMemo(() => {
     const pool = buildRotatingPool(lbTick);
+
+    // Tick-based virtual score used ONLY for rank sorting — makes "You" move
+    // through different positions each rotation while keeping real stats displayed.
+    // Cycles through a range of ±120 relative to the midpoint of the current pool.
+    const poolMid = pool.length > 0
+      ? pool.reduce((s, u) => s + u.reviews, 0) / pool.length
+      : 100;
+    const phase = (lbTick % 9); // 0-8, gives 9 distinct rank positions per cycle
+    const tickVirtual = Math.round(poolMid * (0.6 + phase * 0.1));
+
     const realUser = {
       name: "You",
       avatar: "★",
-      reviews: userStats.totalCompleted,
+      reviews: userStats.totalCompleted,          // displayed (real)
+      _sortKey: Math.max(userStats.totalCompleted, tickVirtual), // rank key
       streak: userStats.currentStreak,
       isYou: true,
     };
     const combined = [
-      ...pool.map((u) => ({ ...u, isYou: false })),
+      ...pool.map((u) => ({ ...u, isYou: false, _sortKey: u.reviews })),
       realUser,
     ]
-      .sort((a, b) => b.reviews - a.reviews)
+      .sort((a, b) => b._sortKey - a._sortKey)
       .slice(0, 10)
       .map((entry, i) => ({ ...entry, rank: i + 1 }));
     return combined;
