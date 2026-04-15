@@ -66,7 +66,8 @@ async function copyToDocumentsDir(uri: string): Promise<string> {
     const dir: string | null = FileSystem.documentDirectory;
     if (!dir) return uri;
 
-    const filename = uri.split("/").pop() ?? `img_${Date.now()}.jpg`;
+    const ext = (uri.split("/").pop()?.split(".").pop() ?? "jpg").toLowerCase();
+    const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const dest = `${dir}recallify_images/${filename}`;
 
     await FileSystem.makeDirectoryAsync(`${dir}recallify_images`, { intermediates: true });
