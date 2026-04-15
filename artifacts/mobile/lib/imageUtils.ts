@@ -61,14 +61,14 @@ function blobUriToDataUri(uri: string): Promise<string> {
  */
 async function copyToDocumentsDir(uri: string): Promise<string> {
   try {
-    const FileSystem = await import("expo-file-system");
-    const dir = FileSystem.documentDirectory;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const FileSystem = require("expo-file-system");
+    const dir: string | null = FileSystem.documentDirectory;
     if (!dir) return uri;
 
     const filename = uri.split("/").pop() ?? `img_${Date.now()}.jpg`;
     const dest = `${dir}recallify_images/${filename}`;
 
-    // Ensure destination directory exists
     await FileSystem.makeDirectoryAsync(`${dir}recallify_images`, { intermediates: true });
 
     const info = await FileSystem.getInfoAsync(dest);
@@ -77,7 +77,7 @@ async function copyToDocumentsDir(uri: string): Promise<string> {
     }
     return dest;
   } catch {
-    return uri; // fallback: return original URI
+    return uri;
   }
 }
 
@@ -91,17 +91,14 @@ async function copyToDocumentsDir(uri: string): Promise<string> {
  * Other:  returned unchanged (already persistent data:, https: URIs)
  */
 export async function makePersistentUri(uri: string): Promise<string> {
-  // Already a persistent format — pass through
   if (uri.startsWith("data:") || uri.startsWith("https://")) {
     return uri;
   }
 
   if (Platform.OS === "web") {
-    // blob: or http: → encode as base64 data: URI
     return blobUriToDataUri(uri);
   }
 
-  // Native: file:// or content:// in cache → copy to permanent documents dir
   if (uri.startsWith("file://") || uri.startsWith("content://")) {
     return copyToDocumentsDir(uri);
   }
@@ -114,7 +111,9 @@ export async function makePersistentUri(uri: string): Promise<string> {
  * If a single conversion fails, the original URI is kept as a fallback.
  */
 export async function makePersistentUris(uris: string[]): Promise<string[]> {
-  return Promise.all(uris.map((uri) => makePersistentUri(uri)));
+  return Promise.all(uris.map((uri) =>
+    makePersistentUri(uri).catch(() => uri)
+  ));
 }
 
 /**
@@ -125,7 +124,8 @@ export async function deleteLocalImage(uri: string): Promise<void> {
   if (Platform.OS === "web") return;
   if (!uri.startsWith("file://")) return;
   try {
-    const FileSystem = await import("expo-file-system");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const FileSystem = require("expo-file-system");
     await FileSystem.deleteAsync(uri, { idempotent: true });
   } catch {
     // ignore

@@ -122,7 +122,7 @@ export default function NoteDetailScreen() {
           title: title.trim(),
           content: content.trim(),
           categoryId: selectedCategory,
-          images: finalImages,
+          images: images,
         },
         intervalsChanged ? intervals : undefined
       );

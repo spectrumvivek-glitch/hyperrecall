@@ -201,9 +201,6 @@ export default function AddNoteScreen() {
           <View style={styles.fieldHeader}>
             <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
               Images ({images.length})
-              {!user && images.length > 0 && (
-                <Text style={{ color: colors.warning, fontSize: 11 }}> · Sign in to upload to cloud</Text>
-              )}
             </Text>
             <TouchableOpacity
               onPress={pickImage}
