@@ -8,6 +8,7 @@ import {
   onAuthStateChanged,
   signInWithCredential,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut as firebaseSignOut,
 } from "firebase/auth";
 import React, {
@@ -17,6 +18,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Platform } from "react-native";
 
 import { auth } from "@/lib/firebase";
 import { createUserProfile } from "@/lib/firestore";
@@ -45,7 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const googleAvailable = Boolean(GOOGLE_WEB_CLIENT_ID);
+  // On web, signInWithPopup works without a separate client ID.
+  // On mobile (Expo Go), the custom OAuth flow needs GOOGLE_WEB_CLIENT_ID.
+  const googleAvailable = Platform.OS === "web" || Boolean(GOOGLE_WEB_CLIENT_ID);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -68,9 +72,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    if (!googleAvailable) {
+    if (Platform.OS === "web") {
+      // Web: use Firebase popup — no extra client ID needed.
+      // Requires Google enabled in Firebase Console + this domain in Authorized Domains.
+      const provider = new GoogleAuthProvider();
+      provider.addScope("profile");
+      provider.addScope("email");
+      await signInWithPopup(auth, provider);
+      return;
+    }
+
+    // Mobile (Expo Go): custom OAuth flow via in-app browser.
+    if (!GOOGLE_WEB_CLIENT_ID) {
       throw new Error(
-        "Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID."
+        "Google Sign-In requires EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to be set with your Firebase project's Web OAuth 2.0 client ID."
       );
     }
 
@@ -96,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await signInWithCredential(auth, credential);
       }
     }
-  }, [googleAvailable]);
+  }, []);
 
   const signOut = useCallback(async () => {
     await firebaseSignOut(auth);

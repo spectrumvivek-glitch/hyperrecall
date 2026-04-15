@@ -12,6 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -76,8 +77,8 @@ export default function LoginScreen() {
   async function handleGoogle() {
     if (!googleAvailable) {
       Alert.alert(
-        "Google Sign-In Not Configured",
-        "To enable Google Sign-In, set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in your environment with your Firebase project's Web OAuth 2.0 client ID."
+        "Google Sign-In — Mobile Setup Required",
+        "On mobile, set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to your Firebase project's Web OAuth 2.0 client ID."
       );
       return;
     }
@@ -85,7 +86,27 @@ export default function LoginScreen() {
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      Alert.alert("Google Sign-In Failed", err.message ?? "Please try again.");
+      const code: string = err?.code ?? "";
+      if (code === "auth/unauthorized-domain") {
+        Alert.alert(
+          "Domain Not Authorised",
+          "Add this app's domain to Firebase Console → Authentication → Settings → Authorized domains, then try again."
+        );
+      } else if (code === "auth/popup-blocked") {
+        Alert.alert(
+          "Popup Blocked",
+          "Your browser blocked the Google sign-in popup. Allow popups for this site and try again."
+        );
+      } else if (code === "auth/operation-not-allowed") {
+        Alert.alert(
+          "Google Sign-In Disabled",
+          "Enable Google as a sign-in method in Firebase Console → Authentication → Sign-in method."
+        );
+      } else if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // User closed the popup — do nothing
+      } else {
+        Alert.alert("Google Sign-In Failed", err.message ?? "Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -253,7 +274,9 @@ export default function LoginScreen() {
               <Text style={styles.googleBtnText}>Continue with Google</Text>
             </View>
             {!googleAvailable && (
-              <Text style={styles.googleNote}>Requires EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID</Text>
+              <Text style={styles.googleNote}>
+                Mobile: set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in environment
+              </Text>
             )}
           </TouchableOpacity>
         </View>
