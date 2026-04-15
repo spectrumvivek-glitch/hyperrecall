@@ -17,12 +17,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
-import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { makePersistentUri } from "@/lib/imageUtils";
-import { useImageUpload } from "@/lib/hooks/useImageUpload";
 import { NoteImage, generateId } from "@/lib/storage";
-import { isFirebaseUrl } from "@/lib/storage-firebase";
 
 const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
 
@@ -31,8 +28,6 @@ export default function AddNoteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { categories, addNote } = useApp();
-  const { user } = useAuth();
-  const { uploadImages, isUploading, overallProgress, error: uploadError } = useImageUpload();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -41,7 +36,7 @@ export default function AddNoteScreen() {
   const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isWorking = isSaving || isUploading;
+  const isWorking = isSaving;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -91,21 +86,11 @@ export default function AddNoteScreen() {
 
     setIsSaving(true);
     try {
-      // Use a temp folder ID for Storage; actual note ID is assigned by createNote.
-      // Download URLs are self-contained so the mismatch doesn't matter.
-      const tempNoteId = generateId();
-      let finalImages = images;
-
-      // Upload any non-Firebase images to Storage when user is signed in
-      if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
-        finalImages = await uploadImages(user.uid, tempNoteId, images);
-      }
-
       await addNote(
         title.trim(),
         selectedCategory || categories[0]?.id || "",
         content.trim(),
-        finalImages,
+        images,
         intervals
       );
       router.back();
@@ -132,11 +117,7 @@ export default function AddNoteScreen() {
           activeOpacity={0.8}
         >
           <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
-            {isUploading
-              ? `Uploading ${overallProgress}%`
-              : isSaving
-              ? "Saving…"
-              : "Save"}
+            {isSaving ? "Saving…" : "Save"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -244,29 +225,12 @@ export default function AddNoteScreen() {
                     img={img}
                     onRemove={() => removeImage(img.id)}
                     colors={colors}
-                    isUploading={isUploading}
                   />
                 ))}
               </View>
             </ScrollView>
           )}
 
-          {/* Upload progress bar */}
-          {isUploading && (
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { backgroundColor: colors.primary, width: `${overallProgress}%` as any },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
-                Uploading images… {overallProgress}%
-              </Text>
-            </View>
-          )}
         </View>
 
         {/* Revision Settings */}
@@ -284,14 +248,11 @@ function ImageThumbnail({
   img,
   onRemove,
   colors,
-  isUploading,
 }: {
   img: NoteImage;
   onRemove: () => void;
   colors: any;
-  isUploading: boolean;
 }) {
-  const isCloud = isFirebaseUrl(img.uri);
   return (
     <View style={styles.imageWrapper}>
       <Image
@@ -299,20 +260,12 @@ function ImageThumbnail({
         style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]}
         resizeMode="cover"
       />
-      {/* Cloud indicator */}
-      {isCloud && (
-        <View style={[styles.cloudBadge, { backgroundColor: colors.primary }]}>
-          <Feather name="cloud" size={9} color="#fff" />
-        </View>
-      )}
-      {!isUploading && (
-        <TouchableOpacity
-          onPress={onRemove}
-          style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}
-        >
-          <Feather name="x" size={10} color="#fff" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        onPress={onRemove}
+        style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}
+      >
+        <Feather name="x" size={10} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -370,16 +323,6 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cloudBadge: {
-    position: "absolute",
-    bottom: 4,
-    left: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },

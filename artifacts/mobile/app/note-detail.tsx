@@ -17,12 +17,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
-import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { useImageUpload } from "@/lib/hooks/useImageUpload";
-import { makePersistentUri } from "@/lib/imageUtils";
+import { deleteLocalImage, makePersistentUri } from "@/lib/imageUtils";
 import { NoteImage, generateId } from "@/lib/storage";
-import { deleteNoteImage, isFirebaseUrl } from "@/lib/storage-firebase";
 
 export default function NoteDetailScreen() {
   const colors = useColors();
@@ -30,8 +27,6 @@ export default function NoteDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { notes, categories, revisionPlans, editNote, removeNote } = useApp();
-  const { user } = useAuth();
-  const { uploadImages, isUploading, overallProgress, error: uploadError } = useImageUpload();
 
   const note = notes.find((n) => n.id === id);
   const plan = revisionPlans.find((p) => p.noteId === id);
@@ -46,7 +41,7 @@ export default function NoteDetailScreen() {
   const initialIntervals = useRef(plan?.intervals || []);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isWorking = isSaving || isUploading;
+  const isWorking = isSaving;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -110,24 +105,15 @@ export default function NoteDetailScreen() {
     if (title.trim().length === 0) return;
     setIsSaving(true);
     try {
-      let finalImages = images;
+      // Delete local files for images removed during edit
+      const originalUris = new Map(note.images.map((img) => [img.id, img.uri]));
+      const remainingIds = new Set(images.map((img) => img.id));
+      const removedUris = [...originalUris.entries()]
+        .filter(([imgId]) => !remainingIds.has(imgId))
+        .map(([, uri]) => uri);
+      await Promise.all(removedUris.map((uri) => deleteLocalImage(uri)));
 
-      // 1. Upload any newly added local images to Firebase Storage
-      if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
-        finalImages = await uploadImages(user.uid, id!, images);
-      }
-
-      // 2. Delete images that were removed during edit (from Firebase Storage)
-      if (user?.uid) {
-        const originalIds = new Set(note.images.map((img) => img.id));
-        const remainingIds = new Set(finalImages.map((img) => img.id));
-        const removedIds = [...originalIds].filter((imgId) => !remainingIds.has(imgId));
-        await Promise.all(
-          removedIds.map((imgId) => deleteNoteImage(user.uid!, id!, imgId).catch(() => {}))
-        );
-      }
-
-      // 3. Save note locally and sync to Firestore
+      // Save note locally and sync to Firestore
       const intervalsChanged =
         JSON.stringify(intervals) !== JSON.stringify(initialIntervals.current);
       await editNote(
@@ -150,14 +136,8 @@ export default function NoteDetailScreen() {
 
   const handleDelete = () => {
     const doDelete = async () => {
-      // Delete all note images from Firebase Storage
-      if (user?.uid) {
-        await Promise.all(
-          note.images.map((img) =>
-            deleteNoteImage(user.uid!, id!, img.id).catch(() => {})
-          )
-        );
-      }
+      // Delete all local image files
+      await Promise.all(note.images.map((img) => deleteLocalImage(img.uri)));
       await removeNote(id!);
       router.back();
     };
@@ -198,11 +178,7 @@ export default function NoteDetailScreen() {
               activeOpacity={0.8}
             >
               <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
-                {isUploading
-                  ? `${overallProgress}%`
-                  : isSaving
-                  ? "…"
-                  : "Save"}
+                {isSaving ? "…" : "Save"}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -291,21 +267,6 @@ export default function NoteDetailScreen() {
                 </View>
               </ScrollView>
             )}
-            {isUploading && (
-              <View style={styles.progressContainer}>
-                <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { backgroundColor: colors.primary, width: `${overallProgress}%` as any },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
-                  Uploading… {overallProgress}%
-                </Text>
-              </View>
-            )}
           </View>
         ) : (
           note.images.length > 0 && (
@@ -318,11 +279,6 @@ export default function NoteDetailScreen() {
                       style={[styles.noteImage, { borderRadius: colors.radius }]}
                       resizeMode="cover"
                     />
-                    {isFirebaseUrl(img.uri) && (
-                      <View style={[styles.cloudBadgeRead, { backgroundColor: colors.primary }]}>
-                        <Feather name="cloud" size={9} color="#fff" />
-                      </View>
-                    )}
                   </View>
                 ))}
               </View>
@@ -458,7 +414,6 @@ function EditableImage({
   colors: any;
   disabled: boolean;
 }) {
-  const isCloud = isFirebaseUrl(img.uri);
   return (
     <View style={styles.imageWrapper}>
       <Image
@@ -466,11 +421,6 @@ function EditableImage({
         style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]}
         resizeMode="cover"
       />
-      {isCloud && (
-        <View style={[styles.cloudBadgeEdit, { backgroundColor: colors.primary }]}>
-          <Feather name="cloud" size={9} color="#fff" />
-        </View>
-      )}
       {!disabled && (
         <TouchableOpacity
           onPress={onRemove}
@@ -538,26 +488,6 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cloudBadgeEdit: {
-    position: "absolute",
-    bottom: 4,
-    left: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cloudBadgeRead: {
-    position: "absolute",
-    bottom: 4,
-    left: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
