@@ -22,8 +22,6 @@ interface Props {
   onDismiss: () => void;
 }
 
-const AUTO_DISMISS_MS = 4000;
-
 function streakMessage(streak: number): { headline: string; sub: string; emoji: string } {
   if (streak === 0)
     return {
@@ -77,22 +75,17 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
   const opacity = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
-  // Countdown bar
-  const countdown = useRef(new Animated.Value(1)).current;
-
   // Flame pulse
   const flamePulse = useRef(new Animated.Value(1)).current;
 
-  // Flame glow opacity
+  // Glow opacity
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
     if (!visible) {
-      // Reset for next time
       scale.setValue(0.7);
       opacity.setValue(0);
       overlayOpacity.setValue(0);
-      countdown.setValue(1);
       return;
     }
 
@@ -117,28 +110,38 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
       }),
     ]).start();
 
-    // Countdown bar (4s)
-    Animated.timing(countdown, {
-      toValue: 0,
-      duration: AUTO_DISMISS_MS,
-      useNativeDriver: false,
-      easing: Easing.linear,
-    }).start(() => onDismiss());
-
-    // Flame pulse (infinite while visible)
+    // Flame pulse loop
     const pulseFn = Animated.loop(
       Animated.sequence([
-        Animated.timing(flamePulse, { toValue: 1.18, duration: 700, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
-        Animated.timing(flamePulse, { toValue: 0.95, duration: 700, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
+        Animated.timing(flamePulse, {
+          toValue: 1.18,
+          duration: 700,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.quad),
+        }),
+        Animated.timing(flamePulse, {
+          toValue: 0.95,
+          duration: 700,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.quad),
+        }),
       ])
     );
     pulseFn.start();
 
-    // Glow pulse
+    // Glow pulse loop
     const glowFn = Animated.loop(
       Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 0.7, duration: 900, useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 0.2, duration: 900, useNativeDriver: true }),
+        Animated.timing(glowOpacity, {
+          toValue: 0.7,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowOpacity, {
+          toValue: 0.2,
+          duration: 900,
+          useNativeDriver: true,
+        }),
       ])
     );
     glowFn.start();
@@ -148,11 +151,6 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
       glowFn.stop();
     };
   }, [visible]);
-
-  const countdownWidth = countdown.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0%", "100%"],
-  });
 
   // Gradient colours based on streak level
   const gradientTop: [string, string] =
@@ -175,10 +173,11 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
       statusBarTranslucent
       onRequestClose={onDismiss}
     >
+      {/* Tapping the dark overlay dismisses */}
       <Pressable style={styles.overlay} onPress={onDismiss}>
         <Animated.View style={[styles.overlayBg, { opacity: overlayOpacity }]} />
 
-        {/* Card — stop press from bubbling to overlay */}
+        {/* Stop press bubbling through card */}
         <Pressable onPress={() => {}}>
           <Animated.View
             style={[
@@ -191,22 +190,19 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
               },
             ]}
           >
-            {/* Top gradient strip */}
+            {/* Gradient top section */}
             <LinearGradient
               colors={gradientTop}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.cardTop}
             >
-              {/* Background glow blob */}
+              {/* Glow blob */}
               <Animated.View
-                style={[
-                  styles.glowBlob,
-                  { backgroundColor: "#fff", opacity: glowOpacity },
-                ]}
+                style={[styles.glowBlob, { backgroundColor: "#fff", opacity: glowOpacity }]}
               />
 
-              {/* Flame / emoji */}
+              {/* Emoji */}
               <Animated.Text
                 style={[styles.flameEmoji, { transform: [{ scale: flamePulse }] }]}
               >
@@ -227,22 +223,28 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
               <Text style={[styles.headline, { color: colors.foreground }]}>{headline}</Text>
               <Text style={[styles.sub, { color: colors.mutedForeground }]}>{sub}</Text>
 
-              {/* Pills row */}
+              {/* Stat pills */}
               <View style={styles.pillsRow}>
-                {/* XP Pill */}
-                <View style={[styles.pill, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+                <View
+                  style={[
+                    styles.pill,
+                    { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" },
+                  ]}
+                >
                   <Feather name="zap" size={13} color={colors.primary} />
                   <Text style={[styles.pillText, { color: colors.primary }]}>
                     {totalXp.toLocaleString()} XP
                   </Text>
                 </View>
 
-                {/* Level Pill */}
-                <View style={[styles.pill, { backgroundColor: accentColor + "15", borderColor: accentColor + "30" }]}>
+                <View
+                  style={[
+                    styles.pill,
+                    { backgroundColor: accentColor + "15", borderColor: accentColor + "30" },
+                  ]}
+                >
                   <Feather name="award" size={13} color={accentColor} />
-                  <Text style={[styles.pillText, { color: accentColor }]}>
-                    {levelName}
-                  </Text>
+                  <Text style={[styles.pillText, { color: accentColor }]}>{levelName}</Text>
                 </View>
               </View>
 
@@ -257,16 +259,7 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
                 <Text style={styles.dismissBtnText}>Let's Study! 🚀</Text>
               </Pressable>
 
-              {/* Countdown bar */}
-              <View style={[styles.countdownTrack, { backgroundColor: colors.muted }]}>
-                <Animated.View
-                  style={[
-                    styles.countdownFill,
-                    { backgroundColor: accentColor + "70", width: countdownWidth },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.countdownHint, { color: colors.mutedForeground }]}>
+              <Text style={[styles.tapHint, { color: colors.mutedForeground }]}>
                 Tap anywhere to dismiss
               </Text>
             </View>
@@ -289,7 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
   },
   card: {
-    width: Platform.OS === "web" ? 360 : "100%" as any,
+    width: Platform.OS === "web" ? 360 : ("100%" as any),
     maxWidth: 360,
     borderRadius: 28,
     overflow: "hidden",
@@ -385,18 +378,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.2,
   },
-  countdownTrack: {
-    width: "100%",
-    height: 3,
-    borderRadius: 2,
-    overflow: "hidden",
-    marginTop: 6,
-  },
-  countdownFill: {
-    height: 3,
-    borderRadius: 2,
-  },
-  countdownHint: {
+  tapHint: {
     fontSize: 11,
     marginTop: 2,
   },
