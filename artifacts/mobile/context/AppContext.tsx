@@ -31,6 +31,7 @@ import {
   seedDefaultsIfNeeded,
   skipRevision,
   updateNote,
+  updateRevisionPlanSchedule,
 } from "@/lib/storage";
 import { calcImprovementPct, getXpProgress } from "@/lib/xp";
 
@@ -184,7 +185,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const editNote = useCallback(async (id: string, updates: Partial<Note>, intervals?: number[], mode?: "custom" | "sm2") => {
     await updateNote(id, updates);
     if (intervals && intervals.length > 0) {
-      await createRevisionPlan(id, intervals, mode ?? "custom");
+      // Smart update: preserves SM-2 state unless the mode itself changed
+      await updateRevisionPlanSchedule(id, intervals, mode ?? "custom");
     }
     await refresh();
   }, [refresh]);

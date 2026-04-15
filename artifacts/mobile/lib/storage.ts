@@ -174,7 +174,8 @@ export async function createRevisionPlan(
 ): Promise<RevisionPlan> {
   const plans = await getRevisionPlans();
   const today = startOfDay(Date.now());
-  const firstInterval = intervals[0] ?? 1;
+  // SM-2 always starts with a 1-day first interval regardless of intervals[]
+  const firstInterval = mode === "sm2" ? 1 : (intervals[0] ?? 1);
   const plan: RevisionPlan = {
     id: genId(),
     noteId,
@@ -193,6 +194,39 @@ export async function createRevisionPlan(
   }
   await saveRevisionPlans(plans);
   return plan;
+}
+
+/**
+ * Smart update for an existing revision plan:
+ * - If mode changed → create a fresh plan (resets SM-2 state, schedule)
+ * - If mode unchanged (SM-2 → SM-2) → only update the intervals[], preserve all SM-2 state
+ * - If mode unchanged (custom → custom) → update intervals, keep nextRevisionDate & currentStep
+ */
+export async function updateRevisionPlanSchedule(
+  noteId: string,
+  intervals: number[],
+  mode: "custom" | "sm2"
+): Promise<void> {
+  const plans = await getRevisionPlans();
+  const idx = plans.findIndex((p) => p.noteId === noteId);
+
+  if (idx === -1) {
+    // No existing plan — create fresh
+    await createRevisionPlan(noteId, intervals, mode);
+    return;
+  }
+
+  const existing = plans[idx];
+
+  if (existing.mode !== mode) {
+    // Mode changed — full reset
+    await createRevisionPlan(noteId, intervals, mode);
+    return;
+  }
+
+  // Same mode — preserve all scheduling state, just update intervals metadata
+  plans[idx] = { ...existing, intervals };
+  await saveRevisionPlans(plans);
 }
 
 export async function getDueNotes(): Promise<{ note: Note; plan: RevisionPlan }[]> {

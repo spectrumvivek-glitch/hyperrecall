@@ -37,6 +37,10 @@ export default function NoteDetailScreen() {
   const [selectedCategory, setSelectedCategory] = useState(note?.categoryId || "");
   const [images, setImages] = useState<NoteImage[]>(note?.images || []);
   const [intervals, setIntervals] = useState<number[]>(plan?.intervals || [1, 3, 7, 15, 30]);
+  const [revisionMode, setRevisionMode] = useState<"custom" | "sm2">(plan?.mode ?? "custom");
+  // Track initial values so we only update plan when something actually changed
+  const initialIntervals = React.useRef(plan?.intervals || []);
+  const initialMode = React.useRef<"custom" | "sm2">(plan?.mode ?? "custom");
   const [isSaving, setIsSaving] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -49,7 +53,12 @@ export default function NoteDetailScreen() {
       setSelectedCategory(note.categoryId);
       setImages(note.images);
     }
-    if (plan) setIntervals(plan.intervals);
+    if (plan) {
+      setIntervals(plan.intervals);
+      setRevisionMode(plan.mode ?? "custom");
+      initialIntervals.current = plan.intervals;
+      initialMode.current = plan.mode ?? "custom";
+    }
   }, [note, plan]);
 
   if (!note) {
@@ -83,10 +92,16 @@ export default function NoteDetailScreen() {
     if (title.trim().length === 0) return;
     setIsSaving(true);
     try {
+      // Only pass intervals/mode to editNote if they actually changed
+      const modeChanged = revisionMode !== initialMode.current;
+      const intervalsChanged = JSON.stringify(intervals) !== JSON.stringify(initialIntervals.current);
+      const scheduleChanged = modeChanged || (revisionMode === "custom" && intervalsChanged);
+
       await editNote(
         id!,
         { title: title.trim(), content: content.trim(), categoryId: selectedCategory, images },
-        intervals
+        scheduleChanged ? intervals : undefined,
+        scheduleChanged ? revisionMode : undefined,
       );
       setIsEditing(false);
     } catch {
@@ -263,33 +278,71 @@ export default function NoteDetailScreen() {
         {/* Revision plan */}
         {isEditing ? (
           <View style={styles.field}>
-            <IntervalPicker intervals={intervals} onChange={setIntervals} />
+            <IntervalPicker
+              intervals={intervals}
+              onChange={setIntervals}
+              mode={revisionMode}
+              onModeChange={setRevisionMode}
+            />
           </View>
         ) : (
           plan && (
             <View style={[styles.planCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
-              <Text style={[styles.planTitle, { color: colors.foreground }]}>Revision Plan</Text>
-              <View style={styles.intervalDisplay}>
-                {plan.intervals.map((d, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.intervalChip,
-                      {
-                        borderRadius: colors.radius / 2,
-                        backgroundColor: i === plan.currentStep ? colors.primary : colors.accent,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.intervalChipText, { color: i === plan.currentStep ? colors.primaryForeground : colors.accentForeground }]}>
-                      {d}d
-                    </Text>
+              <View style={styles.planTitleRow}>
+                <Text style={[styles.planTitle, { color: colors.foreground }]}>Revision Plan</Text>
+                {plan.mode === "sm2" ? (
+                  <View style={[styles.modeBadge, { backgroundColor: colors.warning + "18", borderColor: colors.warning + "40" }]}>
+                    <Feather name="zap" size={11} color={colors.warning} />
+                    <Text style={[styles.modeBadgeText, { color: colors.warning }]}>Smart Learning</Text>
                   </View>
-                ))}
+                ) : (
+                  <View style={[styles.modeBadge, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+                    <Feather name="sliders" size={11} color={colors.primary} />
+                    <Text style={[styles.modeBadgeText, { color: colors.primary }]}>Simple Intervals</Text>
+                  </View>
+                )}
               </View>
-              <Text style={[styles.planSub, { color: colors.mutedForeground }]}>
-                Step {plan.currentStep + 1} of {plan.intervals.length}
-              </Text>
+
+              {plan.mode === "sm2" ? (
+                <View style={styles.sm2Stats}>
+                  <View style={[styles.sm2Stat, { backgroundColor: colors.muted, borderRadius: 10 }]}>
+                    <Text style={[styles.sm2StatValue, { color: colors.foreground }]}>{plan.currentStep + 1}</Text>
+                    <Text style={[styles.sm2StatLabel, { color: colors.mutedForeground }]}>Repetition</Text>
+                  </View>
+                  <View style={[styles.sm2Stat, { backgroundColor: colors.muted, borderRadius: 10 }]}>
+                    <Text style={[styles.sm2StatValue, { color: colors.foreground }]}>{plan.easeFactor.toFixed(2)}</Text>
+                    <Text style={[styles.sm2StatLabel, { color: colors.mutedForeground }]}>Ease Factor</Text>
+                  </View>
+                  <View style={[styles.sm2Stat, { backgroundColor: colors.muted, borderRadius: 10 }]}>
+                    <Text style={[styles.sm2StatValue, { color: colors.foreground }]}>{plan.lastInterval}d</Text>
+                    <Text style={[styles.sm2StatLabel, { color: colors.mutedForeground }]}>Last Interval</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.intervalDisplay}>
+                    {plan.intervals.map((d, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.intervalChip,
+                          {
+                            borderRadius: colors.radius / 2,
+                            backgroundColor: i === plan.currentStep ? colors.primary : colors.accent,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.intervalChipText, { color: i === plan.currentStep ? colors.primaryForeground : colors.accentForeground }]}>
+                          {d}d
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[styles.planSub, { color: colors.mutedForeground }]}>
+                    Step {plan.currentStep + 1} of {plan.intervals.length}
+                  </Text>
+                </>
+              )}
             </View>
           )
         )}
@@ -353,7 +406,14 @@ const styles = StyleSheet.create({
   imageThumbnail: { width: 80, height: 80 },
   removeImageBtn: { position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   planCard: { padding: 14, gap: 10 },
-  planTitle: { fontSize: 14 },
+  planTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  planTitle: { fontSize: 14, fontWeight: "600" },
+  modeBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  modeBadgeText: { fontSize: 11, fontWeight: "600" },
+  sm2Stats: { flexDirection: "row", gap: 8 },
+  sm2Stat: { flex: 1, alignItems: "center", paddingVertical: 10, gap: 3 },
+  sm2StatValue: { fontSize: 18, fontWeight: "700" },
+  sm2StatLabel: { fontSize: 10 },
   intervalDisplay: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   intervalChip: { paddingHorizontal: 10, paddingVertical: 5 },
   intervalChipText: { fontSize: 13 },
