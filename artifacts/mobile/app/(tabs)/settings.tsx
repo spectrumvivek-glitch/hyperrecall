@@ -23,13 +23,6 @@ import {
   saveNotificationSettings,
   scheduleDailyRevisionReminder,
 } from "@/lib/notifications";
-import {
-  activateHolidayRest,
-  activateVacation,
-  deactivateVacation,
-  formatDate,
-  startOfDay,
-} from "@/lib/storage";
 
 const CATEGORY_COLORS = [
   "#4f46e5", "#10b981", "#f59e0b", "#ec4899",
@@ -48,7 +41,7 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: o
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { categories, addCategory, removeCategory, notes, dueNotes, vacationSettings, refreshVacation } = useApp();
+  const { categories, addCategory, removeCategory, notes, dueNotes } = useApp();
   const [newCatName, setNewCatName] = useState("");
   const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
   const [showAddCat, setShowAddCat] = useState(false);
@@ -57,15 +50,6 @@ export default function SettingsScreen() {
   const [notifHour, setNotifHour] = useState(9);
   const [notifMinute, setNotifMinute] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
-
-  // Vacation mode state
-  const [vacLoading, setVacLoading] = useState(false);
-  const [vacStartText, setVacStartText] = useState("");
-  const [vacEndText, setVacEndText] = useState("");
-  const [showVacForm, setShowVacForm] = useState(false);
-  const [holidayLoading, setHolidayLoading] = useState(false);
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [holidayDateText, setHolidayDateText] = useState(todayStr);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -147,107 +131,6 @@ export default function SettingsScreen() {
       );
     }
   };
-
-  // Vacation mode handlers
-  const parseDate = (text: string): number | null => {
-    const d = new Date(text);
-    if (isNaN(d.getTime())) return null;
-    return startOfDay(d.getTime());
-  };
-
-  const handleActivateVacation = async () => {
-    const start = parseDate(vacStartText);
-    const end = parseDate(vacEndText);
-    if (!start || !end) {
-      Alert.alert("Invalid dates", "Please enter dates in YYYY-MM-DD format.");
-      return;
-    }
-    if (end <= start) {
-      Alert.alert("Invalid range", "End date must be after start date.");
-      return;
-    }
-    const days = Math.ceil((end - start) / (24 * 60 * 60 * 1000));
-    Alert.alert(
-      "Activate Vacation Mode?",
-      `All your revision dates will be shifted forward by ${days} day${days !== 1 ? "s" : ""}. Your streak will be protected.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Activate",
-          onPress: async () => {
-            setVacLoading(true);
-            try {
-              await activateVacation(start, end);
-              await refreshVacation();
-              setShowVacForm(false);
-              setVacStartText("");
-              setVacEndText("");
-              Alert.alert("Vacation Mode On", "Your revision schedule has been shifted. Enjoy your break!");
-            } finally {
-              setVacLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDeactivateVacation = async () => {
-    Alert.alert("Deactivate Vacation Mode?", "Your revised schedule will remain as shifted.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Deactivate",
-        onPress: async () => {
-          setVacLoading(true);
-          try {
-            await deactivateVacation();
-            await refreshVacation();
-          } finally {
-            setVacLoading(false);
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleHolidayRest = async () => {
-    const parts = holidayDateText.trim().split("-");
-    if (parts.length !== 3 || parts.some((p) => isNaN(Number(p)))) {
-      Alert.alert("Invalid Date", "Please enter a valid date in YYYY-MM-DD format.");
-      return;
-    }
-    const restTs = new Date(`${holidayDateText}T00:00:00`).getTime();
-    if (isNaN(restTs)) {
-      Alert.alert("Invalid Date", "Please enter a valid date in YYYY-MM-DD format.");
-      return;
-    }
-    const restLabel = new Date(restTs).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-    const nextDayLabel = new Date(restTs + 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-    Alert.alert(
-      "Holiday Rest Mode",
-      `Notes scheduled for ${restLabel} will be pushed to ${nextDayLabel}. Your streak is protected.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm Rest Day",
-          onPress: async () => {
-            setHolidayLoading(true);
-            try {
-              await activateHolidayRest(restTs);
-              await refreshVacation();
-              Alert.alert("Rest Day Set", `Notes for ${restLabel} are moved to ${nextDayLabel}. Enjoy your break!`);
-            } finally {
-              setHolidayLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const divider = (
-    <View style={[styles.divider, { backgroundColor: colors.border }]} />
-  );
 
   return (
     <ScrollView
@@ -401,139 +284,6 @@ export default function SettingsScreen() {
         </SectionCard>
       </View>
 
-      {/* Vacation & Rest Mode */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Breaks & Rest</Text>
-        </View>
-
-        {/* Vacation Mode */}
-        <SectionCard>
-          <View style={styles.settingRow}>
-            <View style={[styles.settingIcon, { backgroundColor: "#3b82f6" + "18" }]}>
-              <Feather name="umbrella" size={18} color="#3b82f6" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Vacation Mode</Text>
-              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
-                {vacationSettings.isActive
-                  ? `Active · returns ${formatDate(vacationSettings.endDate)}`
-                  : "Shift all reviews while you're away"}
-              </Text>
-            </View>
-            {vacationSettings.isActive ? (
-              <TouchableOpacity
-                onPress={handleDeactivateVacation}
-                disabled={vacLoading}
-                style={[styles.smallBtn, { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "40" }]}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.smallBtnText, { color: colors.destructive }]}>End</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={() => setShowVacForm(!showVacForm)}
-                style={[styles.smallBtn, { backgroundColor: "#3b82f6" + "15", borderColor: "#3b82f6" + "40" }]}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.smallBtnText, { color: "#3b82f6" }]}>{showVacForm ? "Cancel" : "Plan"}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {showVacForm && !vacationSettings.isActive && (
-            <>
-              {divider}
-              <View style={{ padding: 14, gap: 10 }}>
-                <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>Start date (YYYY-MM-DD)</Text>
-                <TextInput
-                  value={vacStartText}
-                  onChangeText={setVacStartText}
-                  placeholder="e.g. 2025-12-20"
-                  placeholderTextColor={colors.mutedForeground}
-                  style={[styles.dateInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
-                />
-                <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>End date (YYYY-MM-DD)</Text>
-                <TextInput
-                  value={vacEndText}
-                  onChangeText={setVacEndText}
-                  placeholder="e.g. 2026-01-05"
-                  placeholderTextColor={colors.mutedForeground}
-                  style={[styles.dateInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
-                />
-                <TouchableOpacity
-                  onPress={handleActivateVacation}
-                  disabled={vacLoading}
-                  style={[styles.createBtn, { backgroundColor: "#3b82f6", borderRadius: colors.radius / 2, opacity: vacLoading ? 0.6 : 1 }]}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.createBtnText, { color: "#fff" }]}>
-                    {vacLoading ? "Activating..." : "Activate Vacation Mode"}
-                  </Text>
-                </TouchableOpacity>
-                <View style={[styles.hintRow, { backgroundColor: "#3b82f6" + "12" }]}>
-                  <Feather name="info" size={12} color="#3b82f6" />
-                  <Text style={[styles.hintText, { color: "#3b82f6" }]}>
-                    All your revision dates will shift forward by the vacation duration. Your streak is protected.
-                  </Text>
-                </View>
-              </View>
-            </>
-          )}
-        </SectionCard>
-
-        {/* Holiday Rest Mode */}
-        <SectionCard>
-          <View style={styles.settingRow}>
-            <View style={[styles.settingIcon, { backgroundColor: "#f59e0b" + "18" }]}>
-              <Feather name="sun" size={20} color="#f59e0b" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Holiday Rest</Text>
-              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
-                Pick a day to skip — notes move to the next day
-              </Text>
-            </View>
-          </View>
-          <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 10 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Feather name="calendar" size={15} color="#f59e0b" />
-              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground, flex: 0 }]}>Rest day</Text>
-              <TextInput
-                value={holidayDateText}
-                onChangeText={setHolidayDateText}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="numbers-and-punctuation"
-                style={[
-                  styles.catInput,
-                  { flex: 1, color: colors.foreground, backgroundColor: colors.muted, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 10 },
-                ]}
-              />
-            </View>
-            <TouchableOpacity
-              onPress={handleHolidayRest}
-              disabled={holidayLoading}
-              style={[
-                styles.vacBtn,
-                { backgroundColor: "#f59e0b", borderRadius: 10, opacity: holidayLoading ? 0.6 : 1 },
-              ]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.vacBtnText, { color: "#fff" }]}>
-                {holidayLoading ? "Applying…" : "Set Rest Day"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.hintRow, { backgroundColor: "#f59e0b" + "10", margin: 0, borderTopWidth: 1, borderTopColor: colors.border }]}>
-            <Feather name="info" size={12} color="#f59e0b" />
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Only notes scheduled for that exact day are shifted. Overdue notes are unaffected.
-            </Text>
-          </View>
-        </SectionCard>
-      </View>
-
       {/* About */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
@@ -568,7 +318,6 @@ const styles = StyleSheet.create({
   section: { gap: 12 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 17 },
-  divider: { height: 1 },
   addBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6 },
   addBtnText: { fontSize: 13 },
   catInput: { padding: 12, fontSize: 14 },

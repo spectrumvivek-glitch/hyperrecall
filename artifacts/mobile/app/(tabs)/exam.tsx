@@ -23,12 +23,18 @@ import {
   ExamReviewItem,
   ExamSession,
   Note,
+  activateHolidayRest,
+  activateVacation,
+  deactivateVacation,
   completeExamReviewItem,
   createExamSession,
   deleteExamSession,
+  formatDate,
   getExamSessions,
+  getVacationSettings,
   skipExamReviewItem,
   startOfDay,
+  refreshVacation,
 } from "@/lib/storage";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -568,6 +574,128 @@ function ExamCard({
   );
 }
 
+function PlanBreaksCard() {
+  const colors = useColors();
+  const [vacationSettings, setVacationSettings] = useState({ isActive: false, startDate: 0, endDate: 0, holidayRestActive: false });
+  const [vacLoading, setVacLoading] = useState(false);
+  const [vacStartText, setVacStartText] = useState("");
+  const [vacEndText, setVacEndText] = useState("");
+  const [showVacForm, setShowVacForm] = useState(false);
+  const [holidayLoading, setHolidayLoading] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [holidayDateText, setHolidayDateText] = useState(todayStr);
+
+  useEffect(() => {
+    getVacationSettings().then(setVacationSettings);
+  }, []);
+
+  const parseDate = (text: string): number | null => {
+    const d = new Date(text);
+    if (isNaN(d.getTime())) return null;
+    return startOfDay(d.getTime());
+  };
+
+  const reloadVacation = async () => {
+    setVacationSettings(await getVacationSettings());
+  };
+
+  const handleActivateVacation = async () => {
+    const start = parseDate(vacStartText);
+    const end = parseDate(vacEndText);
+    if (!start || !end || end <= start) return;
+    setVacLoading(true);
+    try {
+      await activateVacation(start, end);
+      await reloadVacation();
+      setShowVacForm(false);
+      setVacStartText("");
+      setVacEndText("");
+    } finally {
+      setVacLoading(false);
+    }
+  };
+
+  const handleDeactivateVacation = async () => {
+    setVacLoading(true);
+    try {
+      await deactivateVacation();
+      await reloadVacation();
+    } finally {
+      setVacLoading(false);
+    }
+  };
+
+  const handleHolidayRest = async () => {
+    const restTs = new Date(`${holidayDateText}T00:00:00`).getTime();
+    if (isNaN(restTs)) return;
+    setHolidayLoading(true);
+    try {
+      await activateHolidayRest(restTs);
+      await reloadVacation();
+    } finally {
+      setHolidayLoading(false);
+    }
+  };
+
+  const cardStyle = [ecStyles.controlCard, { backgroundColor: colors.card, borderColor: colors.border }];
+  const equalCol = ecStyles.equalCol;
+
+  return (
+    <View style={ecStyles.breaksGrid}>
+      <View style={[cardStyle, equalCol]}>
+        <View style={ecStyles.controlHead}>
+          <View style={[ecStyles.controlIcon, { backgroundColor: "#3b82f6" + "18" }]}>
+            <Feather name="umbrella" size={18} color="#3b82f6" />
+          </View>
+          <Text style={[ecStyles.controlTitle, { color: colors.foreground }]}>Vacation Mode</Text>
+        </View>
+        <Text style={[ecStyles.controlSub, { color: colors.mutedForeground }]}>
+          {vacationSettings.isActive ? `Active · returns ${formatDate(vacationSettings.endDate)}` : "Shift all reviews while you're away"}
+        </Text>
+        {vacationSettings.isActive ? (
+          <TouchableOpacity onPress={handleDeactivateVacation} disabled={vacLoading} style={[ecStyles.smallBtn, { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "40" }]} activeOpacity={0.7}>
+            <Text style={[ecStyles.smallBtnText, { color: colors.destructive }]}>End</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            {showVacForm ? (
+              <View style={{ gap: 8 }}>
+                <TextInput value={vacStartText} onChangeText={setVacStartText} placeholder="Start YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[ecStyles.planInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]} />
+                <TextInput value={vacEndText} onChangeText={setVacEndText} placeholder="End YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[ecStyles.planInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]} />
+                <TouchableOpacity onPress={handleActivateVacation} disabled={vacLoading} style={[ecStyles.primaryBtn, { opacity: vacLoading ? 0.6 : 1 }]} activeOpacity={0.85}>
+                  <LinearGradient colors={["#3b82f6", "#2563eb"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ecStyles.primaryBtnGrad}>
+                    <Text style={ecStyles.primaryBtnText}>{vacLoading ? "Activating..." : "Activate"}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => setShowVacForm(true)} style={[ecStyles.smallBtn, { backgroundColor: "#3b82f6" + "15", borderColor: "#3b82f6" + "40" }]} activeOpacity={0.7}>
+                <Text style={[ecStyles.smallBtnText, { color: "#3b82f6" }]}>Plan</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </View>
+
+      <View style={[cardStyle, equalCol]}>
+        <View style={ecStyles.controlHead}>
+          <View style={[ecStyles.controlIcon, { backgroundColor: "#f59e0b" + "18" }]}>
+            <Feather name="sun" size={18} color="#f59e0b" />
+          </View>
+          <Text style={[ecStyles.controlTitle, { color: colors.foreground }]}>Holiday Rest</Text>
+        </View>
+        <Text style={[ecStyles.controlSub, { color: colors.mutedForeground }]}>Pick a day to skip and push notes forward</Text>
+        <TextInput value={holidayDateText} onChangeText={setHolidayDateText} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[ecStyles.planInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]} />
+        <TouchableOpacity onPress={handleHolidayRest} disabled={holidayLoading} style={[ecStyles.primaryBtn, { opacity: holidayLoading ? 0.6 : 1 }]} activeOpacity={0.85}>
+          <LinearGradient colors={["#f59e0b", "#d97706"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ecStyles.primaryBtnGrad}>
+            <Text style={ecStyles.primaryBtnText}>{holidayLoading ? "Applying..." : "Set Rest Day"}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 const ecStyles = StyleSheet.create({
   card: { borderRadius: 18, borderWidth: 1, overflow: "hidden", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 5 },
   deleteOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 10, alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
@@ -590,6 +718,19 @@ const ecStyles = StyleSheet.create({
   dueBadge: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   dueText: { flex: 1, fontSize: 14, fontWeight: "600" },
   reviewList: { padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: "#E8EDF4" },
+  breaksGrid: { flexDirection: "row", gap: 12 },
+  equalCol: { flex: 1 },
+  controlCard: { borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },
+  controlHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  controlIcon: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  controlTitle: { fontSize: 15, fontWeight: "700" },
+  controlSub: { fontSize: 12, lineHeight: 17 },
+  planInput: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 10, fontSize: 13 },
+  primaryBtn: { borderRadius: 12, overflow: "hidden" },
+  primaryBtnGrad: { paddingVertical: 11, alignItems: "center" },
+  primaryBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  smallBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, alignSelf: "flex-start" },
+  smallBtnText: { fontSize: 13, fontWeight: "600" },
 });
 
 // ── Create Exam Modal ──────────────────────────────────────────────────────────
@@ -985,6 +1126,11 @@ export default function ExamScreen() {
             ))}
           </View>
         )}
+
+        <View style={scStyles.section}>
+          <Text style={[scStyles.sectionTitle, { color: colors.foreground }]}>Planning</Text>
+          <PlanBreaksCard />
+        </View>
 
         {/* Exam cards */}
         {examSessions.map((session) => (
