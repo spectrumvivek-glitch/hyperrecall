@@ -12,6 +12,7 @@ import {
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CelebrationPopup } from "@/components/CelebrationPopup";
 import { FloatingXP } from "@/components/FloatingXP";
 import { LevelUpModal } from "@/components/LevelUpModal";
 import { RevisionCard } from "@/components/RevisionCard";
@@ -34,6 +35,7 @@ export default function RevisionScreen() {
   const [done, setDone] = useState(false);
   const [showXp, setShowXp] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
+  const [celebPopup, setCelebPopup] = useState<{ xp: number; title: string } | null>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -42,10 +44,12 @@ export default function RevisionScreen() {
     const item = sessionNotes[currentIndex];
     if (!item) return;
     const earned = await markCompleted(item.note.id, sm2Quality);
+    const newTotalXp = sessionXp + earned;
     setSessionCompleted((c) => c + 1);
-    setSessionXp((x) => x + earned);
+    setSessionXp(newTotalXp);
     setXpAmount(earned);
     setShowXp(true);
+    setCelebPopup({ xp: earned, title: item.note.title });
     advance();
   };
 
@@ -128,6 +132,14 @@ export default function RevisionScreen() {
         levelName={pendingLevelUp?.levelName ?? ""}
         xpGained={pendingLevelUp?.xpGained ?? 0}
         onDismiss={dismissLevelUp}
+      />
+      <CelebrationPopup
+        visible={!!celebPopup}
+        xpEarned={celebPopup?.xp ?? 0}
+        noteTitle={celebPopup?.title ?? ""}
+        totalSessionXp={sessionXp}
+        onDismiss={() => setCelebPopup(null)}
+        autoDismissMs={1800}
       />
       <FloatingXP amount={xpAmount} visible={showXp} onHide={() => setShowXp(false)} />
 

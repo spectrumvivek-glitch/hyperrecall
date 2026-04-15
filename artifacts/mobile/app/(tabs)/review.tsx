@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CelebrationPopup } from "@/components/CelebrationPopup";
 import { EmptyState } from "@/components/EmptyState";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -278,6 +279,7 @@ export default function ReviewScreen() {
   const { dueNotes, categories, isLoading, refresh, markCompleted, markSkipped } = useApp();
 
   const [busy, setBusy] = useState<string | null>(null);
+  const [celebPopup, setCelebPopup] = useState<{ xp: number; title: string } | null>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -291,7 +293,9 @@ export default function ReviewScreen() {
     if (busy) return;
     setBusy(noteId);
     try {
-      await markCompleted(noteId, quality);
+      const earned = await markCompleted(noteId, quality);
+      const noteTitle = dueNotes.find((n) => n.note.id === noteId)?.note.title ?? "";
+      setCelebPopup({ xp: earned, title: noteTitle });
     } finally {
       setBusy(null);
     }
@@ -308,6 +312,13 @@ export default function ReviewScreen() {
   };
 
   return (
+    <>
+    <CelebrationPopup
+      visible={!!celebPopup}
+      xpEarned={celebPopup?.xp ?? 0}
+      noteTitle={celebPopup?.title ?? ""}
+      onDismiss={() => setCelebPopup(null)}
+    />
     <ScrollView
       style={[styles.scroll, { backgroundColor: colors.background }]}
       contentContainerStyle={[
@@ -407,6 +418,7 @@ export default function ReviewScreen() {
         />
       )}
     </ScrollView>
+    </>
   );
 }
 

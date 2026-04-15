@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/EmptyState";
+import { ImprovementPopup } from "@/components/ImprovementPopup";
 import { LevelUpModal } from "@/components/LevelUpModal";
 import { NoteCard } from "@/components/NoteCard";
 import { StatCard } from "@/components/StatCard";
@@ -280,6 +281,8 @@ export default function DashboardScreen() {
   const [showConfetti, setShowConfetti] = useState(false);
   const prevBadgeCount = useRef((userStats.earnedBadges ?? []).length);
   const prevGoalDone = useRef(userStats.todayCompleted >= (userStats.dailyGoal ?? 10));
+  const [showImprovementPopup, setShowImprovementPopup] = useState(false);
+  const improvementShown = useRef(false);
 
   // Confetti on new badge
   useEffect(() => {
@@ -296,6 +299,20 @@ export default function DashboardScreen() {
     }
     prevGoalDone.current = done;
   }, [userStats.todayCompleted]);
+
+  // Improvement popup — show once per session after data is ready
+  useEffect(() => {
+    if (
+      improvementPct !== null &&
+      userStats.todayCompleted > 0 &&
+      !improvementShown.current &&
+      !isLoading
+    ) {
+      improvementShown.current = true;
+      const t = setTimeout(() => setShowImprovementPopup(true), 900);
+      return () => clearTimeout(t);
+    }
+  }, [improvementPct, userStats.todayCompleted, isLoading]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -318,6 +335,14 @@ export default function DashboardScreen() {
         visible={showConfetti}
         onDone={() => setShowConfetti(false)}
       />
+      {improvementPct !== null && (
+        <ImprovementPopup
+          visible={showImprovementPopup}
+          pct={improvementPct}
+          todayCompleted={userStats.todayCompleted}
+          onDismiss={() => setShowImprovementPopup(false)}
+        />
+      )}
 
       <ScrollView
         style={[styles.scroll, { backgroundColor: colors.background }]}
@@ -396,11 +421,6 @@ export default function DashboardScreen() {
             colors={colors}
           />
         </View>
-
-        {/* Improvement Banner */}
-        {improvementPct !== null && userStats.todayCompleted > 0 && (
-          <ImprovementBanner pct={improvementPct} colors={colors} />
-        )}
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
