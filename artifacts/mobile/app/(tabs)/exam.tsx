@@ -1109,44 +1109,54 @@ export default function ExamScreen() {
           )}
         </View>
 
-        {/* Explainer banner (shown only when no exams yet) */}
-        {!hasExams && (
-          <View style={[scStyles.infoBanner, { backgroundColor: colors.primary + "0e", borderColor: colors.primary + "30" }]}>
-            <Text style={[scStyles.infoBannerTitle, { color: colors.primary }]}>How Exam Mode works</Text>
-            {[
-              ["📅", "Set your exam date"],
-              ["📝", "Choose notes to include"],
-              ["🧠", "Get 14 auto-scheduled reviews per note"],
-              ["📈", "Front-loaded schedule for maximum retention"],
-            ].map(([icon, text]) => (
-              <View key={text as string} style={scStyles.infoBannerRow}>
-                <Text style={{ fontSize: 15 }}>{icon}</Text>
-                <Text style={[scStyles.infoBannerText, { color: colors.foreground }]}>{text}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {/* How Exam Mode works — always visible */}
+        <View style={[scStyles.infoBanner, { backgroundColor: colors.primary + "0e", borderColor: colors.primary + "30" }]}>
+          <Text style={[scStyles.infoBannerTitle, { color: colors.primary }]}>How Exam Mode works</Text>
+          {[
+            ["📅", "Set your exam date"],
+            ["📝", "Choose notes to include"],
+            ["🧠", "Get 14 auto-scheduled reviews per note"],
+            ["📈", "Front-loaded schedule for maximum retention"],
+            ["⏰", "Best started 15–20 days before your exam"],
+          ].map(([icon, text]) => (
+            <View key={text as string} style={scStyles.infoBannerRow}>
+              <Text style={{ fontSize: 15 }}>{icon}</Text>
+              <Text style={[scStyles.infoBannerText, { color: colors.foreground }]}>{text}</Text>
+            </View>
+          ))}
+        </View>
 
-        <View style={scStyles.section}>
-          <Text style={[scStyles.sectionTitle, { color: colors.foreground }]}>Planning</Text>
-          <PlanBreaksCard />
+        {/* Exam section header + create */}
+        <View style={scStyles.sectionHeaderRow}>
+          <Text style={[scStyles.sectionTitle, { color: colors.foreground }]}>
+            {hasExams
+              ? `Active Exams (${examSessions.length})`
+              : "Your Exams"}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setShowCreate(true)}
+            activeOpacity={0.85}
+            style={[scStyles.addExamBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
+          >
+            <Feather name="plus" size={14} color={colors.primary} />
+            <Text style={[scStyles.addExamBtnText, { color: colors.primary }]}>New Exam</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Exam cards */}
-        {examSessions.map((session) => (
-          <ExamCard
-            key={session.id}
-            session={session}
-            notes={notes}
-            categories={categories}
-            onComplete={(noteId, idx) => handleComplete(session.id, noteId, idx)}
-            onSkip={(noteId, idx) => handleSkip(session.id, noteId, idx)}
-            onDelete={() => handleDelete(session.id)}
-          />
-        ))}
-
-        {/* Inline create button when no exams */}
-        {!hasExams && (
+        {hasExams ? (
+          examSessions.map((session) => (
+            <ExamCard
+              key={session.id}
+              session={session}
+              notes={notes}
+              categories={categories}
+              onComplete={(noteId, idx) => handleComplete(session.id, noteId, idx)}
+              onSkip={(noteId, idx) => handleSkip(session.id, noteId, idx)}
+              onDelete={() => handleDelete(session.id)}
+            />
+          ))
+        ) : (
           <TouchableOpacity onPress={() => setShowCreate(true)} activeOpacity={0.85} style={[scStyles.createBtn, { shadowColor: colors.primary }]}>
             <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={scStyles.createBtnGrad}>
               <Feather name="plus-circle" size={20} color="#fff" />
@@ -1154,20 +1164,14 @@ export default function ExamScreen() {
             </LinearGradient>
           </TouchableOpacity>
         )}
+
+        {/* Breaks & Rest — always at bottom */}
+        <View style={scStyles.section}>
+          <Text style={[scStyles.sectionTitle, { color: colors.foreground }]}>Breaks & Rest</Text>
+          <PlanBreaksCard />
+        </View>
       </ScrollView>
 
-      {/* FAB (shown when exams exist) */}
-      {hasExams && (
-        <TouchableOpacity
-          onPress={() => setShowCreate(true)}
-          style={[scStyles.fab, { bottom: bottomPad + 100, shadowColor: "#6366F1" }]}
-          activeOpacity={0.85}
-        >
-          <LinearGradient colors={["#6366F1", "#8B5CF6"]} style={scStyles.fabGrad}>
-            <Feather name="plus" size={23} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
     </>
   );
 }
@@ -1180,13 +1184,16 @@ const scStyles = StyleSheet.create({
   subtitle: { fontSize: 14, marginTop: 3 },
   dueBadge: { minWidth: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
   dueBadgeText: { color: "#fff", fontSize: 17, fontWeight: "800" },
-  infoBanner: { borderRadius: 16, borderWidth: 1, padding: 18, gap: 12 },
-  infoBannerTitle: { fontSize: 15, fontWeight: "700" },
+  infoBanner: { borderRadius: 16, borderWidth: 1, padding: 18, gap: 10 },
+  infoBannerTitle: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
   infoBannerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  infoBannerText: { fontSize: 14, flex: 1 },
+  infoBannerText: { fontSize: 14, flex: 1, lineHeight: 20 },
+  section: { gap: 12 },
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionTitle: { fontSize: 17, fontWeight: "700" },
+  addExamBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
+  addExamBtnText: { fontSize: 13, fontWeight: "700" },
   createBtn: { borderRadius: 16, overflow: "hidden", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 8 },
   createBtnGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 17 },
   createBtnText: { fontSize: 17, fontWeight: "700", color: "#fff" },
-  fab: { position: "absolute", right: 20, width: 56, height: 56, borderRadius: 28, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 10 },
-  fabGrad: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
 });
