@@ -34,7 +34,6 @@ import {
   getVacationSettings,
   skipExamReviewItem,
   startOfDay,
-  refreshVacation,
 } from "@/lib/storage";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
