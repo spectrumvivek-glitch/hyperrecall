@@ -256,21 +256,18 @@ function UpcomingReviews({
   );
 }
 
-const APP_URL = process.env.EXPO_PUBLIC_APP_URL || "https://recallify.replit.app";
-
 async function shareStreak(streak: number, totalXp: number, level: number, levelName: string) {
   const message =
     `🔥 I'm on a ${streak}-day study streak with Recallify!\n\n` +
     `⚡ Level ${level} ${levelName} • ${totalXp} XP earned\n\n` +
     `Recallify uses spaced repetition to help you remember anything — study smarter, not harder. ` +
     `Track streaks, earn XP, unlock badges, and master any subject!\n\n` +
-    `Try it free 👉 ${APP_URL}\n\n` +
+    `Search "Recallify" on Play Store or App Store and download now!\n\n` +
     `#Recallify #SpacedRepetition #StudySmart #Learning`;
   try {
     await Share.share({
       message,
       title: "Recallify — Learn Smarter with Spaced Repetition",
-      url: Platform.OS === "ios" ? APP_URL : undefined,
     });
   } catch {
     // user cancelled or error
