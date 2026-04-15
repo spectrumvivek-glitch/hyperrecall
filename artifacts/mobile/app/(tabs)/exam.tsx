@@ -41,7 +41,7 @@ const MONTHS = [
   "July","August","September","October","November","December",
 ];
 const DAY_NAMES = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-const EXAM_PROPORTIONS = [0, 0.01, 0.03, 0.06, 0.11, 0.18, 0.26, 0.36, 0.47, 0.59, 0.71, 0.83, 0.93, 1.0];
+const EXAM_PROPORTIONS = [0, 0.08, 0.15, 0.23, 0.31, 0.38, 0.46, 0.54, 0.62, 0.69, 0.77, 0.85, 0.92, 1.0];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -222,7 +222,7 @@ function SchedulePreview({ noteIds, examDate }: { noteIds: string[]; examDate: D
       </View>
 
       <Text style={[pvStyles.hint, { color: colors.mutedForeground }]}>
-        Reviews are front-loaded — more at the start for stronger initial memory
+        Reviews are spread equally across all available days up to the exam
       </Text>
     </View>
   );

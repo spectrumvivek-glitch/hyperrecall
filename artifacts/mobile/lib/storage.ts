@@ -421,9 +421,9 @@ export interface ExamSession {
 
 const EXAM_SESSIONS_KEY = "sr_exam_sessions";
 
-// 14 proportions – expanding intervals normalized to [0, 1]
-// Front-loaded: first reviews happen quickly, later ones are widely spaced
-const EXAM_PROPORTIONS = [0, 0.01, 0.03, 0.06, 0.11, 0.18, 0.26, 0.36, 0.47, 0.59, 0.71, 0.83, 0.93, 1.0];
+// 14 proportions – equally spaced across all available days (i / 13)
+// Each review lands at a fixed fraction of the total study period
+const EXAM_PROPORTIONS = [0, 0.08, 0.15, 0.23, 0.31, 0.38, 0.46, 0.54, 0.62, 0.69, 0.77, 0.85, 0.92, 1.0];
 
 export function generateExamScheduleItems(noteIds: string[], examDate: number): ExamReviewItem[] {
   const today = startOfDay(Date.now());
