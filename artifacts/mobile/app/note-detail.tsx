@@ -20,6 +20,7 @@ import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { useImageUpload } from "@/lib/hooks/useImageUpload";
+import { makePersistentUri } from "@/lib/imageUtils";
 import { NoteImage, generateId } from "@/lib/storage";
 import { deleteNoteImage, isFirebaseUrl } from "@/lib/storage-firebase";
 
@@ -82,15 +83,20 @@ export default function NoteDetailScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.7,
+      quality: 0.8,
       allowsMultipleSelection: true,
+      base64: false,
     });
-    if (!result.canceled) {
-      const newImages: NoteImage[] = result.assets.map((asset) => ({
+    if (!result.canceled && result.assets.length > 0) {
+      // Convert blob/file URIs to persistent data URIs on web
+      const persistentUris = await Promise.all(
+        result.assets.map((asset) => makePersistentUri(asset.uri))
+      );
+      const newImages: NoteImage[] = result.assets.map((asset, i) => ({
         id: generateId(),
         noteId: id || "",
-        uri: asset.uri,
-        thumbnailUri: asset.uri,
+        uri: persistentUris[i],
+        thumbnailUri: persistentUris[i],
       }));
       setImages((prev) => [...prev, ...newImages]);
     }
@@ -108,7 +114,12 @@ export default function NoteDetailScreen() {
 
       // 1. Upload any newly added local images to Firebase Storage
       if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
-        finalImages = await uploadImages(user.uid, id!, images);
+        try {
+          finalImages = await uploadImages(user.uid, id!, images);
+        } catch (uploadErr: any) {
+          // Upload failed — save with current URIs (data: URIs persist locally)
+          console.warn("Image upload failed, saving with local URIs:", uploadErr?.message);
+        }
       }
 
       // 2. Delete images that were removed during edit (from Firebase Storage)
@@ -116,11 +127,8 @@ export default function NoteDetailScreen() {
         const originalIds = new Set(note.images.map((img) => img.id));
         const remainingIds = new Set(finalImages.map((img) => img.id));
         const removedIds = [...originalIds].filter((imgId) => !remainingIds.has(imgId));
-
         await Promise.all(
-          removedIds.map((imgId) =>
-            deleteNoteImage(user.uid!, id!, imgId).catch(() => {})
-          )
+          removedIds.map((imgId) => deleteNoteImage(user.uid!, id!, imgId).catch(() => {}))
         );
       }
 
@@ -139,7 +147,7 @@ export default function NoteDetailScreen() {
       );
       setIsEditing(false);
     } catch {
-      Alert.alert("Error", uploadError || "Failed to save changes.");
+      Alert.alert("Error", "Failed to save changes. Please try again.");
     } finally {
       setIsSaving(false);
     }

@@ -19,8 +19,9 @@ import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { NoteImage, generateId } from "@/lib/storage";
+import { makePersistentUri } from "@/lib/imageUtils";
 import { useImageUpload } from "@/lib/hooks/useImageUpload";
+import { NoteImage, generateId } from "@/lib/storage";
 import { isFirebaseUrl } from "@/lib/storage-firebase";
 
 const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
@@ -54,15 +55,21 @@ export default function AddNoteScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.7,
+      quality: 0.8,
       allowsMultipleSelection: true,
+      base64: false,
     });
-    if (!result.canceled) {
-      const newImages: NoteImage[] = result.assets.map((asset) => ({
+    if (!result.canceled && result.assets.length > 0) {
+      // Convert blob/file URIs to persistent data URIs on web so images
+      // survive page reloads even before they are uploaded to Firebase.
+      const persistentUris = await Promise.all(
+        result.assets.map((asset) => makePersistentUri(asset.uri))
+      );
+      const newImages: NoteImage[] = result.assets.map((asset, i) => ({
         id: generateId(),
         noteId: "",
-        uri: asset.uri,
-        thumbnailUri: asset.uri,
+        uri: persistentUris[i],
+        thumbnailUri: persistentUris[i],
       }));
       setImages((prev) => [...prev, ...newImages]);
     }
@@ -84,13 +91,19 @@ export default function AddNoteScreen() {
 
     setIsSaving(true);
     try {
-      // Use a temporary noteId for storage path; the real note ID is assigned by storage.ts
+      // Use a temp folder ID for Storage; actual note ID is assigned by createNote.
+      // Download URLs are self-contained so the mismatch doesn't matter.
       const tempNoteId = generateId();
       let finalImages = images;
 
-      // Upload any local images to Firebase Storage if user is signed in
+      // Upload any non-Firebase images to Storage when user is signed in
       if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
-        finalImages = await uploadImages(user.uid, tempNoteId, images);
+        try {
+          finalImages = await uploadImages(user.uid, tempNoteId, images);
+        } catch (uploadErr: any) {
+          // Upload failed — save with current URIs (data: URIs persist locally)
+          console.warn("Image upload failed, saving with local URIs:", uploadErr?.message);
+        }
       }
 
       await addNote(
@@ -102,11 +115,7 @@ export default function AddNoteScreen() {
       );
       router.back();
     } catch (err: any) {
-      if (!uploadError) {
-        Alert.alert("Error", "Failed to save note. Please try again.");
-      } else {
-        Alert.alert("Upload Failed", uploadError);
-      }
+      Alert.alert("Error", "Failed to save note. Please try again.");
     } finally {
       setIsSaving(false);
     }
