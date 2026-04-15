@@ -45,6 +45,8 @@ export interface CloudNote {
   title: string;
   content: string;
   categoryId: string;
+  /** Firebase Storage download URLs for attached images */
+  imageUrls: string[];
   createdAt: number | null;
   updatedAt: number | null;
   syncedAt: number | null;
@@ -81,6 +83,7 @@ function mapNote(d: QueryDocumentSnapshot): CloudNote {
     title: data.title ?? "",
     content: data.content ?? "",
     categoryId: data.categoryId ?? "",
+    imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
     createdAt:
       data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : null,
     updatedAt:
@@ -132,10 +135,11 @@ export function subscribeToNotes(
 
 export async function addCloudNote(
   userId: string,
-  note: Pick<CloudNote, "title" | "content" | "categoryId">
+  note: Pick<CloudNote, "title" | "content" | "categoryId" | "imageUrls">
 ): Promise<string> {
   const ref = await addDoc(notesCol(userId), {
     ...note,
+    imageUrls: note.imageUrls ?? [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -145,7 +149,7 @@ export async function addCloudNote(
 export async function updateCloudNote(
   userId: string,
   noteId: string,
-  updates: Partial<Pick<CloudNote, "title" | "content" | "categoryId">>
+  updates: Partial<Pick<CloudNote, "title" | "content" | "categoryId" | "imageUrls">>
 ): Promise<void> {
   await updateDoc(noteDoc(userId, noteId), {
     ...updates,

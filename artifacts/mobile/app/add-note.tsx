@@ -17,8 +17,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { NoteImage, generateId } from "@/lib/storage";
+import { useImageUpload } from "@/lib/hooks/useImageUpload";
+import { isFirebaseUrl } from "@/lib/storage-firebase";
 
 const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
 
@@ -27,6 +30,8 @@ export default function AddNoteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { categories, addNote } = useApp();
+  const { user } = useAuth();
+  const { uploadImages, isUploading, overallProgress, error: uploadError } = useImageUpload();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -35,14 +40,17 @@ export default function AddNoteScreen() {
   const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);
   const [isSaving, setIsSaving] = useState(false);
 
+  const isWorking = isSaving || isUploading;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const pickImage = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Permission Required", "Allow photo library access to add images.");
-      return;
+    if (Platform.OS !== "web") {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Permission Required", "Allow photo library access to add images.");
+        return;
+      }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
@@ -73,18 +81,32 @@ export default function AddNoteScreen() {
       Alert.alert("Required", "Please add at least one revision interval.");
       return;
     }
+
     setIsSaving(true);
     try {
+      // Use a temporary noteId for storage path; the real note ID is assigned by storage.ts
+      const tempNoteId = generateId();
+      let finalImages = images;
+
+      // Upload any local images to Firebase Storage if user is signed in
+      if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
+        finalImages = await uploadImages(user.uid, tempNoteId, images);
+      }
+
       await addNote(
         title.trim(),
         selectedCategory || categories[0]?.id || "",
         content.trim(),
-        images,
+        finalImages,
         intervals
       );
       router.back();
-    } catch {
-      Alert.alert("Error", "Failed to save note. Please try again.");
+    } catch (err: any) {
+      if (!uploadError) {
+        Alert.alert("Error", "Failed to save note. Please try again.");
+      } else {
+        Alert.alert("Upload Failed", uploadError);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -100,12 +122,16 @@ export default function AddNoteScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>New Note</Text>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={isSaving}
-          style={[styles.saveBtn, { backgroundColor: colors.primary, borderRadius: colors.radius / 2, opacity: isSaving ? 0.6 : 1 }]}
+          disabled={isWorking}
+          style={[styles.saveBtn, { backgroundColor: colors.primary, borderRadius: colors.radius / 2, opacity: isWorking ? 0.6 : 1 }]}
           activeOpacity={0.8}
         >
           <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
-            {isSaving ? "Saving..." : "Save"}
+            {isUploading
+              ? `Uploading ${overallProgress}%`
+              : isSaving
+              ? "Saving…"
+              : "Save"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -125,6 +151,7 @@ export default function AddNoteScreen() {
             placeholder="Note title"
             placeholderTextColor={colors.mutedForeground}
             style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.border }]}
+            editable={!isWorking}
           />
         </View>
 
@@ -150,7 +177,9 @@ export default function AddNoteScreen() {
                     ]}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.categoryChipText, { color: isSelected ? "#fff" : cat.color }]}>{cat.name}</Text>
+                    <Text style={[styles.categoryChipText, { color: isSelected ? "#fff" : cat.color }]}>
+                      {cat.name}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -177,15 +206,22 @@ export default function AddNoteScreen() {
                 borderColor: colors.border,
               },
             ]}
+            editable={!isWorking}
           />
         </View>
 
         {/* Images */}
         <View style={styles.field}>
           <View style={styles.fieldHeader}>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Images ({images.length})</Text>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+              Images ({images.length})
+              {!user && images.length > 0 && (
+                <Text style={{ color: colors.warning, fontSize: 11 }}> · Sign in to upload to cloud</Text>
+              )}
+            </Text>
             <TouchableOpacity
               onPress={pickImage}
+              disabled={isWorking}
               style={[styles.addImageBtn, { borderColor: colors.primary, borderRadius: colors.radius / 2 }]}
               activeOpacity={0.7}
             >
@@ -193,37 +229,98 @@ export default function AddNoteScreen() {
               <Text style={[styles.addImageText, { color: colors.primary }]}>Add Image</Text>
             </TouchableOpacity>
           </View>
+
           {images.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
               <View style={styles.imageRow}>
                 {images.map((img) => (
-                  <View key={img.id} style={styles.imageWrapper}>
-                    <Image source={{ uri: img.uri }} style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]} resizeMode="cover" />
-                    <TouchableOpacity onPress={() => removeImage(img.id)} style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}>
-                      <Feather name="x" size={10} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
+                  <ImageThumbnail
+                    key={img.id}
+                    img={img}
+                    onRemove={() => removeImage(img.id)}
+                    colors={colors}
+                    isUploading={isUploading}
+                  />
                 ))}
               </View>
             </ScrollView>
+          )}
+
+          {/* Upload progress bar */}
+          {isUploading && (
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { backgroundColor: colors.primary, width: `${overallProgress}%` as any },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
+                Uploading images… {overallProgress}%
+              </Text>
+            </View>
           )}
         </View>
 
         {/* Revision Settings */}
         <View style={styles.field}>
-          <IntervalPicker
-            intervals={intervals}
-            onChange={setIntervals}
-          />
+          <IntervalPicker intervals={intervals} onChange={setIntervals} />
         </View>
       </ScrollView>
     </View>
   );
 }
 
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function ImageThumbnail({
+  img,
+  onRemove,
+  colors,
+  isUploading,
+}: {
+  img: NoteImage;
+  onRemove: () => void;
+  colors: any;
+  isUploading: boolean;
+}) {
+  const isCloud = isFirebaseUrl(img.uri);
+  return (
+    <View style={styles.imageWrapper}>
+      <Image
+        source={{ uri: img.uri }}
+        style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]}
+        resizeMode="cover"
+      />
+      {/* Cloud indicator */}
+      {isCloud && (
+        <View style={[styles.cloudBadge, { backgroundColor: colors.primary }]}>
+          <Feather name="cloud" size={9} color="#fff" />
+        </View>
+      )}
+      {!isUploading && (
+        <TouchableOpacity
+          onPress={onRemove}
+          style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}
+        >
+          <Feather name="x" size={10} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
   headerBtn: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 17, textAlign: "center" },
   saveBtn: { paddingHorizontal: 16, paddingVertical: 7 },
@@ -231,18 +328,58 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 20 },
   field: { gap: 8 },
-  fieldHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  fieldHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   fieldLabel: { fontSize: 13 },
   titleInput: { fontSize: 20, paddingVertical: 8, borderBottomWidth: 1 },
   categoryRow: { flexDirection: "row", gap: 8 },
   categoryChip: { paddingHorizontal: 14, paddingVertical: 7 },
   categoryChipText: { fontSize: 13 },
-  contentInput: { padding: 12, minHeight: 100, fontSize: 14, lineHeight: 22, borderWidth: 1 },
-  addImageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
+  contentInput: {
+    padding: 12,
+    minHeight: 100,
+    fontSize: 14,
+    lineHeight: 22,
+    borderWidth: 1,
+  },
+  addImageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+  },
   addImageText: { fontSize: 13 },
   imageScroll: { marginTop: 4 },
   imageRow: { flexDirection: "row", gap: 8 },
   imageWrapper: { position: "relative" },
   imageThumbnail: { width: 80, height: 80 },
-  removeImageBtn: { position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  removeImageBtn: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cloudBadge: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressContainer: { gap: 6 },
+  progressTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
+  progressFill: { height: 4, borderRadius: 2 },
+  progressLabel: { fontSize: 12 },
 });

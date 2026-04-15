@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// ─── Recallify — Firebase Storage Security Rules ──────────────────────────────
+//
+// Storage path: users/{userId}/notes/{noteId}/{imageId}
+//
+// All files are stored under the owner's UID.
+// A single `isOwner` check is sufficient for all paths.
+//
+// Constraints enforced on writes:
+//   - Must be authenticated
+//   - File must be an image (image/*)
+//   - Max file size: 10 MB per image
+//
+// Deploy with:
+//   firebase deploy --only storage
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnder10MB() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // ─── User note images ────────────────────────────────────────────────────
+    // Path: users/{userId}/notes/{noteId}/{imageId}
+    match /users/{userId}/notes/{noteId}/{imageId} {
+      // Only the owner can read their own images
+      allow read: if isOwner(userId);
+
+      // Write: must be authenticated owner, must be image, must be ≤ 10 MB
+      allow write: if isOwner(userId) && isImage() && isUnder10MB();
+
+      // Delete: only the owner
+      allow delete: if isOwner(userId);
+    }
+
+    // Block everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -17,8 +17,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { useImageUpload } from "@/lib/hooks/useImageUpload";
 import { NoteImage, generateId } from "@/lib/storage";
+import { deleteNoteImage, isFirebaseUrl } from "@/lib/storage-firebase";
 
 export default function NoteDetailScreen() {
   const colors = useColors();
@@ -26,6 +29,8 @@ export default function NoteDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { notes, categories, revisionPlans, editNote, removeNote } = useApp();
+  const { user } = useAuth();
+  const { uploadImages, isUploading, overallProgress, error: uploadError } = useImageUpload();
 
   const note = notes.find((n) => n.id === id);
   const plan = revisionPlans.find((p) => p.noteId === id);
@@ -37,9 +42,10 @@ export default function NoteDetailScreen() {
   const [selectedCategory, setSelectedCategory] = useState(note?.categoryId || "");
   const [images, setImages] = useState<NoteImage[]>(note?.images || []);
   const [intervals, setIntervals] = useState<number[]>(plan?.intervals || [1, 3, 7, 15, 30]);
-  const initialIntervals = React.useRef(plan?.intervals || []);
+  const initialIntervals = useRef(plan?.intervals || []);
   const [isSaving, setIsSaving] = useState(false);
 
+  const isWorking = isSaving || isUploading;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -58,15 +64,22 @@ export default function NoteDetailScreen() {
 
   if (!note) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <Text style={{ color: colors.mutedForeground }}>Note not found</Text>
       </View>
     );
   }
 
   const pickImage = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (Platform.OS !== "web") {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.7,
@@ -83,46 +96,76 @@ export default function NoteDetailScreen() {
     }
   };
 
+  const removeImageLocally = (imgId: string) => {
+    setImages((prev) => prev.filter((i) => i.id !== imgId));
+  };
+
   const handleSave = async () => {
     if (title.trim().length === 0) return;
     setIsSaving(true);
     try {
-      const intervalsChanged = JSON.stringify(intervals) !== JSON.stringify(initialIntervals.current);
+      let finalImages = images;
+
+      // 1. Upload any newly added local images to Firebase Storage
+      if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
+        finalImages = await uploadImages(user.uid, id!, images);
+      }
+
+      // 2. Delete images that were removed during edit (from Firebase Storage)
+      if (user?.uid) {
+        const originalIds = new Set(note.images.map((img) => img.id));
+        const remainingIds = new Set(finalImages.map((img) => img.id));
+        const removedIds = [...originalIds].filter((imgId) => !remainingIds.has(imgId));
+
+        await Promise.all(
+          removedIds.map((imgId) =>
+            deleteNoteImage(user.uid!, id!, imgId).catch(() => {})
+          )
+        );
+      }
+
+      // 3. Save note locally and sync to Firestore
+      const intervalsChanged =
+        JSON.stringify(intervals) !== JSON.stringify(initialIntervals.current);
       await editNote(
         id!,
-        { title: title.trim(), content: content.trim(), categoryId: selectedCategory, images },
-        intervalsChanged ? intervals : undefined,
+        {
+          title: title.trim(),
+          content: content.trim(),
+          categoryId: selectedCategory,
+          images: finalImages,
+        },
+        intervalsChanged ? intervals : undefined
       );
       setIsEditing(false);
     } catch {
-      Alert.alert("Error", "Failed to save changes.");
+      Alert.alert("Error", uploadError || "Failed to save changes.");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = () => {
-    if (Platform.OS === "web") {
-      if (window.confirm(`Delete "${note.title}"?`)) {
-        removeNote(id!);
-        router.back();
+    const doDelete = async () => {
+      // Delete all note images from Firebase Storage
+      if (user?.uid) {
+        await Promise.all(
+          note.images.map((img) =>
+            deleteNoteImage(user.uid!, id!, img.id).catch(() => {})
+          )
+        );
       }
+      await removeNote(id!);
+      router.back();
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Delete "${note.title}"?`)) doDelete();
     } else {
-      Alert.alert(
-        "Delete Note",
-        `Are you sure you want to delete "${note.title}"?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: async () => {
-              await removeNote(id!);
-              router.back();
-            },
-          },
-        ]
-      );
+      Alert.alert("Delete Note", `Are you sure you want to delete "${note.title}"?`, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: doDelete },
+      ]);
     }
   };
 
@@ -144,12 +187,19 @@ export default function NoteDetailScreen() {
           {isEditing ? (
             <TouchableOpacity
               onPress={handleSave}
-              disabled={isSaving}
-              style={[styles.saveBtn, { backgroundColor: colors.primary, borderRadius: colors.radius / 2 }]}
+              disabled={isWorking}
+              style={[
+                styles.saveBtn,
+                { backgroundColor: colors.primary, borderRadius: colors.radius / 2, opacity: isWorking ? 0.6 : 1 },
+              ]}
               activeOpacity={0.8}
             >
               <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
-                {isSaving ? "..." : "Save"}
+                {isUploading
+                  ? `${overallProgress}%`
+                  : isSaving
+                  ? "…"
+                  : "Save"}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -184,9 +234,7 @@ export default function NoteDetailScreen() {
               <View style={[styles.dueBadge, { backgroundColor: colors.muted, borderRadius: colors.radius / 2 }]}>
                 <Feather name="clock" size={12} color={colors.mutedForeground} />
                 <Text style={[styles.dueText, { color: colors.mutedForeground }]}>
-                  {daysUntilDue !== null && daysUntilDue <= 0
-                    ? "Due today"
-                    : `Due in ${daysUntilDue}d`}
+                  {daysUntilDue !== null && daysUntilDue <= 0 ? "Due today" : `Due in ${daysUntilDue}d`}
                 </Text>
               </View>
             )}
@@ -201,6 +249,7 @@ export default function NoteDetailScreen() {
               value={title}
               onChangeText={setTitle}
               style={[styles.titleInput, { color: colors.foreground, borderBottomColor: colors.border }]}
+              editable={!isWorking}
             />
           </View>
         ) : (
@@ -211,8 +260,15 @@ export default function NoteDetailScreen() {
         {isEditing ? (
           <View style={styles.field}>
             <View style={styles.fieldHeader}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Images ({images.length})</Text>
-              <TouchableOpacity onPress={pickImage} style={[styles.addImageBtn, { borderColor: colors.primary, borderRadius: colors.radius / 2 }]} activeOpacity={0.7}>
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+                Images ({images.length})
+              </Text>
+              <TouchableOpacity
+                onPress={pickImage}
+                disabled={isWorking}
+                style={[styles.addImageBtn, { borderColor: colors.primary, borderRadius: colors.radius / 2 }]}
+                activeOpacity={0.7}
+              >
                 <Feather name="image" size={14} color={colors.primary} />
                 <Text style={[styles.addImageText, { color: colors.primary }]}>Add</Text>
               </TouchableOpacity>
@@ -221,18 +277,31 @@ export default function NoteDetailScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.imageRow}>
                   {images.map((img) => (
-                    <View key={img.id} style={styles.imageWrapper}>
-                      <Image source={{ uri: img.uri }} style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]} resizeMode="cover" />
-                      <TouchableOpacity
-                        onPress={() => setImages((prev) => prev.filter((i) => i.id !== img.id))}
-                        style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}
-                      >
-                        <Feather name="x" size={10} color="#fff" />
-                      </TouchableOpacity>
-                    </View>
+                    <EditableImage
+                      key={img.id}
+                      img={img}
+                      onRemove={() => removeImageLocally(img.id)}
+                      colors={colors}
+                      disabled={isWorking}
+                    />
                   ))}
                 </View>
               </ScrollView>
+            )}
+            {isUploading && (
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { backgroundColor: colors.primary, width: `${overallProgress}%` as any },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
+                  Uploading… {overallProgress}%
+                </Text>
+              </View>
             )}
           </View>
         ) : (
@@ -240,7 +309,18 @@ export default function NoteDetailScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
               <View style={styles.imageRow}>
                 {note.images.map((img) => (
-                  <Image key={img.id} source={{ uri: img.uri }} style={[styles.noteImage, { borderRadius: colors.radius }]} resizeMode="cover" />
+                  <View key={img.id} style={{ position: "relative" }}>
+                    <Image
+                      source={{ uri: img.uri }}
+                      style={[styles.noteImage, { borderRadius: colors.radius }]}
+                      resizeMode="cover"
+                    />
+                    {isFirebaseUrl(img.uri) && (
+                      <View style={[styles.cloudBadgeRead, { backgroundColor: colors.primary }]}>
+                        <Feather name="cloud" size={9} color="#fff" />
+                      </View>
+                    )}
+                  </View>
                 ))}
               </View>
             </ScrollView>
@@ -256,7 +336,16 @@ export default function NoteDetailScreen() {
               onChangeText={setContent}
               multiline
               textAlignVertical="top"
-              style={[styles.contentInput, { color: colors.foreground, backgroundColor: colors.muted, borderRadius: colors.radius, borderColor: colors.border }]}
+              style={[
+                styles.contentInput,
+                {
+                  color: colors.foreground,
+                  backgroundColor: colors.muted,
+                  borderRadius: colors.radius,
+                  borderColor: colors.border,
+                },
+              ]}
+              editable={!isWorking}
             />
           </View>
         ) : (
@@ -268,14 +357,16 @@ export default function NoteDetailScreen() {
         {/* Revision plan */}
         {isEditing ? (
           <View style={styles.field}>
-            <IntervalPicker
-              intervals={intervals}
-              onChange={setIntervals}
-            />
+            <IntervalPicker intervals={intervals} onChange={setIntervals} />
           </View>
         ) : (
           plan && (
-            <View style={[styles.planCard, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
+            <View
+              style={[
+                styles.planCard,
+                { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 },
+              ]}
+            >
               <View style={styles.planTitleRow}>
                 <Text style={[styles.planTitle, { color: colors.foreground }]}>Revision Plan</Text>
                 <View style={[styles.modeBadge, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
@@ -283,7 +374,6 @@ export default function NoteDetailScreen() {
                   <Text style={[styles.modeBadgeText, { color: colors.primary }]}>Custom Intervals</Text>
                 </View>
               </View>
-
               <View style={styles.intervalDisplay}>
                 {plan.intervals.map((d, i) => (
                   <View
@@ -296,7 +386,12 @@ export default function NoteDetailScreen() {
                       },
                     ]}
                   >
-                    <Text style={[styles.intervalChipText, { color: i === plan.currentStep ? colors.primaryForeground : colors.accentForeground }]}>
+                    <Text
+                      style={[
+                        styles.intervalChipText,
+                        { color: i === plan.currentStep ? colors.primaryForeground : colors.accentForeground },
+                      ]}
+                    >
                       {d}d
                     </Text>
                   </View>
@@ -321,10 +416,20 @@ export default function NoteDetailScreen() {
                     <TouchableOpacity
                       key={cat.id}
                       onPress={() => setSelectedCategory(cat.id)}
-                      style={[styles.categoryChip, { borderRadius: colors.radius / 2, backgroundColor: isSelected ? cat.color : cat.color + "15", borderColor: cat.color + "40", borderWidth: 1 }]}
+                      style={[
+                        styles.categoryChip,
+                        {
+                          borderRadius: colors.radius / 2,
+                          backgroundColor: isSelected ? cat.color : cat.color + "15",
+                          borderColor: cat.color + "40",
+                          borderWidth: 1,
+                        },
+                      ]}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.categoryChipText, { color: isSelected ? "#fff" : cat.color }]}>{cat.name}</Text>
+                      <Text style={[styles.categoryChipText, { color: isSelected ? "#fff" : cat.color }]}>
+                        {cat.name}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -337,9 +442,53 @@ export default function NoteDetailScreen() {
   );
 }
 
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function EditableImage({
+  img,
+  onRemove,
+  colors,
+  disabled,
+}: {
+  img: NoteImage;
+  onRemove: () => void;
+  colors: any;
+  disabled: boolean;
+}) {
+  const isCloud = isFirebaseUrl(img.uri);
+  return (
+    <View style={styles.imageWrapper}>
+      <Image
+        source={{ uri: img.uri }}
+        style={[styles.imageThumbnail, { borderRadius: colors.radius - 4 }]}
+        resizeMode="cover"
+      />
+      {isCloud && (
+        <View style={[styles.cloudBadgeEdit, { backgroundColor: colors.primary }]}>
+          <Feather name="cloud" size={9} color="#fff" />
+        </View>
+      )}
+      {!disabled && (
+        <TouchableOpacity
+          onPress={onRemove}
+          style={[styles.removeImageBtn, { backgroundColor: colors.destructive }]}
+        >
+          <Feather name="x" size={10} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
   headerBtn: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 16, textAlign: "center", marginHorizontal: 8 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -348,7 +497,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 16 },
   meta: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  categoryBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4 },
+  categoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
   categoryDot: { width: 6, height: 6, borderRadius: 3 },
   categoryText: { fontSize: 12 },
   dueBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4 },
@@ -361,16 +516,64 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 13 },
   titleInput: { fontSize: 20, paddingVertical: 8, borderBottomWidth: 1 },
   contentInput: { padding: 12, minHeight: 100, fontSize: 14, lineHeight: 22, borderWidth: 1 },
-  addImageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1 },
+  addImageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
   addImageText: { fontSize: 13 },
   imageRow: { flexDirection: "row", gap: 8 },
   imageWrapper: { position: "relative" },
   imageThumbnail: { width: 80, height: 80 },
-  removeImageBtn: { position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  removeImageBtn: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cloudBadgeEdit: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cloudBadgeRead: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressContainer: { gap: 6 },
+  progressTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
+  progressFill: { height: 4, borderRadius: 2 },
+  progressLabel: { fontSize: 12 },
   planCard: { padding: 14, gap: 10 },
   planTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   planTitle: { fontSize: 14, fontWeight: "600" },
-  modeBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  modeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
   modeBadgeText: { fontSize: 11, fontWeight: "600" },
   intervalDisplay: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   intervalChip: { paddingHorizontal: 10, paddingVertical: 5 },

@@ -75,6 +75,21 @@ All data is scoped under the user's UID: no cross-user queries, no composite ind
 ### Hooks (lib/hooks/)
 - `useCloudNotes(userId)` — subscribes to real-time Firestore notes; returns `{notes, isLoading, error}` with friendly error messages
 - `useConnectionState()` — browser online/offline events on web; returns boolean
+- `useImageUpload()` — manages Firebase Storage uploads; returns `{uploadImages, isUploading, overallProgress, error, resetUpload}`
+
+### Firebase Storage (lib/storage-firebase.ts)
+- Storage path: `users/{uid}/notes/{noteId}/{imageId}` — scoped to owner UID
+- `uploadNoteImage(uid, noteId, imageId, uri, onProgress?)` — single upload with progress callback via `uploadBytesResumable`
+- `uploadNoteImages(uid, noteId, images[], onProgress?)` — parallel batch upload; skips images already at Firebase URLs
+- `deleteNoteImage(uid, noteId, imageId)` — safe delete (ignores not-found)
+- `deleteAllNoteImages(uid, noteId, imageIds[])` — parallel delete for note cleanup
+- `isFirebaseUrl(uri)` — detects if URI is already a Firebase Storage download URL
+
+### Storage Security Rules (storage.rules)
+Deploy with: `firebase deploy --only storage`
+- Only the owner can read/write their own images (`request.auth.uid == userId`)
+- Writes validate: must be `image/*` content type, max 10 MB per file
+- Everything else is blocked by default
 
 ### Security Rules (firestore.rules)
 Deploy with: `firebase deploy --only firestore:rules`

@@ -13,6 +13,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
+import { FirebaseStorage, getStorage } from "firebase/storage";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
@@ -57,4 +58,7 @@ if (Platform.OS === "web") {
   db = getFirestore(app);
 }
 
-export { app, auth, db };
+// ─── Firebase Storage ─────────────────────────────────────────────────────────
+const storage: FirebaseStorage = getStorage(app);
+
+export { app, auth, db, storage };
