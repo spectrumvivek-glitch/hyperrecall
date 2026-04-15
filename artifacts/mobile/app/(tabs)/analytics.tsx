@@ -15,18 +15,66 @@ import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { RevisionLog, getDayLabel, getRevisionLogs, startOfDay } from "@/lib/storage";
 
-// Deterministic mock leaderboard users
-const MOCK_USERS = [
-  { name: "Priya S.", reviews: 312, streak: 42, avatar: "P" },
-  { name: "James K.", reviews: 278, streak: 31, avatar: "J" },
-  { name: "Meera R.", reviews: 245, streak: 28, avatar: "M" },
-  { name: "David L.", reviews: 198, streak: 19, avatar: "D" },
-  { name: "Ananya G.", reviews: 165, streak: 15, avatar: "A" },
-  { name: "Tom H.", reviews: 142, streak: 11, avatar: "T" },
-  { name: "Sarah W.", reviews: 118, streak: 8, avatar: "S" },
-  { name: "Raj P.", reviews: 89, streak: 6, avatar: "R" },
-  { name: "Emma B.", reviews: 64, streak: 4, avatar: "E" },
+// Large pool of mock leaderboard users — a rotating subset is shown every 30 s
+const ALL_MOCK_USERS = [
+  { name: "Priya S.",   baseReviews: 312, baseStreak: 42, avatar: "P" },
+  { name: "James K.",   baseReviews: 278, baseStreak: 31, avatar: "J" },
+  { name: "Meera R.",   baseReviews: 245, baseStreak: 28, avatar: "M" },
+  { name: "David L.",   baseReviews: 198, baseStreak: 19, avatar: "D" },
+  { name: "Ananya G.",  baseReviews: 165, baseStreak: 15, avatar: "A" },
+  { name: "Tom H.",     baseReviews: 142, baseStreak: 11, avatar: "T" },
+  { name: "Sarah W.",   baseReviews: 118, baseStreak:  8, avatar: "S" },
+  { name: "Raj P.",     baseReviews:  89, baseStreak:  6, avatar: "R" },
+  { name: "Emma B.",    baseReviews:  64, baseStreak:  4, avatar: "E" },
+  { name: "Liam N.",    baseReviews: 290, baseStreak: 35, avatar: "L" },
+  { name: "Sofia V.",   baseReviews: 255, baseStreak: 22, avatar: "S" },
+  { name: "Chen W.",    baseReviews: 231, baseStreak: 27, avatar: "C" },
+  { name: "Fatima A.",  baseReviews: 210, baseStreak: 21, avatar: "F" },
+  { name: "Marco D.",   baseReviews: 187, baseStreak: 17, avatar: "M" },
+  { name: "Yuki T.",    baseReviews: 174, baseStreak: 14, avatar: "Y" },
+  { name: "Nadia K.",   baseReviews: 160, baseStreak: 13, avatar: "N" },
+  { name: "Omar F.",    baseReviews: 148, baseStreak: 10, avatar: "O" },
+  { name: "Isla M.",    baseReviews: 133, baseStreak:  9, avatar: "I" },
+  { name: "Arjun B.",   baseReviews: 125, baseStreak:  7, avatar: "A" },
+  { name: "Zara H.",    baseReviews: 115, baseStreak:  6, avatar: "Z" },
+  { name: "Lucas C.",   baseReviews: 102, baseStreak:  5, avatar: "L" },
+  { name: "Hana P.",    baseReviews:  97, baseStreak:  5, avatar: "H" },
+  { name: "Ravi M.",    baseReviews:  85, baseStreak:  4, avatar: "R" },
+  { name: "Chiara E.",  baseReviews:  78, baseStreak:  3, avatar: "C" },
+  { name: "Sam O.",     baseReviews:  71, baseStreak:  3, avatar: "S" },
+  { name: "Aaliya J.",  baseReviews:  59, baseStreak:  2, avatar: "A" },
+  { name: "Felix B.",   baseReviews:  52, baseStreak:  2, avatar: "F" },
+  { name: "Mila Q.",    baseReviews:  44, baseStreak:  1, avatar: "M" },
+  { name: "Nico R.",    baseReviews:  38, baseStreak:  1, avatar: "N" },
+  { name: "Tara S.",    baseReviews:  30, baseStreak:  1, avatar: "T" },
 ];
+
+/** Seeded pseudo-random shuffle — same seed always yields same order */
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const a = [...arr];
+  let s = seed;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    const j = Math.abs(s) % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Pick 9 users for the current rotation tick and add small stat variance */
+function buildRotatingPool(tick: number) {
+  const shuffled = seededShuffle(ALL_MOCK_USERS, tick * 0xdeadbeef);
+  return shuffled.slice(0, 9).map((u) => {
+    // Reviews drift ±5% each rotation so scores feel live
+    const variance = ((tick * 7 + u.baseReviews) % 11) - 5;
+    return {
+      name: u.name,
+      avatar: u.avatar,
+      reviews: Math.max(1, u.baseReviews + variance),
+      streak: u.baseStreak,
+    };
+  });
+}
 
 const RANK_COLORS = ["#F59E0B", "#94A3B8", "#CD7C32"];
 
@@ -112,6 +160,13 @@ export default function AnalyticsScreen() {
   const { userStats, notes, categories } = useApp();
   const [revisionLogs, setRevisionLogs] = useState<RevisionLog[]>([]);
 
+  // Rotate leaderboard every 30 seconds
+  const [lbTick, setLbTick] = useState(() => Math.floor(Date.now() / 30_000));
+  useEffect(() => {
+    const id = setInterval(() => setLbTick(Math.floor(Date.now() / 30_000)), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     getRevisionLogs().then(setRevisionLogs).catch(() => {});
   }, [userStats.totalCompleted, userStats.totalSkipped]);
@@ -163,8 +218,9 @@ export default function AnalyticsScreen() {
       ? Math.round((totalCompleted / (totalCompleted + totalSkipped)) * 100)
       : 0;
 
-  // Build leaderboard with real user mixed in
+  // Build leaderboard with real user mixed in — rotates every 30 s via lbTick
   const leaderboard = useMemo(() => {
+    const pool = buildRotatingPool(lbTick);
     const realUser = {
       name: "You",
       avatar: "★",
@@ -173,14 +229,14 @@ export default function AnalyticsScreen() {
       isYou: true,
     };
     const combined = [
-      ...MOCK_USERS.map((u) => ({ ...u, isYou: false })),
+      ...pool.map((u) => ({ ...u, isYou: false })),
       realUser,
     ]
       .sort((a, b) => b.reviews - a.reviews)
       .slice(0, 10)
-      .map((user, i) => ({ ...user, rank: i + 1 }));
+      .map((entry, i) => ({ ...entry, rank: i + 1 }));
     return combined;
-  }, [userStats.totalCompleted, userStats.currentStreak]);
+  }, [lbTick, userStats.totalCompleted, userStats.currentStreak]);
 
   const yourRank = leaderboard.find((u) => u.isYou)?.rank ?? "-";
 
