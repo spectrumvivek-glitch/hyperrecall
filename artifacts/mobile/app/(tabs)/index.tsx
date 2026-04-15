@@ -27,7 +27,7 @@ import { Confetti } from "@/components/Confetti";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
-import { Note, RevisionPlan } from "@/lib/storage";
+import { Note, RevisionPlan, startOfDay } from "@/lib/storage";
 
 function XpBar({ xpIntoLevel, xpNeeded, progressPct, colors }: {
   xpIntoLevel: number;
@@ -275,8 +275,17 @@ export default function DashboardScreen() {
   const {
     dueNotes, userStats, notes, revisionPlans, isLoading, refresh,
     xpInfo, improvementPct, pendingLevelUp, dismissLevelUp, shareAndEarnXp,
-    newBadges, dismissNewBadges,
+    newBadges, dismissNewBadges, vacationSettings,
   } = useApp();
+
+  const todayStart = startOfDay(Date.now());
+  const isHolidayRestToday =
+    !!vacationSettings.lastHolidayRestDate &&
+    vacationSettings.lastHolidayRestDate === todayStart;
+  const isVacationActive =
+    vacationSettings.isActive &&
+    todayStart >= startOfDay(vacationSettings.startDate) &&
+    todayStart <= startOfDay(vacationSettings.endDate);
 
   const [showConfetti, setShowConfetti] = useState(false);
   const prevBadgeCount = useRef((userStats.earnedBadges ?? []).length);
@@ -369,6 +378,36 @@ export default function DashboardScreen() {
           </View>
           <StreakBadge streak={userStats.currentStreak} size="md" pulse={userStats.currentStreak > 0} />
         </View>
+
+        {/* Holiday Rest Banner */}
+        {isHolidayRestToday && (
+          <View style={[styles.breakBanner, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b50" }]}>
+            <View style={styles.breakBannerIcon}>
+              <Text style={{ fontSize: 22 }}>🏖️</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.breakBannerTitle, { color: "#b45309" }]}>Holiday Rest Day</Text>
+              <Text style={[styles.breakBannerSub, { color: "#92400e" }]}>
+                All reviews scheduled for today have been moved to tomorrow. Enjoy your holiday!
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Vacation Mode Banner */}
+        {isVacationActive && (
+          <View style={[styles.breakBanner, { backgroundColor: "#3b82f618", borderColor: "#3b82f650" }]}>
+            <View style={styles.breakBannerIcon}>
+              <Text style={{ fontSize: 22 }}>☀️</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.breakBannerTitle, { color: "#1d4ed8" }]}>Vacation Mode Active</Text>
+              <Text style={[styles.breakBannerSub, { color: "#1e3a8a" }]}>
+                Your reviews are paused. Returns {new Date(vacationSettings.endDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })}.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* New Badge Banner */}
         {newBadges.length > 0 && (
@@ -573,6 +612,25 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   greeting: { fontSize: 13, fontWeight: "500" },
   headerTitle: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
+  breakBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  breakBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  breakBannerTitle: { fontSize: 15, fontWeight: "800", marginBottom: 2 },
+  breakBannerSub: { fontSize: 12, lineHeight: 18 },
   levelCard: {
     borderRadius: 18,
     borderWidth: 1,

@@ -64,6 +64,7 @@ export interface VacationSettings {
   startDate: number;
   endDate: number;
   holidayRestActive: boolean;
+  lastHolidayRestDate?: number; // timestamp of the rest day that was most recently applied
 }
 
 const KEYS = {
@@ -499,7 +500,7 @@ export async function activateHolidayRest(restDate: number): Promise<void> {
   });
   await saveRevisionPlans(shifted);
   const settings = await getVacationSettings();
-  await saveVacationSettings({ ...settings, holidayRestActive: false });
+  await saveVacationSettings({ ...settings, holidayRestActive: false, lastHolidayRestDate: restDayStart });
 }
 
 export function startOfDay(ts: number): number {
