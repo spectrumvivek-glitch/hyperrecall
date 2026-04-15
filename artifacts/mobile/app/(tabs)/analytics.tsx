@@ -66,12 +66,14 @@ function buildRotatingPool(tick: number) {
   const shuffled = seededShuffle(ALL_MOCK_USERS, tick * 0xdeadbeef);
   return shuffled.slice(0, 9).map((u) => {
     // Reviews drift ±5% each rotation so scores feel live
-    const variance = ((tick * 7 + u.baseReviews) % 11) - 5;
+    const reviewVariance = ((tick * 7 + u.baseReviews) % 11) - 5;
+    // Streak drifts ±2 days each rotation so ranking shifts
+    const streakVariance = ((tick * 3 + u.baseStreak) % 5) - 2;
     return {
       name: u.name,
       avatar: u.avatar,
-      reviews: Math.max(1, u.baseReviews + variance),
-      streak: u.baseStreak,
+      reviews: Math.max(1, u.baseReviews + reviewVariance),
+      streak: Math.max(0, u.baseStreak + streakVariance),
     };
   });
 }
@@ -222,28 +224,25 @@ export default function AnalyticsScreen() {
   const leaderboard = useMemo(() => {
     const pool = buildRotatingPool(lbTick);
 
-    // Tick-based virtual score used ONLY for rank sorting — makes "You" move
-    // through different positions each rotation while keeping real stats displayed.
-    // Cycles through a range of ±120 relative to the midpoint of the current pool.
-    const poolMid = pool.length > 0
-      ? pool.reduce((s, u) => s + u.reviews, 0) / pool.length
-      : 100;
-    const phase = (lbTick % 9); // 0-8, gives 9 distinct rank positions per cycle
-    const tickVirtual = Math.round(poolMid * (0.6 + phase * 0.1));
-
+    // Rank everyone by streak days — higher streak = better rank.
+    // Mock users' streaks also drift slightly each tick to stay dynamic.
     const realUser = {
       name: "You",
       avatar: "★",
-      reviews: userStats.totalCompleted,          // displayed (real)
-      _sortKey: Math.max(userStats.totalCompleted, tickVirtual), // rank key
+      reviews: userStats.totalCompleted,
       streak: userStats.currentStreak,
       isYou: true,
     };
     const combined = [
-      ...pool.map((u) => ({ ...u, isYou: false, _sortKey: u.reviews })),
+      ...pool.map((u) => ({ ...u, isYou: false })),
       realUser,
     ]
-      .sort((a, b) => b._sortKey - a._sortKey)
+      .sort((a, b) => {
+        // Primary: streak days descending
+        if (b.streak !== a.streak) return b.streak - a.streak;
+        // Tie-break: review count descending
+        return b.reviews - a.reviews;
+      })
       .slice(0, 10)
       .map((entry, i) => ({ ...entry, rank: i + 1 }));
     return combined;
