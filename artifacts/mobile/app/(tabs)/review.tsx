@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
+  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -18,7 +20,9 @@ import { CelebrationPopup } from "@/components/CelebrationPopup";
 import { EmptyState } from "@/components/EmptyState";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { RevisionPlan } from "@/lib/storage";
+import { Note, RevisionPlan } from "@/lib/storage";
+
+const { width: SCREEN_W } = Dimensions.get("window");
 
 const SM2_RATINGS = [
   { quality: 2, label: "Hard", icon: "frown" as const, color: "#EF4444", desc: "Barely remembered" },
@@ -35,7 +39,7 @@ function DueCard({
   onSkip,
   busy,
 }: {
-  note: { id: string; title: string; content: string };
+  note: Note;
   plan: RevisionPlan;
   categoryName: string;
   categoryColor: string;
@@ -44,21 +48,40 @@ function DueCard({
   busy: boolean;
 }) {
   const colors = useColors();
-  const [showRating, setShowRating] = useState(false);
+  const [phase, setPhase] = useState<"preview" | "study" | "rating">("preview");
+  const [imgIndex, setImgIndex] = useState(0);
 
-  // Exit animation state
+  // Exit animation
   const exitScale = useRef(new Animated.Value(1)).current;
   const exitOpacity = useRef(new Animated.Value(1)).current;
   const exitTranslateY = useRef(new Animated.Value(0)).current;
   const flashAnim = useRef(new Animated.Value(0)).current;
 
+  // Expand animation (study phase)
+  const expandAnim = useRef(new Animated.Value(0)).current;
+
+  const isSM2 = plan.mode === "sm2";
+  const hasImages = note.images && note.images.length > 0;
+  const intervalLabels = ["Day 1", "Day 3", "Day 7", "Day 14", "Day 30", "Day 60", "Day 90"];
+  const stepLabel = isSM2
+    ? `Rep ${plan.currentStep + 1}`
+    : (intervalLabels[plan.currentStep] ?? `Step ${plan.currentStep + 1}`);
+
+  const handleStart = () => {
+    setPhase("study");
+    Animated.spring(expandAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 70,
+      friction: 9,
+    }).start();
+  };
+
   const animateAndComplete = (callback: () => void) => {
-    // Green flash on the card border/background
     Animated.sequence([
       Animated.timing(flashAnim, { toValue: 1, duration: 100, useNativeDriver: false }),
       Animated.timing(flashAnim, { toValue: 0, duration: 80, useNativeDriver: false }),
     ]).start();
-    // Simultaneous exit: scale down + slide up + fade
     Animated.sequence([
       Animated.delay(80),
       Animated.parallel([
@@ -69,29 +92,25 @@ function DueCard({
     ]).start(() => callback());
   };
 
-  const isSM2 = plan.mode === "sm2";
-  const intervalLabels = ["Day 1", "Day 3", "Day 7", "Day 14", "Day 30", "Day 60", "Day 90"];
-  const stepLabel = isSM2
-    ? `Rep ${plan.currentStep + 1}`
-    : (intervalLabels[plan.currentStep] ?? `Step ${plan.currentStep + 1}`);
-
-  const handleDonePress = () => {
+  const handleComplete = () => {
     if (isSM2) {
-      setShowRating(true);
+      setPhase("rating");
     } else {
       animateAndComplete(() => onDone());
     }
   };
 
   const handleRate = (quality: number) => {
-    setShowRating(false);
     animateAndComplete(() => onDone(quality));
   };
 
   const flashBorder = flashAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [showRating ? colors.warning + "50" : colors.border, "#22C55E80"],
+    outputRange: [phase === "rating" ? colors.warning + "50" : colors.border, "#22C55E80"],
   });
+
+  const expandScale = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] });
+  const expandOpacity = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
     <Animated.View
@@ -100,7 +119,7 @@ function DueCard({
         {
           backgroundColor: colors.card,
           borderColor: flashBorder,
-          shadowColor: showRating ? colors.warning : categoryColor,
+          shadowColor: phase === "rating" ? colors.warning : categoryColor,
           opacity: exitOpacity,
           transform: [{ scale: exitScale }, { translateY: exitTranslateY }],
         },
@@ -108,35 +127,172 @@ function DueCard({
     >
       <View style={[cardStyles.categoryBar, { backgroundColor: categoryColor }]} />
       <View style={cardStyles.cardInner}>
-        {/* Top meta */}
+
+        {/* ── Top meta row ── */}
         <View style={cardStyles.meta}>
           <View style={cardStyles.catRow}>
             <View style={[cardStyles.catDot, { backgroundColor: categoryColor }]} />
             <Text style={[cardStyles.catName, { color: colors.mutedForeground }]}>{categoryName}</Text>
           </View>
-          <View style={[
-            cardStyles.stepBadge,
-            { backgroundColor: isSM2 ? colors.warning + "20" : colors.primary + "20" },
-          ]}>
-            {isSM2 && <Feather name="zap" size={10} color={colors.warning} />}
-            <Text style={[cardStyles.stepText, { color: isSM2 ? colors.warning : colors.primary }]}>
-              {stepLabel}
-            </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            {hasImages && phase === "preview" && (
+              <View style={[cardStyles.photoBadge, { backgroundColor: colors.primary + "15" }]}>
+                <Feather name="image" size={10} color={colors.primary} />
+                <Text style={[cardStyles.photoBadgeText, { color: colors.primary }]}>
+                  {note.images.length} photo{note.images.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            )}
+            <View style={[
+              cardStyles.stepBadge,
+              { backgroundColor: isSM2 ? colors.warning + "20" : colors.primary + "20" },
+            ]}>
+              {isSM2 && <Feather name="zap" size={10} color={colors.warning} />}
+              <Text style={[cardStyles.stepText, { color: isSM2 ? colors.warning : colors.primary }]}>
+                {stepLabel}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Title + content */}
-        <Text style={[cardStyles.title, { color: colors.foreground }]} numberOfLines={2}>
+        {/* ── Note title ── */}
+        <Text style={[cardStyles.title, { color: colors.foreground }]} numberOfLines={phase === "preview" ? 2 : undefined}>
           {note.title}
         </Text>
-        {note.content ? (
+
+        {/* ── STUDY PHASE: images + content ── */}
+        {phase !== "preview" && (
+          <Animated.View style={{ opacity: expandOpacity, transform: [{ scale: expandScale }], gap: 12 }}>
+
+            {/* Image gallery */}
+            {hasImages && (
+              <View style={cardStyles.imageSection}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_W - 64));
+                    setImgIndex(idx);
+                  }}
+                  style={cardStyles.imageScroll}
+                >
+                  {note.images.map((img) => (
+                    <Image
+                      key={img.id}
+                      source={{ uri: img.uri }}
+                      style={[cardStyles.image, { borderRadius: 10 }]}
+                      resizeMode="contain"
+                    />
+                  ))}
+                </ScrollView>
+                {note.images.length > 1 && (
+                  <View style={cardStyles.dots}>
+                    {note.images.map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          cardStyles.dot,
+                          {
+                            backgroundColor: i === imgIndex ? colors.primary : colors.border,
+                            width: i === imgIndex ? 18 : 6,
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                )}
+                <Text style={[cardStyles.photoHint, { color: colors.mutedForeground }]}>
+                  {note.images.length > 1
+                    ? `Photo ${imgIndex + 1} of ${note.images.length} · swipe to browse`
+                    : "Your note photo"}
+                </Text>
+              </View>
+            )}
+
+            {/* Content text */}
+            {note.content ? (
+              <Text style={[cardStyles.content, { color: colors.foreground }]}>
+                {note.content}
+              </Text>
+            ) : null}
+
+            {/* SM-2 info row */}
+            {isSM2 && phase === "study" && (
+              <View style={[cardStyles.sm2Hint, { backgroundColor: colors.warning + "12", borderColor: colors.warning + "30" }]}>
+                <Feather name="zap" size={12} color={colors.warning} />
+                <Text style={[cardStyles.sm2HintText, { color: colors.warning }]}>
+                  Smart mode — you'll rate your recall after completing
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        )}
+
+        {/* ── PREVIEW content snippet ── */}
+        {phase === "preview" && note.content ? (
           <Text style={[cardStyles.preview, { color: colors.mutedForeground }]} numberOfLines={2}>
             {note.content}
           </Text>
         ) : null}
 
-        {/* SM-2 rating panel */}
-        {showRating ? (
+        {/* ── ACTION BUTTONS ── */}
+        {phase === "preview" && (
+          <View style={cardStyles.actions}>
+            {/* Skip */}
+            <TouchableOpacity
+              onPress={onSkip}
+              disabled={busy}
+              style={[cardStyles.skipBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <Feather name="skip-forward" size={14} color={colors.mutedForeground} />
+              <Text style={[cardStyles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
+            </TouchableOpacity>
+
+            {/* Start */}
+            <TouchableOpacity
+              onPress={handleStart}
+              disabled={busy}
+              activeOpacity={0.82}
+              style={cardStyles.startWrap}
+            >
+              <LinearGradient
+                colors={["#6366F1", "#8B5CF6"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={cardStyles.startBtn}
+              >
+                <Feather name="book-open" size={15} color="#fff" />
+                <Text style={cardStyles.startText}>Start Review</Text>
+                <Feather name="chevron-right" size={15} color="#ffffffcc" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {phase === "study" && (
+          <TouchableOpacity
+            onPress={handleComplete}
+            disabled={busy}
+            activeOpacity={0.82}
+            style={cardStyles.completeWrap}
+          >
+            <LinearGradient
+              colors={isSM2 ? ["#F59E0B", "#D97706"] : ["#22C55E", "#16A34A"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={cardStyles.completeBtn}
+            >
+              <Feather name={isSM2 ? "zap" : "check-circle"} size={16} color="#fff" />
+              <Text style={cardStyles.completeText}>
+                {isSM2 ? "Rate My Recall" : "Mark Complete"}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {phase === "rating" && (
           <View style={cardStyles.ratingPanel}>
             <View style={cardStyles.ratingHeader}>
               <Feather name="zap" size={14} color={colors.warning} />
@@ -160,42 +316,11 @@ function DueCard({
               ))}
             </View>
             <TouchableOpacity
-              onPress={() => setShowRating(false)}
+              onPress={() => setPhase("study")}
               style={cardStyles.cancelBtn}
               activeOpacity={0.7}
             >
-              <Text style={[cardStyles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          /* Action buttons */
-          <View style={cardStyles.actions}>
-            <TouchableOpacity
-              onPress={onSkip}
-              disabled={busy}
-              style={[cardStyles.skipBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-              activeOpacity={0.7}
-            >
-              <Feather name="skip-forward" size={14} color={colors.mutedForeground} />
-              <Text style={[cardStyles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleDonePress}
-              disabled={busy}
-              activeOpacity={0.82}
-              style={cardStyles.doneWrap}
-            >
-              <LinearGradient
-                colors={isSM2 ? ["#F59E0B", "#D97706"] : ["#22C55E", "#16A34A"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={cardStyles.doneBtn}
-              >
-                <Feather name={isSM2 ? "zap" : "check"} size={15} color="#fff" />
-                <Text style={cardStyles.doneText}>
-                  {isSM2 ? "Rate Recall" : "Done"}
-                </Text>
-              </LinearGradient>
+              <Text style={[cardStyles.cancelText, { color: colors.mutedForeground }]}>← Back</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -221,6 +346,8 @@ const cardStyles = StyleSheet.create({
   catRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   catDot: { width: 7, height: 7, borderRadius: 4 },
   catName: { fontSize: 12, fontWeight: "500" },
+  photoBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
+  photoBadgeText: { fontSize: 10, fontWeight: "600" },
   stepBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -230,8 +357,29 @@ const cardStyles = StyleSheet.create({
     borderRadius: 6,
   },
   stepText: { fontSize: 11, fontWeight: "700" },
-  title: { fontSize: 15, fontWeight: "700", lineHeight: 21 },
+  title: { fontSize: 16, fontWeight: "700", lineHeight: 22 },
   preview: { fontSize: 13, lineHeight: 18 },
+  content: { fontSize: 14, lineHeight: 22 },
+  imageSection: { gap: 8 },
+  imageScroll: { borderRadius: 10 },
+  image: {
+    width: SCREEN_W - 64,
+    height: 220,
+    backgroundColor: "#f1f5f9",
+  },
+  dots: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
+  dot: { height: 6, borderRadius: 3 },
+  photoHint: { fontSize: 11, textAlign: "center" },
+  sm2Hint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  sm2HintText: { flex: 1, fontSize: 12, lineHeight: 17 },
   actions: { flexDirection: "row", gap: 10 },
   skipBtn: {
     flex: 1,
@@ -244,15 +392,24 @@ const cardStyles = StyleSheet.create({
     borderWidth: 1,
   },
   skipText: { fontSize: 14, fontWeight: "600" },
-  doneWrap: { flex: 2, borderRadius: 12, overflow: "hidden" },
-  doneBtn: {
+  startWrap: { flex: 2, borderRadius: 12, overflow: "hidden" },
+  startBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     paddingVertical: 11,
   },
-  doneText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  startText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  completeWrap: { borderRadius: 12, overflow: "hidden" },
+  completeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 13,
+  },
+  completeText: { fontSize: 15, fontWeight: "700", color: "#fff" },
   ratingPanel: { gap: 10 },
   ratingHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
   ratingQuestion: { fontSize: 14, fontWeight: "600" },
@@ -383,7 +540,7 @@ export default function ReviewScreen() {
           {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerLabel, { color: colors.mutedForeground }]}>or mark individually</Text>
+            <Text style={[styles.dividerLabel, { color: colors.mutedForeground }]}>or review individually</Text>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
           </View>
 
@@ -464,6 +621,6 @@ const styles = StyleSheet.create({
   },
   dividerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   divider: { flex: 1, height: 1 },
-  dividerLabel: { fontSize: 12, fontWeight: "500" },
-  list: { gap: 12 },
+  dividerLabel: { fontSize: 12 },
+  list: { gap: 14 },
 });
