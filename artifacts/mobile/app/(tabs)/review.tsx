@@ -6,12 +6,15 @@ import {
   Animated,
   Dimensions,
   Image,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,7 +25,167 @@ import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { Note, RevisionPlan } from "@/lib/storage";
 
-const { width: SCREEN_W } = Dimensions.get("window");
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+
+/* ── Full-screen zoomable photo viewer ── */
+function PhotoViewer({
+  visible,
+  images,
+  startIndex,
+  onClose,
+}: {
+  visible: boolean;
+  images: { id: string; uri: string }[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [activeIdx, setActiveIdx] = useState(startIndex);
+
+  // Reset page when opened
+  React.useEffect(() => {
+    if (visible) setActiveIdx(startIndex);
+  }, [visible, startIndex]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <StatusBar hidden />
+      <View style={viewerStyles.overlay}>
+        {/* Close button */}
+        <TouchableOpacity
+          onPress={onClose}
+          style={[viewerStyles.closeBtn, { top: insets.top + 12 }]}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          activeOpacity={0.8}
+        >
+          <Feather name="x" size={22} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Counter */}
+        {images.length > 1 && (
+          <View style={[viewerStyles.counter, { top: insets.top + 16 }]}>
+            <Text style={viewerStyles.counterText}>{activeIdx + 1} / {images.length}</Text>
+          </View>
+        )}
+
+        {/* Swipeable gallery */}
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
+            setActiveIdx(idx);
+          }}
+          contentOffset={{ x: startIndex * SCREEN_W, y: 0 }}
+          style={{ flex: 1 }}
+        >
+          {images.map((img) => (
+            /* Each page is its own scroll view that handles pinch zoom */
+            <ScrollView
+              key={img.id}
+              style={{ width: SCREEN_W, height: SCREEN_H }}
+              contentContainerStyle={viewerStyles.zoomContainer}
+              maximumZoomScale={4}
+              minimumZoomScale={1}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              centerContent
+              bouncesZoom
+            >
+              <TouchableWithoutFeedback onPress={onClose}>
+                <Image
+                  source={{ uri: img.uri }}
+                  style={{ width: SCREEN_W, height: SCREEN_H }}
+                  resizeMode="contain"
+                />
+              </TouchableWithoutFeedback>
+            </ScrollView>
+          ))}
+        </ScrollView>
+
+        {/* Dot indicators */}
+        {images.length > 1 && (
+          <View style={[viewerStyles.dots, { bottom: insets.bottom + 24 }]}>
+            {images.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  viewerStyles.dot,
+                  {
+                    backgroundColor: i === activeIdx ? "#fff" : "#ffffff55",
+                    width: i === activeIdx ? 20 : 7,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Hint */}
+        <View style={[viewerStyles.hint, { bottom: insets.bottom + (images.length > 1 ? 56 : 28) }]}>
+          <Text style={viewerStyles.hintText}>Pinch to zoom · tap to close</Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const viewerStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+  },
+  closeBtn: {
+    position: "absolute",
+    right: 18,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#ffffff20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  counter: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: "center",
+  },
+  counterText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  zoomContainer: {
+    width: SCREEN_W,
+    height: SCREEN_H,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dots: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  dot: { height: 7, borderRadius: 4 },
+  hint: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  hintText: { color: "#ffffff66", fontSize: 12 },
+});
 
 const SM2_RATINGS = [
   { quality: 2, label: "Hard", icon: "frown" as const, color: "#EF4444", desc: "Barely remembered" },
@@ -50,6 +213,8 @@ function DueCard({
   const colors = useColors();
   const [phase, setPhase] = useState<"preview" | "study" | "rating">("preview");
   const [imgIndex, setImgIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerStart, setViewerStart] = useState(0);
 
   // Exit animation
   const exitScale = useRef(new Animated.Value(1)).current;
@@ -59,6 +224,8 @@ function DueCard({
 
   // Expand animation (study phase)
   const expandAnim = useRef(new Animated.Value(0)).current;
+
+  const openViewer = (idx: number) => { setViewerStart(idx); setViewerOpen(true); };
 
   const isSM2 = plan.mode === "sm2";
   const hasImages = note.images && note.images.length > 0;
@@ -113,6 +280,15 @@ function DueCard({
   const expandOpacity = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
+    <>
+    {hasImages && (
+      <PhotoViewer
+        visible={viewerOpen}
+        images={note.images}
+        startIndex={viewerStart}
+        onClose={() => setViewerOpen(false)}
+      />
+    )}
     <Animated.View
       style={[
         cardStyles.card,
@@ -177,13 +353,24 @@ function DueCard({
                   }}
                   style={cardStyles.imageScroll}
                 >
-                  {note.images.map((img) => (
-                    <Image
+                  {note.images.map((img, i) => (
+                    <TouchableOpacity
                       key={img.id}
-                      source={{ uri: img.uri }}
-                      style={[cardStyles.image, { borderRadius: 10 }]}
-                      resizeMode="contain"
-                    />
+                      activeOpacity={0.92}
+                      onPress={() => openViewer(i)}
+                      style={{ position: "relative" }}
+                    >
+                      <Image
+                        source={{ uri: img.uri }}
+                        style={[cardStyles.image, { borderRadius: 10 }]}
+                        resizeMode="contain"
+                      />
+                      {/* Zoom hint overlay */}
+                      <View style={cardStyles.zoomHint}>
+                        <Feather name="zoom-in" size={13} color="#fff" />
+                        <Text style={cardStyles.zoomHintText}>Tap to zoom</Text>
+                      </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
                 {note.images.length > 1 && (
@@ -326,6 +513,7 @@ function DueCard({
         )}
       </View>
     </Animated.View>
+    </>
   );
 }
 
@@ -367,6 +555,19 @@ const cardStyles = StyleSheet.create({
     height: 220,
     backgroundColor: "#f1f5f9",
   },
+  zoomHint: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#00000060",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  zoomHintText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   dots: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
   dot: { height: 6, borderRadius: 3 },
   photoHint: { fontSize: 11, textAlign: "center" },
