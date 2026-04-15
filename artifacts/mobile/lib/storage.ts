@@ -486,6 +486,10 @@ export function getDayLabel(ts: number): string {
 
 // Seed default categories if empty
 export async function seedDefaultsIfNeeded(): Promise<void> {
+  // Fast path: skip the category check on every subsequent launch
+  const seeded = await AsyncStorage.getItem("@recallify_seeded");
+  if (seeded === "1") return;
+
   const cats = await getCategories();
   if (cats.length === 0) {
     const defaults = [
@@ -498,4 +502,5 @@ export async function seedDefaultsIfNeeded(): Promise<void> {
       await createCategory(d.name, d.color);
     }
   }
+  await AsyncStorage.setItem("@recallify_seeded", "1");
 }

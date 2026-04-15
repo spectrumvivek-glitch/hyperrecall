@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -13,7 +13,7 @@ import { StreakBadge } from "@/components/StreakBadge";
 import { BadgesGrid } from "@/components/BadgeCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { getDayLabel, startOfDay } from "@/lib/storage";
+import { RevisionLog, getDayLabel, getRevisionLogs, startOfDay } from "@/lib/storage";
 
 // Deterministic mock leaderboard users
 const MOCK_USERS = [
@@ -109,7 +109,12 @@ function LeaderboardRow({
 export default function AnalyticsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { revisionLogs, userStats, notes, categories } = useApp();
+  const { userStats, notes, categories } = useApp();
+  const [revisionLogs, setRevisionLogs] = useState<RevisionLog[]>([]);
+
+  useEffect(() => {
+    getRevisionLogs().then(setRevisionLogs).catch(() => {});
+  }, [userStats.totalCompleted, userStats.totalSkipped]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;

@@ -1,4 +1,3 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -36,11 +35,7 @@ export function StreakBadge({ streak, size = "md" }: Props) {
         },
       ]}
     >
-      <MaterialCommunityIcons
-        name="fire"
-        size={config.iconSize}
-        color={isActive ? STREAK_COLOR : colors.mutedForeground}
-      />
+      <Text style={{ fontSize: config.iconSize, lineHeight: config.iconSize + 4 }}>🔥</Text>
       <Text
         style={[
           styles.text,

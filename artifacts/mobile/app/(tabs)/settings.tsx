@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -486,7 +486,7 @@ export default function SettingsScreen() {
         <SectionCard>
           <View style={styles.settingRow}>
             <View style={[styles.settingIcon, { backgroundColor: "#f59e0b" + "18" }]}>
-              <MaterialCommunityIcons name="weather-sunset" size={20} color="#f59e0b" />
+              <Feather name="sun" size={20} color="#f59e0b" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>Holiday Rest</Text>

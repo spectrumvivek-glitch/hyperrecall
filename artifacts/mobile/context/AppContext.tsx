@@ -11,7 +11,6 @@ import {
   Category,
   Note,
   NoteImage,
-  RevisionLog,
   RevisionPlan,
   UserStats,
   VacationSettings,
@@ -25,7 +24,6 @@ import {
   getDueNotes,
   getCategories,
   getNotes,
-  getRevisionLogs,
   getRevisionPlans,
   getUserStats,
   getVacationSettings,
@@ -55,7 +53,6 @@ interface AppContextValue {
   categories: Category[];
   notes: Note[];
   revisionPlans: RevisionPlan[];
-  revisionLogs: RevisionLog[];
   userStats: UserStats;
   vacationSettings: VacationSettings;
   dueNotes: { note: Note; plan: RevisionPlan }[];
@@ -105,7 +102,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [revisionPlans, setRevisionPlans] = useState<RevisionPlan[]>([]);
-  const [revisionLogs, setRevisionLogs] = useState<RevisionLog[]>([]);
   const [userStats, setUserStats] = useState<UserStats>({
     currentStreak: 0,
     lastActiveDate: 0,
@@ -130,18 +126,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const improvementPct = calcImprovementPct(userStats.todayCompleted, userStats.yesterdayCompleted);
 
   const refresh = useCallback(async () => {
-    const [cats, nts, plans, logs, stats, due] = await Promise.all([
+    const [cats, nts, plans, stats, due] = await Promise.all([
       getCategories(),
       getNotes(),
       getRevisionPlans(),
-      getRevisionLogs(),
       getUserStats(),
       getDueNotes(),
     ]);
     setCategories(cats);
     setNotes(nts);
     setRevisionPlans(plans);
-    setRevisionLogs(logs);
     setUserStats(stats);
     setDueNotes(due);
   }, []);
@@ -156,11 +150,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await seedDefaultsIfNeeded();
       await Promise.all([refresh(), refreshVacation()]);
       setIsLoading(false);
-      const due = await getDueNotes();
-      initNotificationsOnFirstLaunch(due.length).catch(() => {});
+      // Reuse already-fetched dueNotes — do not re-fetch; init notifications async
+      initNotificationsOnFirstLaunch(0).catch(() => {});
     };
     init();
-  }, [refresh, refreshVacation]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addCategory = useCallback(async (name: string, color: string) => {
     const cat = await createCategory(name, color);
@@ -251,7 +245,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         categories,
         notes,
         revisionPlans,
-        revisionLogs,
         userStats,
         vacationSettings,
         dueNotes,
