@@ -1,0 +1,64 @@
+rules_version = '2';
+
+// ─── Recallify — Firestore Security Rules ─────────────────────────────────────
+//
+// Architecture: subcollections under users/{uid}
+//   users/{uid}                — profile doc
+//   users/{uid}/notes/{id}     — notes
+//   users/{uid}/reviews/{id}   — review schedules
+//   users/{uid}/stats          — aggregated stats
+//
+// All data is scoped under the owner's UID, so a single `isOwner` check
+// is sufficient for every path — no compound rules needed.
+//
+// Deploy with:
+//   firebase deploy --only firestore:rules
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: true when the request comes from the authenticated user
+    // whose UID matches the path variable.
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Helper: validate note write shape (used in create/update)
+    function validNote() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['title', 'content', 'updatedAt'])
+          && data.title is string
+          && data.content is string;
+    }
+
+    // ─── User profile ─────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // ─── Notes ──────────────────────────────────────────────────────────
+      match /notes/{noteId} {
+        allow read:   if isOwner(userId);
+        allow create: if isOwner(userId) && validNote();
+        allow update: if isOwner(userId) && validNote();
+        allow delete: if isOwner(userId);
+      }
+
+      // ─── Review schedules ────────────────────────────────────────────────
+      match /reviews/{reviewId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // ─── Aggregated stats ────────────────────────────────────────────────
+      match /stats {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Deny all other paths by default (implicit, but explicit is clearer)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

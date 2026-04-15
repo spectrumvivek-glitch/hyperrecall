@@ -51,11 +51,34 @@ A spaced repetition study app at `artifacts/mobile/`.
 - **Auth Context**: `context/AuthContext.tsx` — provides `user`, `signIn`, `signUp`, `signInWithGoogle`, `signOut`
 - **Auth Gate**: `app/(auth)/login.tsx` shown when user is not logged in; `app/_layout.tsx` handles redirect
 
-### Firestore Functions (lib/firestore.ts)
-- `createUserProfile(userId, email)` — upserts user doc in `users` collection
-- `saveNote(userId, content)` — adds to `notes` collection, returns doc ID
-- `getUserNotes(userId)` — queries notes filtered by userId
-- `scheduleReview(userId, noteId, nextReviewDate)` — adds to `reviews` collection, returns doc ID
+### Firestore Schema (subcollection architecture — designed for 20M+ users)
+```
+users/{uid}                    — profile doc (upsertUserProfile)
+users/{uid}/notes/{noteId}     — notes (real-time via subscribeToNotes)
+users/{uid}/reviews/{reviewId} — review schedules
+users/{uid}/stats              — aggregated stats (syncStats / getCloudStats)
+```
+All data is scoped under the user's UID: no cross-user queries, no composite indexes, trivial security rules.
+
+### Firestore API (lib/firestore.ts)
+- `upsertUserProfile(uid, email, displayName?)` — merge upsert, safe on every login
+- `subscribeToNotes(uid, onData, onError)` — real-time onSnapshot, returns unsubscribe fn; limited to 200 most-recent docs
+- `addCloudNote(uid, {title, content, categoryId})` — returns new doc ID
+- `updateCloudNote(uid, noteId, updates)` — partial update with updatedAt
+- `deleteCloudNote(uid, noteId)` — hard delete
+- `getNotesPage(uid, pageSize, cursor?)` — cursor-based pagination for large collections
+- `batchSyncNotes(uid, notes[])` — bulk upsert in 490-op Firestore batches
+- `scheduleReview(uid, noteId, date)` — add review doc
+- `syncStats(uid, stats)` / `getCloudStats(uid)` — cloud stats persistence
+- `deleteUserProfile(uid)` — delete profile doc (subcollections cleaned by Cloud Function in prod)
+
+### Hooks (lib/hooks/)
+- `useCloudNotes(userId)` — subscribes to real-time Firestore notes; returns `{notes, isLoading, error}` with friendly error messages
+- `useConnectionState()` — browser online/offline events on web; returns boolean
+
+### Security Rules (firestore.rules)
+Deploy with: `firebase deploy --only firestore:rules`
+All paths require `request.auth.uid == userId`. Note writes validated for `title`, `content`, `updatedAt` shape.
 
 ### App Architecture
 - Auth: `AuthProvider` wraps everything; redirects unauthenticated users to `/(auth)/login`

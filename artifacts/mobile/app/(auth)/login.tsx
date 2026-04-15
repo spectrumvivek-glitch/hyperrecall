@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -22,28 +21,39 @@ type Mode = "login" | "signup";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { signIn, signUp, signInWithGoogle, googleAvailable, isLoading } = useAuth();
+  const {
+    signIn,
+    signUp,
+    signInWithGoogle,
+    googleAvailable,
+    isAuthenticating,
+    authError,
+    clearAuthError,
+  } = useAuth();
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const isSignup = mode === "signup";
 
-  function getFirebaseError(code: string): string {
-    switch (code) {
-      case "auth/invalid-email": return "That email address is not valid.";
-      case "auth/user-not-found": return "No account found with that email.";
-      case "auth/wrong-password": return "Incorrect password. Please try again.";
-      case "auth/email-already-in-use": return "An account with that email already exists.";
-      case "auth/weak-password": return "Password must be at least 6 characters.";
-      case "auth/too-many-requests": return "Too many attempts. Please wait a moment.";
-      case "auth/network-request-failed": return "Network error. Check your connection.";
-      default: return "Something went wrong. Please try again.";
+  // Show auth errors from context as alerts
+  useEffect(() => {
+    if (authError && authError.length > 0) {
+      Alert.alert(isSignup ? "Sign Up Failed" : "Sign In Failed", authError, [
+        { text: "OK", onPress: clearAuthError },
+      ]);
     }
+  }, [authError]);
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    clearAuthError();
   }
 
   async function handleSubmit() {
@@ -55,22 +65,21 @@ export default function LoginScreen() {
       return;
     }
     if (isSignup && trimmedPassword !== confirmPassword.trim()) {
-      Alert.alert("Passwords don't match", "Please make sure both passwords are the same.");
+      Alert.alert(
+        "Passwords don't match",
+        "Please make sure both passwords are the same."
+      );
       return;
     }
 
-    setSubmitting(true);
     try {
       if (isSignup) {
         await signUp(trimmedEmail, trimmedPassword);
       } else {
         await signIn(trimmedEmail, trimmedPassword);
       }
-    } catch (err: any) {
-      const code = err?.code ?? "";
-      Alert.alert(isSignup ? "Sign Up Failed" : "Sign In Failed", getFirebaseError(code));
-    } finally {
-      setSubmitting(false);
+    } catch {
+      // authError is set in context, useEffect above will show it
     }
   }
 
@@ -82,33 +91,10 @@ export default function LoginScreen() {
       );
       return;
     }
-    setSubmitting(true);
     try {
       await signInWithGoogle();
-    } catch (err: any) {
-      const code: string = err?.code ?? "";
-      if (code === "auth/unauthorized-domain") {
-        Alert.alert(
-          "Domain Not Authorised",
-          "Add this app's domain to Firebase Console → Authentication → Settings → Authorized domains, then try again."
-        );
-      } else if (code === "auth/popup-blocked") {
-        Alert.alert(
-          "Popup Blocked",
-          "Your browser blocked the Google sign-in popup. Allow popups for this site and try again."
-        );
-      } else if (code === "auth/operation-not-allowed") {
-        Alert.alert(
-          "Google Sign-In Disabled",
-          "Enable Google as a sign-in method in Firebase Console → Authentication → Sign-in method."
-        );
-      } else if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-        // User closed the popup — do nothing
-      } else {
-        Alert.alert("Google Sign-In Failed", err.message ?? "Please try again.");
-      }
-    } finally {
-      setSubmitting(false);
+    } catch {
+      // authError is set in context, useEffect above will show it
     }
   }
 
@@ -144,20 +130,36 @@ export default function LoginScreen() {
           {/* Mode toggle */}
           <View style={styles.toggle}>
             <TouchableOpacity
-              style={[styles.toggleBtn, mode === "login" && styles.toggleActive]}
-              onPress={() => setMode("login")}
+              style={[
+                styles.toggleBtn,
+                mode === "login" && styles.toggleActive,
+              ]}
+              onPress={() => switchMode("login")}
               activeOpacity={0.7}
             >
-              <Text style={[styles.toggleText, mode === "login" && styles.toggleTextActive]}>
+              <Text
+                style={[
+                  styles.toggleText,
+                  mode === "login" && styles.toggleTextActive,
+                ]}
+              >
                 Log In
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.toggleBtn, mode === "signup" && styles.toggleActive]}
-              onPress={() => setMode("signup")}
+              style={[
+                styles.toggleBtn,
+                mode === "signup" && styles.toggleActive,
+              ]}
+              onPress={() => switchMode("signup")}
               activeOpacity={0.7}
             >
-              <Text style={[styles.toggleText, mode === "signup" && styles.toggleTextActive]}>
+              <Text
+                style={[
+                  styles.toggleText,
+                  mode === "signup" && styles.toggleTextActive,
+                ]}
+              >
                 Sign Up
               </Text>
             </TouchableOpacity>
@@ -176,7 +178,12 @@ export default function LoginScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputRow}>
-              <Feather name="mail" size={16} color="#94a3b8" style={styles.inputIcon} />
+              <Feather
+                name="mail"
+                size={16}
+                color="#94a3b8"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="you@example.com"
@@ -185,7 +192,7 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 value={email}
                 onChangeText={setEmail}
-                editable={!submitting}
+                editable={!isAuthenticating}
               />
             </View>
           </View>
@@ -194,7 +201,12 @@ export default function LoginScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Password</Text>
             <View style={styles.inputRow}>
-              <Feather name="lock" size={16} color="#94a3b8" style={styles.inputIcon} />
+              <Feather
+                name="lock"
+                size={16}
+                color="#94a3b8"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="••••••••"
@@ -202,10 +214,17 @@ export default function LoginScreen() {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
-                editable={!submitting}
+                editable={!isAuthenticating}
               />
-              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
-                <Feather name={showPassword ? "eye-off" : "eye"} size={16} color="#94a3b8" />
+              <TouchableOpacity
+                onPress={() => setShowPassword((v) => !v)}
+                style={styles.eyeBtn}
+              >
+                <Feather
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={16}
+                  color="#94a3b8"
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -215,7 +234,12 @@ export default function LoginScreen() {
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Confirm Password</Text>
               <View style={styles.inputRow}>
-                <Feather name="lock" size={16} color="#94a3b8" style={styles.inputIcon} />
+                <Feather
+                  name="lock"
+                  size={16}
+                  color="#94a3b8"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder="••••••••"
@@ -223,7 +247,7 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  editable={!submitting}
+                  editable={!isAuthenticating}
                 />
               </View>
             </View>
@@ -232,9 +256,12 @@ export default function LoginScreen() {
           {/* Primary CTA */}
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={submitting || isLoading}
+            disabled={isAuthenticating}
             activeOpacity={0.85}
-            style={styles.primaryBtn}
+            style={[
+              styles.primaryBtn,
+              isAuthenticating && { opacity: 0.75 },
+            ]}
           >
             <LinearGradient
               colors={["#6366F1", "#8B5CF6"]}
@@ -242,7 +269,7 @@ export default function LoginScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.primaryBtnGrad}
             >
-              {submitting ? (
+              {isAuthenticating ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={styles.primaryBtnText}>
@@ -262,15 +289,19 @@ export default function LoginScreen() {
           {/* Google */}
           <TouchableOpacity
             onPress={handleGoogle}
-            disabled={submitting}
+            disabled={isAuthenticating}
             activeOpacity={0.85}
             style={[
               styles.googleBtn,
-              !googleAvailable && { opacity: 0.55 },
+              (!googleAvailable || isAuthenticating) && { opacity: 0.55 },
             ]}
           >
             <View style={styles.googleBtnInner}>
-              <GoogleIcon size={20} />
+              {isAuthenticating ? (
+                <ActivityIndicator size="small" color="#6366F1" />
+              ) : (
+                <GoogleIcon size={20} />
+              )}
               <Text style={styles.googleBtnText}>Continue with Google</Text>
             </View>
             {!googleAvailable && (
@@ -304,7 +335,9 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
         borderColor: "#E8EDF4",
       }}
     >
-      <Text style={{ fontSize: size * 0.6, fontWeight: "800", color: "#4285F4" }}>G</Text>
+      <Text style={{ fontSize: size * 0.6, fontWeight: "800", color: "#4285F4" }}>
+        G
+      </Text>
     </View>
   );
 }
@@ -316,10 +349,7 @@ const styles = StyleSheet.create({
     gap: 24,
     alignItems: "center",
   },
-  brand: {
-    alignItems: "center",
-    gap: 10,
-  },
+  brand: { alignItems: "center", gap: 10 },
   logoGrad: {
     width: 72,
     height: 72,
@@ -338,11 +368,7 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     letterSpacing: -0.5,
   },
-  tagline: {
-    fontSize: 14,
-    color: "#64748B",
-    fontWeight: "500",
-  },
+  tagline: { fontSize: 14, color: "#64748B", fontWeight: "500" },
   card: {
     width: "100%",
     backgroundColor: "#FFFFFF",
@@ -377,33 +403,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#64748B",
-  },
-  toggleTextActive: {
-    color: "#6366F1",
-  },
+  toggleText: { fontSize: 14, fontWeight: "600", color: "#64748B" },
+  toggleTextActive: { color: "#6366F1" },
   cardTitle: {
     fontSize: 20,
     fontWeight: "800",
     color: "#0F172A",
     letterSpacing: -0.3,
   },
-  cardSub: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: -8,
-  },
-  fieldGroup: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#374151",
-  },
+  cardSub: { fontSize: 13, color: "#64748B", marginTop: -8 },
+  fieldGroup: { gap: 6 },
+  label: { fontSize: 13, fontWeight: "600", color: "#374151" },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -414,18 +424,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 48,
   },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: "#0F172A",
-  },
-  eyeBtn: {
-    paddingLeft: 8,
-    paddingVertical: 4,
-  },
+  inputIcon: { marginRight: 8 },
+  input: { flex: 1, fontSize: 15, color: "#0F172A" },
+  eyeBtn: { paddingLeft: 8, paddingVertical: 4 },
   primaryBtn: {
     borderRadius: 14,
     overflow: "hidden",
@@ -452,16 +453,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#E8EDF4",
-  },
-  dividerText: {
-    fontSize: 13,
-    color: "#94A3B8",
-    fontWeight: "500",
-  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#E8EDF4" },
+  dividerText: { fontSize: 13, color: "#94A3B8", fontWeight: "500" },
   googleBtn: {
     borderWidth: 1.5,
     borderColor: "#D7DEE8",
@@ -477,16 +470,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  googleBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  googleNote: {
-    fontSize: 10,
-    color: "#94A3B8",
-    textAlign: "center",
-  },
+  googleBtnText: { fontSize: 15, fontWeight: "600", color: "#374151" },
+  googleNote: { fontSize: 10, color: "#94A3B8", textAlign: "center" },
   footer: {
     fontSize: 11,
     color: "#94A3B8",

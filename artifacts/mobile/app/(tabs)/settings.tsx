@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -16,6 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { useCloudNotes } from "@/lib/hooks/useCloudNotes";
+import { useConnectionState } from "@/lib/hooks/useConnectionState";
 import {
   cancelAllRevisionNotifications,
   formatTime,
@@ -43,7 +46,9 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { categories, addCategory, removeCategory, notes, dueNotes } = useApp();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAuthenticating } = useAuth();
+  const isOnline = useConnectionState();
+  const { notes: cloudNotes, isLoading: cloudLoading, error: cloudError } = useCloudNotes(user?.uid ?? null);
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -304,8 +309,18 @@ export default function SettingsScreen() {
       {/* Account */}
       {user && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Account</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Account</Text>
+            {/* Online / offline pill */}
+            <View style={[styles.statusPill, { backgroundColor: isOnline ? "#22C55E18" : "#F59E0B18" }]}>
+              <View style={[styles.statusDot, { backgroundColor: isOnline ? "#22C55E" : "#F59E0B" }]} />
+              <Text style={[styles.statusText, { color: isOnline ? "#22C55E" : "#F59E0B" }]}>
+                {isOnline ? "Online" : "Offline"}
+              </Text>
+            </View>
+          </View>
           <SectionCard>
+            {/* User info */}
             <View style={styles.infoRow}>
               <View style={[styles.settingIcon, { backgroundColor: colors.primary + "18" }]}>
                 <Feather name="user" size={18} color={colors.primary} />
@@ -313,16 +328,43 @@ export default function SettingsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.settingLabel, { color: colors.foreground }]}>Signed in</Text>
                 <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {user.email}
+                  {user.displayName ? `${user.displayName} · ${user.email}` : user.email}
                 </Text>
               </View>
             </View>
             {divider}
-            <TouchableOpacity onPress={handleSignOut} style={styles.infoRow} activeOpacity={0.7}>
-              <View style={[styles.settingIcon, { backgroundColor: "#EF444418" }]}>
-                <Feather name="log-out" size={18} color="#EF4444" />
+            {/* Cloud sync status */}
+            <View style={styles.infoRow}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Feather name={cloudLoading ? "loader" : cloudError ? "alert-circle" : "cloud"} size={18} color={cloudError ? colors.warning : colors.primary} />
               </View>
-              <Text style={[styles.settingLabel, { color: "#EF4444" }]}>Sign Out</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingLabel, { color: colors.foreground }]}>Cloud sync</Text>
+                <Text style={[styles.settingSubtitle, { color: cloudError ? colors.warning : colors.mutedForeground }]}>
+                  {cloudLoading
+                    ? "Connecting…"
+                    : cloudError
+                    ? cloudError
+                    : `${cloudNotes.length} note${cloudNotes.length !== 1 ? "s" : ""} synced`}
+                </Text>
+              </View>
+            </View>
+            {divider}
+            {/* Sign out */}
+            <TouchableOpacity
+              onPress={handleSignOut}
+              style={styles.infoRow}
+              activeOpacity={0.7}
+              disabled={isAuthenticating}
+            >
+              <View style={[styles.settingIcon, { backgroundColor: "#EF444418" }]}>
+                {isAuthenticating
+                  ? <ActivityIndicator size="small" color="#EF4444" />
+                  : <Feather name="log-out" size={18} color="#EF4444" />}
+              </View>
+              <Text style={[styles.settingLabel, { color: "#EF4444" }]}>
+                {isAuthenticating ? "Signing out…" : "Sign Out"}
+              </Text>
             </TouchableOpacity>
           </SectionCard>
         </View>
@@ -397,4 +439,14 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   infoLabel: { fontSize: 14, flex: 1 },
   infoValue: { fontSize: 14 },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: "600" },
 });
