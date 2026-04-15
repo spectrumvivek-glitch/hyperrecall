@@ -121,7 +121,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="exam"
         options={{
-          title: "Exam",
+          title: "Plan",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="graduationcap" tintColor={color} size={24} />
