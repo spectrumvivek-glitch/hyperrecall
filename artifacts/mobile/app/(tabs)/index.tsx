@@ -24,6 +24,7 @@ import { StreakBadge } from "@/components/StreakBadge";
 import { DailyProgressBar, DeckProgressBar } from "@/components/DailyProgressBar";
 import { BadgeCard } from "@/components/BadgeCard";
 import { Confetti } from "@/components/Confetti";
+import { DailyStreakPopup } from "@/components/DailyStreakPopup";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
@@ -284,6 +285,19 @@ export default function DashboardScreen() {
   const [showImprovementPopup, setShowImprovementPopup] = useState(false);
   const improvementShown = useRef(false);
 
+  // Daily streak popup — once per session, after data loads
+  const [showStreakPopup, setShowStreakPopup] = useState(false);
+  const streakPopupShown = useRef(false);
+
+  useEffect(() => {
+    if (!isLoading && !streakPopupShown.current) {
+      streakPopupShown.current = true;
+      // Small delay so the screen paints first
+      const t = setTimeout(() => setShowStreakPopup(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, [isLoading]);
+
   // Confetti on new badge
   useEffect(() => {
     if (newBadges.length > 0) {
@@ -324,6 +338,13 @@ export default function DashboardScreen() {
 
   return (
     <>
+      <DailyStreakPopup
+        visible={showStreakPopup}
+        streak={userStats.currentStreak}
+        totalXp={xpInfo.totalXp}
+        levelName={xpInfo.levelName}
+        onDismiss={() => setShowStreakPopup(false)}
+      />
       <LevelUpModal
         visible={!!pendingLevelUp}
         newLevel={pendingLevelUp?.newLevel ?? 1}
