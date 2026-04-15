@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   Image,
@@ -20,6 +21,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import {
+  getNotificationSettings,
+  scheduleDailyRevisionReminder,
+} from "@/lib/notifications";
+import {
   ExamReviewItem,
   ExamSession,
   Note,
@@ -30,7 +35,9 @@ import {
   createExamSession,
   deleteExamSession,
   formatDate,
+  getDueNotes,
   getExamSessions,
+  getRevisionPlans,
   getVacationSettings,
   skipExamReviewItem,
   startOfDay,
@@ -575,6 +582,7 @@ function ExamCard({
 
 function PlanBreaksCard() {
   const colors = useColors();
+  const { refresh } = useApp();
   const [vacationSettings, setVacationSettings] = useState({ isActive: false, startDate: 0, endDate: 0, holidayRestActive: false });
   const [vacLoading, setVacLoading] = useState(false);
   const [vacStartText, setVacStartText] = useState("");
@@ -589,51 +597,144 @@ function PlanBreaksCard() {
   }, []);
 
   const parseDate = (text: string): number | null => {
-    const d = new Date(text);
+    const d = new Date(text.trim());
     if (isNaN(d.getTime())) return null;
     return startOfDay(d.getTime());
   };
 
-  const reloadVacation = async () => {
+  // Reload vacation state AND refresh global app state (dueNotes etc.)
+  const reloadAll = async () => {
     setVacationSettings(await getVacationSettings());
+    await refresh();
+  };
+
+  // After any shift, reschedule notifications with the new due count
+  const rescheduleNotifications = async () => {
+    try {
+      const [{ enabled, hour, minute }, due] = await Promise.all([
+        getNotificationSettings(),
+        getDueNotes(),
+      ]);
+      if (enabled) {
+        await scheduleDailyRevisionReminder(hour, minute, due.length);
+      }
+    } catch {
+      // ignore — non-critical
+    }
   };
 
   const handleActivateVacation = async () => {
     const start = parseDate(vacStartText);
     const end = parseDate(vacEndText);
-    if (!start || !end || end <= start) return;
-    setVacLoading(true);
-    try {
-      await activateVacation(start, end);
-      await reloadVacation();
-      setShowVacForm(false);
-      setVacStartText("");
-      setVacEndText("");
-    } finally {
-      setVacLoading(false);
+    if (!start || !end) {
+      Alert.alert("Invalid dates", "Please enter dates in YYYY-MM-DD format.");
+      return;
     }
+    if (end <= start) {
+      Alert.alert("Invalid range", "End date must be after start date.");
+      return;
+    }
+    const days = Math.ceil((end - start) / 86400000);
+    // Count how many notes will be shifted
+    const plans = await getRevisionPlans();
+    const affected = plans.filter(
+      (p) => startOfDay(p.nextRevisionDate) >= start && startOfDay(p.nextRevisionDate) < end
+    ).length;
+
+    Alert.alert(
+      "Activate Vacation Mode?",
+      `All ${affected > 0 ? `${affected} ` : ""}review${affected !== 1 ? "s" : ""} will be shifted forward by ${days} day${days !== 1 ? "s" : ""}. Your streak is protected.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Activate",
+          onPress: async () => {
+            setVacLoading(true);
+            try {
+              await activateVacation(start, end);
+              await reloadAll();
+              await rescheduleNotifications();
+              setShowVacForm(false);
+              setVacStartText("");
+              setVacEndText("");
+              Alert.alert("Vacation Mode On ☀️", `Your revision schedule has been shifted by ${days} day${days !== 1 ? "s" : ""}. Enjoy your break!`);
+            } finally {
+              setVacLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleDeactivateVacation = async () => {
-    setVacLoading(true);
-    try {
-      await deactivateVacation();
-      await reloadVacation();
-    } finally {
-      setVacLoading(false);
-    }
+    Alert.alert(
+      "Deactivate Vacation Mode?",
+      "Your shifted schedule will remain as-is. Future reviews stay on their new dates.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Deactivate",
+          onPress: async () => {
+            setVacLoading(true);
+            try {
+              await deactivateVacation();
+              await reloadAll();
+            } finally {
+              setVacLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleHolidayRest = async () => {
-    const restTs = new Date(`${holidayDateText}T00:00:00`).getTime();
-    if (isNaN(restTs)) return;
-    setHolidayLoading(true);
-    try {
-      await activateHolidayRest(restTs);
-      await reloadVacation();
-    } finally {
-      setHolidayLoading(false);
+    const trimmed = holidayDateText.trim();
+    const restTs = new Date(`${trimmed}T00:00:00`).getTime();
+    if (isNaN(restTs)) {
+      Alert.alert("Invalid date", "Please enter a valid date in YYYY-MM-DD format.");
+      return;
     }
+    const restDayStart = startOfDay(restTs);
+    const nextDayStart = restDayStart + 86400000;
+
+    // Count notes that will be shifted
+    const plans = await getRevisionPlans();
+    const affected = plans.filter((p) => startOfDay(p.nextRevisionDate) === restDayStart).length;
+
+    const restLabel = new Date(restDayStart).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+    const nextLabel = new Date(nextDayStart).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+
+    if (affected === 0) {
+      Alert.alert("No reviews on that day", `There are no reviews scheduled for ${restLabel}. Nothing to shift.`);
+      return;
+    }
+
+    Alert.alert(
+      "Set Holiday Rest Day?",
+      `${affected} review${affected !== 1 ? "s" : ""} scheduled for ${restLabel} will be moved to ${nextLabel}. Your streak is protected.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            setHolidayLoading(true);
+            try {
+              await activateHolidayRest(restTs);
+              await reloadAll();
+              await rescheduleNotifications();
+              Alert.alert(
+                "Rest Day Set ✅",
+                `${affected} review${affected !== 1 ? "s" : ""} moved from ${restLabel} to ${nextLabel}. Enjoy your holiday!`
+              );
+            } finally {
+              setHolidayLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const cardStyle = [ecStyles.controlCard, { backgroundColor: colors.card, borderColor: colors.border }];
