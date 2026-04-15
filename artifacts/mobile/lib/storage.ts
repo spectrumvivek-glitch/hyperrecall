@@ -351,7 +351,7 @@ export async function getUserStats(): Promise<UserStats> {
       yesterdayCompleted: 0,
       lastXpDate: 0,
       earnedBadges: [],
-      dailyGoal: 10,
+      dailyGoal: 5,
       ...parsed,
     };
   }
@@ -365,7 +365,7 @@ export async function getUserStats(): Promise<UserStats> {
     yesterdayCompleted: 0,
     lastXpDate: 0,
     earnedBadges: [],
-    dailyGoal: 10,
+    dailyGoal: 5,
   };
 }
 

@@ -113,7 +113,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     yesterdayCompleted: 0,
     lastXpDate: 0,
     earnedBadges: [],
-    dailyGoal: 10,
+    dailyGoal: 5,
   });
   const [vacationSettings, setVacationSettings] = useState<VacationSettings>(DEFAULT_VACATION);
   const [dueNotes, setDueNotes] = useState<{ note: Note; plan: RevisionPlan }[]>([]);

@@ -280,7 +280,7 @@ export default function DashboardScreen() {
 
   const [showConfetti, setShowConfetti] = useState(false);
   const prevBadgeCount = useRef((userStats.earnedBadges ?? []).length);
-  const prevGoalDone = useRef(userStats.todayCompleted >= (userStats.dailyGoal ?? 10));
+  const prevGoalDone = useRef(userStats.todayCompleted >= (userStats.dailyGoal ?? 5));
   const [showImprovementPopup, setShowImprovementPopup] = useState(false);
   const improvementShown = useRef(false);
 
@@ -293,7 +293,7 @@ export default function DashboardScreen() {
 
   // Confetti when daily goal is first reached in this session
   useEffect(() => {
-    const done = userStats.todayCompleted >= (userStats.dailyGoal ?? 10) && userStats.todayCompleted > 0;
+    const done = userStats.todayCompleted >= (userStats.dailyGoal ?? 5) && userStats.todayCompleted > 0;
     if (done && !prevGoalDone.current) {
       setShowConfetti(true);
     }
@@ -450,7 +450,7 @@ export default function DashboardScreen() {
         {/* Progress Bars */}
         <DailyProgressBar
           completed={userStats.todayCompleted}
-          goal={userStats.dailyGoal ?? 10}
+          goal={userStats.dailyGoal ?? 5}
         />
         {notes.length > 0 && (
           <DeckProgressBar
