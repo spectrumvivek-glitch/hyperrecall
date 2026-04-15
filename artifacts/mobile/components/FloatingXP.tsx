@@ -13,20 +13,33 @@ export function FloatingXP({ amount, visible, onHide }: Props) {
   const colors = useColors();
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
     if (!visible) return;
     translateY.setValue(0);
     opacity.setValue(0);
+    scale.setValue(0.4);
+
     Animated.sequence([
+      // Pop in with spring bounce
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -30, duration: 200, useNativeDriver: true }),
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 140,
+          friction: 6,
+        }),
+        Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -20, duration: 300, useNativeDriver: true }),
       ]),
-      Animated.delay(600),
+      // Hold
+      Animated.delay(700),
+      // Float up and fade out
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -60, duration: 300, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -80, duration: 350, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 0.8, duration: 350, useNativeDriver: true }),
       ]),
     ]).start(() => onHide());
   }, [visible, amount]);
@@ -40,12 +53,13 @@ export function FloatingXP({ amount, visible, onHide }: Props) {
         {
           backgroundColor: colors.warning,
           opacity,
-          transform: [{ translateY }],
+          transform: [{ translateY }, { scale }],
+          shadowColor: colors.warning,
         },
       ]}
       pointerEvents="none"
     >
-      <Text style={styles.text}>+{amount} XP ⚡</Text>
+      <Text style={styles.text}>⚡ +{amount} XP</Text>
     </Animated.View>
   );
 }
@@ -53,21 +67,21 @@ export function FloatingXP({ amount, visible, onHide }: Props) {
 const styles = StyleSheet.create({
   badge: {
     position: "absolute",
-    top: "40%",
+    top: "38%",
     alignSelf: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 24,
     zIndex: 999,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 12,
   },
   text: {
     color: "#fff",
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "800",
+    letterSpacing: 0.5,
   },
 });

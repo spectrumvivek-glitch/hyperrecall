@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Platform,
   RefreshControl,
   ScrollView,
@@ -21,6 +22,7 @@ import { StatCard } from "@/components/StatCard";
 import { StreakBadge } from "@/components/StreakBadge";
 import { DailyProgressBar, DeckProgressBar } from "@/components/DailyProgressBar";
 import { BadgeCard } from "@/components/BadgeCard";
+import { Confetti } from "@/components/Confetti";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
@@ -85,33 +87,52 @@ function NewBadgeBanner({
   colors: ReturnType<typeof useColors>;
 }) {
   const badge = getBadgeDef(badgeIds[0]);
+  const translateY = useRef(new Animated.Value(-80)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.85)).current;
+
+  useEffect(() => {
+    if (badgeIds.length === 0) return;
+    translateY.setValue(-80);
+    opacity.setValue(0);
+    scale.setValue(0.85);
+    Animated.parallel([
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 9 }),
+      Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
+    ]).start();
+  }, [badgeIds.length]);
+
   if (!badge) return null;
+
   return (
-    <TouchableOpacity
-      onPress={onDismiss}
-      activeOpacity={0.85}
-      style={[
-        styles.badgeBanner,
-        { backgroundColor: badge.color + "15", borderColor: badge.color + "50" },
-      ]}
-    >
-      <View style={[styles.badgeBannerIcon, { backgroundColor: badge.color + "25" }]}>
-        <Feather name={badge.icon as any} size={20} color={badge.color} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.badgeBannerTitle, { color: badge.color }]}>
-          🏅 Badge Unlocked!
-        </Text>
-        <Text style={[styles.badgeBannerName, { color: colors.foreground }]}>
-          {badge.name}
-          {badgeIds.length > 1 ? ` +${badgeIds.length - 1} more` : ""}
-        </Text>
-        <Text style={[styles.badgeBannerDesc, { color: colors.mutedForeground }]}>
-          {badge.description}
-        </Text>
-      </View>
-      <Feather name="x" size={16} color={colors.mutedForeground} />
-    </TouchableOpacity>
+    <Animated.View style={{ opacity, transform: [{ translateY }, { scale }] }}>
+      <TouchableOpacity
+        onPress={onDismiss}
+        activeOpacity={0.85}
+        style={[
+          styles.badgeBanner,
+          { backgroundColor: badge.color + "15", borderColor: badge.color + "50" },
+        ]}
+      >
+        <View style={[styles.badgeBannerIcon, { backgroundColor: badge.color + "25" }]}>
+          <Feather name={badge.icon as any} size={20} color={badge.color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.badgeBannerTitle, { color: badge.color }]}>
+            🏅 Badge Unlocked!
+          </Text>
+          <Text style={[styles.badgeBannerName, { color: colors.foreground }]}>
+            {badge.name}
+            {badgeIds.length > 1 ? ` +${badgeIds.length - 1} more` : ""}
+          </Text>
+          <Text style={[styles.badgeBannerDesc, { color: colors.mutedForeground }]}>
+            {badge.description}
+          </Text>
+        </View>
+        <Feather name="x" size={16} color={colors.mutedForeground} />
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -256,6 +277,26 @@ export default function DashboardScreen() {
     newBadges, dismissNewBadges,
   } = useApp();
 
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevBadgeCount = useRef((userStats.earnedBadges ?? []).length);
+  const prevGoalDone = useRef(userStats.todayCompleted >= (userStats.dailyGoal ?? 10));
+
+  // Confetti on new badge
+  useEffect(() => {
+    if (newBadges.length > 0) {
+      setShowConfetti(true);
+    }
+  }, [newBadges.length]);
+
+  // Confetti when daily goal is first reached in this session
+  useEffect(() => {
+    const done = userStats.todayCompleted >= (userStats.dailyGoal ?? 10) && userStats.todayCompleted > 0;
+    if (done && !prevGoalDone.current) {
+      setShowConfetti(true);
+    }
+    prevGoalDone.current = done;
+  }, [userStats.todayCompleted]);
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -272,6 +313,10 @@ export default function DashboardScreen() {
         levelName={pendingLevelUp?.levelName ?? ""}
         xpGained={pendingLevelUp?.xpGained ?? 0}
         onDismiss={dismissLevelUp}
+      />
+      <Confetti
+        visible={showConfetti}
+        onDone={() => setShowConfetti(false)}
       />
 
       <ScrollView
@@ -297,7 +342,7 @@ export default function DashboardScreen() {
             </Text>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>Recallify</Text>
           </View>
-          <StreakBadge streak={userStats.currentStreak} size="md" />
+          <StreakBadge streak={userStats.currentStreak} size="md" pulse={userStats.currentStreak > 0} />
         </View>
 
         {/* New Badge Banner */}

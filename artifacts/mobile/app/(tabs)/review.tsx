@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
+  Animated,
   Platform,
   RefreshControl,
   ScrollView,
@@ -44,6 +45,29 @@ function DueCard({
   const colors = useColors();
   const [showRating, setShowRating] = useState(false);
 
+  // Exit animation state
+  const exitScale = useRef(new Animated.Value(1)).current;
+  const exitOpacity = useRef(new Animated.Value(1)).current;
+  const exitTranslateY = useRef(new Animated.Value(0)).current;
+  const flashAnim = useRef(new Animated.Value(0)).current;
+
+  const animateAndComplete = (callback: () => void) => {
+    // Green flash on the card border/background
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 1, duration: 100, useNativeDriver: false }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 80, useNativeDriver: false }),
+    ]).start();
+    // Simultaneous exit: scale down + slide up + fade
+    Animated.sequence([
+      Animated.delay(80),
+      Animated.parallel([
+        Animated.timing(exitScale, { toValue: 0.88, duration: 220, useNativeDriver: true }),
+        Animated.timing(exitOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.timing(exitTranslateY, { toValue: -18, duration: 250, useNativeDriver: true }),
+      ]),
+    ]).start(() => callback());
+  };
+
   const isSM2 = plan.mode === "sm2";
   const intervalLabels = ["Day 1", "Day 3", "Day 7", "Day 14", "Day 30", "Day 60", "Day 90"];
   const stepLabel = isSM2
@@ -54,23 +78,30 @@ function DueCard({
     if (isSM2) {
       setShowRating(true);
     } else {
-      onDone();
+      animateAndComplete(() => onDone());
     }
   };
 
   const handleRate = (quality: number) => {
     setShowRating(false);
-    onDone(quality);
+    animateAndComplete(() => onDone(quality));
   };
 
+  const flashBorder = flashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [showRating ? colors.warning + "50" : colors.border, "#22C55E80"],
+  });
+
   return (
-    <View
+    <Animated.View
       style={[
         cardStyles.card,
         {
           backgroundColor: colors.card,
-          borderColor: showRating ? colors.warning + "50" : colors.border,
+          borderColor: flashBorder,
           shadowColor: showRating ? colors.warning : categoryColor,
+          opacity: exitOpacity,
+          transform: [{ scale: exitScale }, { translateY: exitTranslateY }],
         },
       ]}
     >
@@ -168,7 +199,7 @@ function DueCard({
           </View>
         )}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

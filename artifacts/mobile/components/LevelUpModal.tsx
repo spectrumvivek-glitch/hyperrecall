@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   Modal,
   StyleSheet,
   Text,
@@ -9,7 +10,10 @@ import {
   View,
 } from "react-native";
 
+import { Confetti } from "@/components/Confetti";
 import { useColors } from "@/hooks/useColors";
+
+const { width: SW } = Dimensions.get("window");
 
 interface LevelUpModalProps {
   visible: boolean;
@@ -26,19 +30,21 @@ export function LevelUpModal({ visible, newLevel, levelName, xpGained, onDismiss
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const starAnim = useRef(new Animated.Value(0)).current;
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (visible) {
       scaleAnim.setValue(0);
       fadeAnim.setValue(0);
       starAnim.setValue(0);
+      setShowConfetti(false);
       Animated.sequence([
         Animated.parallel([
           Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }),
           Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
         ]),
         Animated.spring(starAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 6 }),
-      ]).start();
+      ]).start(() => setShowConfetti(true));
     }
   }, [visible]);
 
@@ -47,6 +53,7 @@ export function LevelUpModal({ visible, newLevel, levelName, xpGained, onDismiss
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onDismiss}>
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+        <Confetti visible={showConfetti} originX={SW / 2} originY={100} onDone={() => setShowConfetti(false)} />
         <Animated.View
           style={[
             styles.card,

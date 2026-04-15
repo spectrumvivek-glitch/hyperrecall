@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -24,8 +24,47 @@ export function DailyProgressBar({
   const pct = goal > 0 ? Math.min(completed / goal, 1) : 0;
   const done = completed >= goal;
 
+  const [trackWidth, setTrackWidth] = useState(0);
+  const fillAnim = useRef(new Animated.Value(0)).current;
+  const celebrateScale = useRef(new Animated.Value(1)).current;
+  const prevDone = useRef(false);
+
+  const onTrackLayout = (e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  };
+
+  useEffect(() => {
+    if (trackWidth <= 0) return;
+    const targetWidth = Math.max(pct > 0 ? 8 : 0, pct * trackWidth);
+    Animated.spring(fillAnim, {
+      toValue: targetWidth,
+      useNativeDriver: false,
+      tension: 40,
+      friction: 8,
+    }).start();
+  }, [pct, trackWidth]);
+
+  // Celebrate when goal is first reached
+  useEffect(() => {
+    if (done && !prevDone.current) {
+      prevDone.current = true;
+      Animated.sequence([
+        Animated.spring(celebrateScale, { toValue: 1.06, useNativeDriver: true, tension: 200, friction: 5 }),
+        Animated.spring(celebrateScale, { toValue: 1, useNativeDriver: true, tension: 100, friction: 8 }),
+      ]).start();
+    } else if (!done) {
+      prevDone.current = false;
+    }
+  }, [done]);
+
   return (
-    <View style={[styles.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <Animated.View
+      style={[
+        styles.wrap,
+        { backgroundColor: colors.card, borderColor: done ? colors.success + "50" : colors.border },
+        { transform: [{ scale: celebrateScale }] },
+      ]}
+    >
       <View style={styles.topRow}>
         <View style={styles.labelRow}>
           <Feather
@@ -42,20 +81,22 @@ export function DailyProgressBar({
           <Text style={[styles.countSep, { color: colors.mutedForeground }]}>/ {goal}</Text>
         </View>
       </View>
-      <View style={[styles.track, { backgroundColor: colors.muted }]}>
-        <LinearGradient
-          colors={done ? ["#22C55E", "#16A34A"] : [accentStart, accentEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.fill, { width: `${Math.max(pct > 0 ? 4 : 0, Math.round(pct * 100))}%` }]}
-        />
+      <View style={[styles.track, { backgroundColor: colors.muted }]} onLayout={onTrackLayout}>
+        <Animated.View style={[styles.fillWrap, { width: fillAnim }]}>
+          <LinearGradient
+            colors={done ? ["#22C55E", "#16A34A"] : [accentStart, accentEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
       </View>
-      <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+      <Text style={[styles.sub, { color: done ? colors.success : colors.mutedForeground }]}>
         {done
-          ? "Daily goal reached! Great work 🎉"
+          ? "🎉 Daily goal reached! Great work!"
           : `${goal - completed} more to reach your daily goal`}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -67,6 +108,24 @@ interface DeckProgressBarProps {
 export function DeckProgressBar({ notesWithPlans, totalNotes }: DeckProgressBarProps) {
   const colors = useColors();
   const pct = totalNotes > 0 ? Math.min(notesWithPlans / totalNotes, 1) : 0;
+
+  const [trackWidth, setTrackWidth] = useState(0);
+  const fillAnim = useRef(new Animated.Value(0)).current;
+
+  const onTrackLayout = (e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  };
+
+  useEffect(() => {
+    if (trackWidth <= 0) return;
+    const targetWidth = Math.max(pct > 0 ? 8 : 0, pct * trackWidth);
+    Animated.spring(fillAnim, {
+      toValue: targetWidth,
+      useNativeDriver: false,
+      tension: 40,
+      friction: 8,
+    }).start();
+  }, [pct, trackWidth]);
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -80,13 +139,15 @@ export function DeckProgressBar({ notesWithPlans, totalNotes }: DeckProgressBarP
           <Text style={[styles.countSep, { color: colors.mutedForeground }]}>/ {totalNotes}</Text>
         </View>
       </View>
-      <View style={[styles.track, { backgroundColor: colors.muted }]}>
-        <LinearGradient
-          colors={["#F59E0B", "#EF4444"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.fill, { width: `${Math.max(pct > 0 ? 4 : 0, Math.round(pct * 100))}%` }]}
-        />
+      <View style={[styles.track, { backgroundColor: colors.muted }]} onLayout={onTrackLayout}>
+        <Animated.View style={[styles.fillWrap, { width: fillAnim }]}>
+          <LinearGradient
+            colors={["#F59E0B", "#EF4444"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
       </View>
       <Text style={[styles.sub, { color: colors.mutedForeground }]}>
         {notesWithPlans} of {totalNotes} note{totalNotes !== 1 ? "s" : ""} scheduled for review
@@ -134,9 +195,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: "hidden",
   },
-  fill: {
+  fillWrap: {
     height: 8,
     borderRadius: 4,
+    overflow: "hidden",
   },
   sub: {
     fontSize: 12,
