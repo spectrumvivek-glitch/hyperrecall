@@ -21,24 +21,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import {
-  getNotificationSettings,
-  scheduleDailyRevisionReminder,
-} from "@/lib/notifications";
-import {
   ExamReviewItem,
   ExamSession,
   Note,
-  activateHolidayRest,
-  activateVacation,
-  deactivateVacation,
   completeExamReviewItem,
   createExamSession,
   deleteExamSession,
   formatDate,
-  getDueNotes,
   getExamSessions,
   getRevisionPlans,
-  getVacationSettings,
   skipExamReviewItem,
   startOfDay,
 } from "@/lib/storage";
@@ -580,222 +571,6 @@ function ExamCard({
   );
 }
 
-function PlanBreaksCard() {
-  const colors = useColors();
-  const { refresh, refreshVacation } = useApp();
-  const [vacationSettings, setVacationSettings] = useState({ isActive: false, startDate: 0, endDate: 0, holidayRestActive: false });
-  const [vacLoading, setVacLoading] = useState(false);
-  const [vacStartText, setVacStartText] = useState("");
-  const [vacEndText, setVacEndText] = useState("");
-  const [showVacForm, setShowVacForm] = useState(false);
-  const [holidayLoading, setHolidayLoading] = useState(false);
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [holidayDateText, setHolidayDateText] = useState(todayStr);
-
-  useEffect(() => {
-    getVacationSettings().then(setVacationSettings);
-  }, []);
-
-  const parseDate = (text: string): number | null => {
-    const d = new Date(text.trim());
-    if (isNaN(d.getTime())) return null;
-    return startOfDay(d.getTime());
-  };
-
-  // Reload vacation state AND refresh global app state (dueNotes, vacationSettings in context etc.)
-  const reloadAll = async () => {
-    const latest = await getVacationSettings();
-    setVacationSettings(latest);
-    await Promise.all([refresh(), refreshVacation()]);
-  };
-
-  // After any shift, reschedule notifications with the new due count
-  const rescheduleNotifications = async () => {
-    try {
-      const [{ enabled, hour, minute }, due] = await Promise.all([
-        getNotificationSettings(),
-        getDueNotes(),
-      ]);
-      if (enabled) {
-        await scheduleDailyRevisionReminder(hour, minute, due.length);
-      }
-    } catch {
-      // ignore — non-critical
-    }
-  };
-
-  const handleActivateVacation = async () => {
-    const start = parseDate(vacStartText);
-    const end = parseDate(vacEndText);
-    if (!start || !end) {
-      Alert.alert("Invalid dates", "Please enter dates in YYYY-MM-DD format.");
-      return;
-    }
-    if (end <= start) {
-      Alert.alert("Invalid range", "End date must be after start date.");
-      return;
-    }
-    const days = Math.ceil((end - start) / 86400000);
-    // Count how many notes will be shifted
-    const plans = await getRevisionPlans();
-    const affected = plans.filter(
-      (p) => startOfDay(p.nextRevisionDate) >= start && startOfDay(p.nextRevisionDate) < end
-    ).length;
-
-    Alert.alert(
-      "Activate Vacation Mode?",
-      `All ${affected > 0 ? `${affected} ` : ""}review${affected !== 1 ? "s" : ""} will be shifted forward by ${days} day${days !== 1 ? "s" : ""}. Your streak is protected.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Activate",
-          onPress: async () => {
-            setVacLoading(true);
-            try {
-              await activateVacation(start, end);
-              await reloadAll();
-              await rescheduleNotifications();
-              setShowVacForm(false);
-              setVacStartText("");
-              setVacEndText("");
-              Alert.alert("Vacation Mode On ☀️", `Your revision schedule has been shifted by ${days} day${days !== 1 ? "s" : ""}. Enjoy your break!`);
-            } finally {
-              setVacLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDeactivateVacation = async () => {
-    Alert.alert(
-      "Deactivate Vacation Mode?",
-      "Your shifted schedule will remain as-is. Future reviews stay on their new dates.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Deactivate",
-          onPress: async () => {
-            setVacLoading(true);
-            try {
-              await deactivateVacation();
-              await reloadAll();
-            } finally {
-              setVacLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleHolidayRest = async () => {
-    const trimmed = holidayDateText.trim();
-    const restTs = new Date(`${trimmed}T00:00:00`).getTime();
-    if (isNaN(restTs)) {
-      Alert.alert("Invalid date", "Please enter a valid date in YYYY-MM-DD format.");
-      return;
-    }
-    const restDayStart = startOfDay(restTs);
-    const nextDayStart = restDayStart + 86400000;
-
-    // Count notes that will be shifted
-    const plans = await getRevisionPlans();
-    const affected = plans.filter((p) => startOfDay(p.nextRevisionDate) === restDayStart).length;
-
-    const restLabel = new Date(restDayStart).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
-    const nextLabel = new Date(nextDayStart).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
-
-    if (affected === 0) {
-      Alert.alert("No reviews on that day", `There are no reviews scheduled for ${restLabel}. Nothing to shift.`);
-      return;
-    }
-
-    Alert.alert(
-      "Set Holiday Rest Day?",
-      `${affected} review${affected !== 1 ? "s" : ""} scheduled for ${restLabel} will be moved to ${nextLabel}. Your streak is protected.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            setHolidayLoading(true);
-            try {
-              await activateHolidayRest(restTs);
-              await reloadAll();
-              await rescheduleNotifications();
-              Alert.alert(
-                "Rest Day Set ✅",
-                `${affected} review${affected !== 1 ? "s" : ""} moved from ${restLabel} to ${nextLabel}. Enjoy your holiday!`
-              );
-            } finally {
-              setHolidayLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const cardStyle = [ecStyles.controlCard, { backgroundColor: colors.card, borderColor: colors.border }];
-  const equalCol = ecStyles.equalCol;
-
-  return (
-    <View style={ecStyles.breaksGrid}>
-      <View style={[cardStyle, equalCol]}>
-        <View style={ecStyles.controlHead}>
-          <View style={[ecStyles.controlIcon, { backgroundColor: "#3b82f6" + "18" }]}>
-            <Feather name="umbrella" size={18} color="#3b82f6" />
-          </View>
-          <Text style={[ecStyles.controlTitle, { color: colors.foreground }]}>Vacation Mode</Text>
-        </View>
-        <Text style={[ecStyles.controlSub, { color: colors.mutedForeground }]}>
-          {vacationSettings.isActive ? `Active · returns ${formatDate(vacationSettings.endDate)}` : "Shift all reviews while you're away"}
-        </Text>
-        {vacationSettings.isActive ? (
-          <TouchableOpacity onPress={handleDeactivateVacation} disabled={vacLoading} style={[ecStyles.smallBtn, { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "40" }]} activeOpacity={0.7}>
-            <Text style={[ecStyles.smallBtnText, { color: colors.destructive }]}>End</Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            {showVacForm ? (
-              <View style={{ gap: 8 }}>
-                <TextInput value={vacStartText} onChangeText={setVacStartText} placeholder="Start YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[ecStyles.planInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]} />
-                <TextInput value={vacEndText} onChangeText={setVacEndText} placeholder="End YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[ecStyles.planInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]} />
-                <TouchableOpacity onPress={handleActivateVacation} disabled={vacLoading} style={[ecStyles.primaryBtn, { opacity: vacLoading ? 0.6 : 1 }]} activeOpacity={0.85}>
-                  <LinearGradient colors={["#3b82f6", "#2563eb"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ecStyles.primaryBtnGrad}>
-                    <Text style={ecStyles.primaryBtnText}>{vacLoading ? "Activating..." : "Activate"}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity onPress={() => setShowVacForm(true)} style={[ecStyles.smallBtn, { backgroundColor: "#3b82f6" + "15", borderColor: "#3b82f6" + "40" }]} activeOpacity={0.7}>
-                <Text style={[ecStyles.smallBtnText, { color: "#3b82f6" }]}>Plan</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-      </View>
-
-      <View style={[cardStyle, equalCol]}>
-        <View style={ecStyles.controlHead}>
-          <View style={[ecStyles.controlIcon, { backgroundColor: "#f59e0b" + "18" }]}>
-            <Feather name="sun" size={18} color="#f59e0b" />
-          </View>
-          <Text style={[ecStyles.controlTitle, { color: colors.foreground }]}>Holiday Rest</Text>
-        </View>
-        <Text style={[ecStyles.controlSub, { color: colors.mutedForeground }]}>Pick a day to skip and push notes forward</Text>
-        <TextInput value={holidayDateText} onChangeText={setHolidayDateText} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[ecStyles.planInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]} />
-        <TouchableOpacity onPress={handleHolidayRest} disabled={holidayLoading} style={[ecStyles.primaryBtn, { opacity: holidayLoading ? 0.6 : 1 }]} activeOpacity={0.85}>
-          <LinearGradient colors={["#f59e0b", "#d97706"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ecStyles.primaryBtnGrad}>
-            <Text style={ecStyles.primaryBtnText}>{holidayLoading ? "Applying..." : "Set Rest Day"}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
 
 const ecStyles = StyleSheet.create({
   card: { borderRadius: 18, borderWidth: 1, overflow: "hidden", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 5 },
@@ -819,19 +594,9 @@ const ecStyles = StyleSheet.create({
   dueBadge: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   dueText: { flex: 1, fontSize: 14, fontWeight: "600" },
   reviewList: { padding: 14, gap: 12, borderTopWidth: 1, borderTopColor: "#E8EDF4" },
-  breaksGrid: { flexDirection: "row", gap: 12 },
-  equalCol: { flex: 1 },
-  controlCard: { borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },
-  controlHead: { flexDirection: "row", alignItems: "center", gap: 10 },
-  controlIcon: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  controlTitle: { fontSize: 15, fontWeight: "700" },
-  controlSub: { fontSize: 12, lineHeight: 17 },
-  planInput: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 10, fontSize: 13 },
   primaryBtn: { borderRadius: 12, overflow: "hidden" },
   primaryBtnGrad: { paddingVertical: 11, alignItems: "center" },
   primaryBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  smallBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, alignSelf: "flex-start" },
-  smallBtnText: { fontSize: 13, fontWeight: "600" },
 });
 
 // ── Create Exam Modal ──────────────────────────────────────────────────────────
@@ -1266,11 +1031,6 @@ export default function ExamScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Breaks & Rest — always at bottom */}
-        <View style={scStyles.section}>
-          <Text style={[scStyles.sectionTitle, { color: colors.foreground }]}>Breaks & Rest</Text>
-          <PlanBreaksCard />
-        </View>
       </ScrollView>
 
     </>

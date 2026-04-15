@@ -55,21 +55,12 @@ export interface UserStats {
   dailyGoal: number;
 }
 
-export interface VacationSettings {
-  isActive: boolean;
-  startDate: number;
-  endDate: number;
-  holidayRestActive: boolean;
-  lastHolidayRestDate?: number; // timestamp of the rest day that was most recently applied
-}
-
 const KEYS = {
   CATEGORIES: "sr_categories",
   NOTES: "sr_notes",
   REVISION_PLANS: "sr_revision_plans",
   REVISION_LOGS: "sr_revision_logs",
   USER_STATS: "sr_user_stats",
-  VACATION: "sr_vacation_settings",
 };
 
 function genId(): string {
@@ -391,46 +382,6 @@ export async function awardCategoryCompletionXp(categoryId: string): Promise<boo
   return true;
 }
 
-// Vacation Mode
-export async function getVacationSettings(): Promise<VacationSettings> {
-  const raw = await AsyncStorage.getItem(KEYS.VACATION);
-  if (raw) return JSON.parse(raw);
-  return { isActive: false, startDate: 0, endDate: 0, holidayRestActive: false };
-}
-
-export async function saveVacationSettings(settings: VacationSettings): Promise<void> {
-  await AsyncStorage.setItem(KEYS.VACATION, JSON.stringify(settings));
-}
-
-export async function activateVacation(startDate: number, endDate: number): Promise<void> {
-  const vacDays = Math.ceil((endDate - startDate) / (24 * 60 * 60 * 1000));
-  const shiftMs = vacDays * 24 * 60 * 60 * 1000;
-  const plans = await getRevisionPlans();
-  const shifted = plans.map((p) => ({ ...p, nextRevisionDate: p.nextRevisionDate + shiftMs }));
-  await saveRevisionPlans(shifted);
-  await saveVacationSettings({ isActive: true, startDate, endDate, holidayRestActive: false });
-}
-
-export async function deactivateVacation(): Promise<void> {
-  const settings = await getVacationSettings();
-  await saveVacationSettings({ ...settings, isActive: false });
-}
-
-export async function activateHolidayRest(restDate: number): Promise<void> {
-  const restDayStart = startOfDay(restDate);
-  const nextDayStart = restDayStart + 24 * 60 * 60 * 1000;
-  const plans = await getRevisionPlans();
-  const shifted = plans.map((p) => {
-    const dueDayStart = startOfDay(p.nextRevisionDate);
-    if (dueDayStart === restDayStart) {
-      return { ...p, nextRevisionDate: nextDayStart };
-    }
-    return p;
-  });
-  await saveRevisionPlans(shifted);
-  const settings = await getVacationSettings();
-  await saveVacationSettings({ ...settings, holidayRestActive: false, lastHolidayRestDate: restDayStart });
-}
 
 export function startOfDay(ts: number): number {
   const d = new Date(ts);

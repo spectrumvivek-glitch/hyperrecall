@@ -13,7 +13,6 @@ import {
   NoteImage,
   RevisionPlan,
   UserStats,
-  VacationSettings,
   awardShareXp,
   completeRevision,
   createCategory,
@@ -26,7 +25,6 @@ import {
   getNotes,
   getRevisionPlans,
   getUserStats,
-  getVacationSettings,
   saveUserStats,
   seedDefaultsIfNeeded,
   skipRevision,
@@ -55,7 +53,6 @@ interface AppContextValue {
   notes: Note[];
   revisionPlans: RevisionPlan[];
   userStats: UserStats;
-  vacationSettings: VacationSettings;
   dueNotes: { note: Note; plan: RevisionPlan }[];
   isLoading: boolean;
   xpInfo: XpInfo;
@@ -86,7 +83,6 @@ interface AppContextValue {
   shareAndEarnXp: () => Promise<void>;
 
   refresh: () => Promise<void>;
-  refreshVacation: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -95,8 +91,6 @@ function buildXpInfo(stats: UserStats): XpInfo {
   const info = getXpProgress(stats.totalXp);
   return { totalXp: stats.totalXp, ...info };
 }
-
-const DEFAULT_VACATION: VacationSettings = { isActive: false, startDate: 0, endDate: 0, holidayRestActive: false };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -114,7 +108,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     earnedBadges: [],
     dailyGoal: 5,
   });
-  const [vacationSettings, setVacationSettings] = useState<VacationSettings>(DEFAULT_VACATION);
   const [dueNotes, setDueNotes] = useState<{ note: Note; plan: RevisionPlan }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingLevelUp, setPendingLevelUp] = useState<LevelUpEvent | null>(null);
@@ -140,15 +133,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDueNotes(due);
   }, []);
 
-  const refreshVacation = useCallback(async () => {
-    const vac = await getVacationSettings();
-    setVacationSettings(vac);
-  }, []);
-
   useEffect(() => {
     const init = async () => {
       await seedDefaultsIfNeeded();
-      await Promise.all([refresh(), refreshVacation()]);
+      await refresh();
       setIsLoading(false);
       // Reuse already-fetched dueNotes — do not re-fetch; init notifications async
       initNotificationsOnFirstLaunch(0).catch(() => {});
@@ -245,7 +233,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         notes,
         revisionPlans,
         userStats,
-        vacationSettings,
         dueNotes,
         isLoading,
         xpInfo,
@@ -266,7 +253,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         markSkipped,
         shareAndEarnXp,
         refresh,
-        refreshVacation,
       }}
     >
       {children}
