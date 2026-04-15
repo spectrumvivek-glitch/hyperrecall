@@ -40,10 +40,10 @@ export default function RevisionScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const handleComplete = async (sm2Quality?: number) => {
+  const handleComplete = async () => {
     const item = sessionNotes[currentIndex];
     if (!item) return;
-    const earned = await markCompleted(item.note.id, sm2Quality);
+    const earned = await markCompleted(item.note.id);
     const newTotalXp = sessionXp + earned;
     setSessionCompleted((c) => c + 1);
     setSessionXp(newTotalXp);

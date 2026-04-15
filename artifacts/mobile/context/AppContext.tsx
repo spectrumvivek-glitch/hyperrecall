@@ -76,13 +76,12 @@ interface AppContextValue {
     categoryId: string,
     content: string,
     images: NoteImage[],
-    intervals: number[],
-    mode?: "custom" | "sm2"
+    intervals: number[]
   ) => Promise<Note>;
-  editNote: (id: string, updates: Partial<Note>, intervals?: number[], mode?: "custom" | "sm2") => Promise<void>;
+  editNote: (id: string, updates: Partial<Note>, intervals?: number[]) => Promise<void>;
   removeNote: (id: string) => Promise<void>;
 
-  markCompleted: (noteId: string, sm2Quality?: number) => Promise<number>;
+  markCompleted: (noteId: string) => Promise<number>;
   markSkipped: (noteId: string) => Promise<void>;
   shareAndEarnXp: () => Promise<void>;
 
@@ -173,20 +172,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     categoryId: string,
     content: string,
     images: NoteImage[],
-    intervals: number[],
-    mode: "custom" | "sm2" = "custom"
+    intervals: number[]
   ) => {
     const note = await createNote(title, categoryId, content, images);
-    await createRevisionPlan(note.id, intervals, mode);
+    await createRevisionPlan(note.id, intervals);
     await refresh();
     return note;
   }, [refresh]);
 
-  const editNote = useCallback(async (id: string, updates: Partial<Note>, intervals?: number[], mode?: "custom" | "sm2") => {
+  const editNote = useCallback(async (id: string, updates: Partial<Note>, intervals?: number[]) => {
     await updateNote(id, updates);
     if (intervals && intervals.length > 0) {
-      // Smart update: preserves SM-2 state unless the mode itself changed
-      await updateRevisionPlanSchedule(id, intervals, mode ?? "custom");
+      await updateRevisionPlanSchedule(id, intervals);
     }
     await refresh();
   }, [refresh]);
@@ -196,8 +193,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refresh();
   }, [refresh]);
 
-  const markCompleted = useCallback(async (noteId: string, sm2Quality?: number): Promise<number> => {
-    const result = await completeRevision(noteId, sm2Quality);
+  const markCompleted = useCallback(async (noteId: string): Promise<number> => {
+    const result = await completeRevision(noteId);
     await refresh();
     setPendingXp(result.xpGained);
     if (result.newBadges && result.newBadges.length > 0) {

@@ -33,7 +33,6 @@ export default function AddNoteScreen() {
   const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || "");
   const [images, setImages] = useState<NoteImage[]>([]);
   const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);
-  const [revisionMode, setRevisionMode] = useState<"custom" | "sm2">("custom");
   const [isSaving, setIsSaving] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -70,7 +69,7 @@ export default function AddNoteScreen() {
       Alert.alert("Required", "Please enter a title for your note.");
       return;
     }
-    if (revisionMode === "custom" && intervals.length === 0) {
+    if (intervals.length === 0) {
       Alert.alert("Required", "Please add at least one revision interval.");
       return;
     }
@@ -81,8 +80,7 @@ export default function AddNoteScreen() {
         selectedCategory || categories[0]?.id || "",
         content.trim(),
         images,
-        revisionMode === "sm2" ? [1, 6, 14] : intervals,
-        revisionMode
+        intervals
       );
       router.back();
     } catch {
@@ -216,8 +214,6 @@ export default function AddNoteScreen() {
           <IntervalPicker
             intervals={intervals}
             onChange={setIntervals}
-            mode={revisionMode}
-            onModeChange={setRevisionMode}
           />
         </View>
       </ScrollView>

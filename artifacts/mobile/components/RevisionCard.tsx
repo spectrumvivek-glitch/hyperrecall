@@ -21,27 +21,19 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 interface Props {
   note: Note;
   plan: RevisionPlan;
-  onComplete: (sm2Quality?: number) => void;
+  onComplete: () => void;
   onSkip: () => void;
   isLast?: boolean;
 }
-
-const SM2_RATINGS = [
-  { quality: 2, label: "Hard", icon: "frown" as const, color: "#ef4444", desc: "I barely remembered" },
-  { quality: 4, label: "Good", icon: "meh" as const, color: "#f59e0b", desc: "I recalled with effort" },
-  { quality: 5, label: "Easy", icon: "smile" as const, color: "#10b981", desc: "Perfect recall!" },
-];
 
 export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
   const colors = useColors();
   const { categories } = useApp();
   const [expanded, setExpanded] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
-  const [showSM2Rating, setShowSM2Rating] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const category = categories.find((c) => c.id === note.categoryId);
-  const isSM2 = plan.mode === "sm2";
 
   const step = plan.currentStep;
   const total = plan.intervals.length;
@@ -57,16 +49,7 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
   const handleComplete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     pulseCheck();
-    if (isSM2) {
-      setShowSM2Rating(true);
-    } else {
-      onComplete();
-    }
-  };
-
-  const handleSM2Rate = (quality: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onComplete(quality);
+    onComplete();
   };
 
   const handleSkip = () => {
@@ -84,25 +67,15 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
             <Text style={[styles.categoryText, { color: category.color }]}>{category.name}</Text>
           </View>
         )}
-        <View style={styles.rightHeader}>
-          {isSM2 && (
-            <View style={[styles.sm2Badge, { backgroundColor: colors.warning + "15", borderColor: colors.warning + "40" }]}>
-              <Feather name="zap" size={10} color={colors.warning} />
-              <Text style={[styles.sm2BadgeText, { color: colors.warning }]}>Smart</Text>
-            </View>
-          )}
-          <Text style={[styles.stepText, { color: colors.mutedForeground }]}>
-            {isSM2 ? `Rep ${step + 1}` : `Step ${step + 1}/${total}`}
-          </Text>
-        </View>
+        <Text style={[styles.stepText, { color: colors.mutedForeground }]}>
+          Step {step + 1}/{total}
+        </Text>
       </View>
 
       {/* Progress */}
-      {!isSM2 && (
-        <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-          <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${((step + 1) / total) * 100}%`, borderRadius: 2 }]} />
-        </View>
-      )}
+      <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+        <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${((step + 1) / total) * 100}%`, borderRadius: 2 }]} />
+      </View>
 
       {/* Title */}
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -153,7 +126,7 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
       )}
 
       {/* Next revision info */}
-      {!isSM2 && nextInterval !== undefined && (
+      {nextInterval !== undefined && (
         <View style={[styles.nextRevision, { backgroundColor: colors.muted, borderRadius: colors.radius - 4 }]}>
           <Feather name="clock" size={13} color={colors.mutedForeground} />
           <Text style={[styles.nextRevisionText, { color: colors.mutedForeground }]}>
@@ -166,58 +139,26 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
         </View>
       )}
 
-      {isSM2 && (
-        <View style={[styles.nextRevision, { backgroundColor: colors.warning + "10", borderRadius: colors.radius - 4 }]}>
-          <Feather name="zap" size={13} color={colors.warning} />
-          <Text style={[styles.nextRevisionText, { color: colors.warning }]}>
-            Smart mode — next date adapts to how well you recall this
-          </Text>
-        </View>
-      )}
+      {/* Actions */}
+      <View style={styles.actions}>
+        <TouchableOpacity
+          onPress={handleSkip}
+          style={[styles.skipBtn, { borderColor: colors.border, borderRadius: colors.radius }]}
+          activeOpacity={0.7}
+        >
+          <Feather name="skip-forward" size={18} color={colors.mutedForeground} />
+          <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
+        </TouchableOpacity>
 
-      {/* SM-2 Rating Panel */}
-      {showSM2Rating ? (
-        <View style={styles.sm2Panel}>
-          <Text style={[styles.sm2Question, { color: colors.foreground }]}>How well did you recall this?</Text>
-          <View style={styles.sm2Buttons}>
-            {SM2_RATINGS.map((r) => (
-              <TouchableOpacity
-                key={r.quality}
-                onPress={() => handleSM2Rate(r.quality)}
-                style={[styles.sm2Btn, { borderColor: r.color + "60", backgroundColor: r.color + "12" }]}
-                activeOpacity={0.75}
-              >
-                <Feather name={r.icon} size={22} color={r.color} />
-                <Text style={[styles.sm2BtnLabel, { color: r.color }]}>{r.label}</Text>
-                <Text style={[styles.sm2BtnDesc, { color: colors.mutedForeground }]}>{r.desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      ) : (
-        /* Actions */
-        <View style={styles.actions}>
-          <TouchableOpacity
-            onPress={handleSkip}
-            style={[styles.skipBtn, { borderColor: colors.border, borderRadius: colors.radius }]}
-            activeOpacity={0.7}
-          >
-            <Feather name="skip-forward" size={18} color={colors.mutedForeground} />
-            <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleComplete}
-            style={[styles.completeBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
-            activeOpacity={0.7}
-          >
-            <Feather name="check" size={18} color={colors.primaryForeground} />
-            <Text style={[styles.completeText, { color: colors.primaryForeground }]}>
-              {isSM2 ? "I Reviewed This" : "Completed"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        <TouchableOpacity
+          onPress={handleComplete}
+          style={[styles.completeBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+          activeOpacity={0.7}
+        >
+          <Feather name="check" size={18} color={colors.primaryForeground} />
+          <Text style={[styles.completeText, { color: colors.primaryForeground }]}>Completed</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -225,12 +166,9 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
 const styles = StyleSheet.create({
   card: { padding: 16, gap: 12, marginHorizontal: 16 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  rightHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   categoryBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 3 },
   categoryDot: { width: 6, height: 6, borderRadius: 3 },
   categoryText: { fontSize: 11 },
-  sm2Badge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, borderWidth: 1 },
-  sm2BadgeText: { fontSize: 10 },
   stepText: { fontSize: 12 },
   progressBar: { height: 4, borderRadius: 2 },
   progressFill: { height: 4 },
@@ -251,18 +189,4 @@ const styles = StyleSheet.create({
   skipText: { fontSize: 15 },
   completeBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 13 },
   completeText: { fontSize: 15 },
-  sm2Panel: { gap: 12, marginTop: 4 },
-  sm2Question: { fontSize: 15, textAlign: "center" },
-  sm2Buttons: { flexDirection: "row", gap: 8 },
-  sm2Btn: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  sm2BtnLabel: { fontSize: 13 },
-  sm2BtnDesc: { fontSize: 10, textAlign: "center" },
 });

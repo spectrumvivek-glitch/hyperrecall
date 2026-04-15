@@ -32,9 +32,6 @@ export interface RevisionPlan {
   intervals: number[];
   currentStep: number;
   nextRevisionDate: number;
-  mode: "custom" | "sm2";
-  easeFactor: number;
-  lastInterval: number;
 }
 
 export interface RevisionLog {
@@ -43,7 +40,6 @@ export interface RevisionLog {
   noteTitle: string;
   date: number;
   status: "completed" | "skipped";
-  quality?: number;
 }
 
 export interface UserStats {
@@ -155,13 +151,7 @@ export async function deleteNote(id: string): Promise<void> {
 export async function getRevisionPlans(): Promise<RevisionPlan[]> {
   const raw = await AsyncStorage.getItem(KEYS.REVISION_PLANS);
   if (!raw) return [];
-  const plans = JSON.parse(raw) as RevisionPlan[];
-  return plans.map((p) => ({
-    mode: "custom" as const,
-    easeFactor: 2.5,
-    lastInterval: 1,
-    ...p,
-  }));
+  return JSON.parse(raw) as RevisionPlan[];
 }
 
 export async function saveRevisionPlans(plans: RevisionPlan[]): Promise<void> {
@@ -170,22 +160,17 @@ export async function saveRevisionPlans(plans: RevisionPlan[]): Promise<void> {
 
 export async function createRevisionPlan(
   noteId: string,
-  intervals: number[],
-  mode: "custom" | "sm2" = "custom"
+  intervals: number[]
 ): Promise<RevisionPlan> {
   const plans = await getRevisionPlans();
   const today = startOfDay(Date.now());
-  // SM-2 always starts with a 1-day first interval regardless of intervals[]
-  const firstInterval = mode === "sm2" ? 1 : (intervals[0] ?? 1);
+  const firstInterval = intervals[0] ?? 1;
   const plan: RevisionPlan = {
     id: genId(),
     noteId,
     intervals,
     currentStep: 0,
     nextRevisionDate: today + firstInterval * 24 * 60 * 60 * 1000,
-    mode,
-    easeFactor: 2.5,
-    lastInterval: firstInterval,
   };
   const existing = plans.findIndex((p) => p.noteId === noteId);
   if (existing !== -1) {
@@ -197,36 +182,17 @@ export async function createRevisionPlan(
   return plan;
 }
 
-/**
- * Smart update for an existing revision plan:
- * - If mode changed → create a fresh plan (resets SM-2 state, schedule)
- * - If mode unchanged (SM-2 → SM-2) → only update the intervals[], preserve all SM-2 state
- * - If mode unchanged (custom → custom) → update intervals, keep nextRevisionDate & currentStep
- */
 export async function updateRevisionPlanSchedule(
   noteId: string,
-  intervals: number[],
-  mode: "custom" | "sm2"
+  intervals: number[]
 ): Promise<void> {
   const plans = await getRevisionPlans();
   const idx = plans.findIndex((p) => p.noteId === noteId);
-
   if (idx === -1) {
-    // No existing plan — create fresh
-    await createRevisionPlan(noteId, intervals, mode);
+    await createRevisionPlan(noteId, intervals);
     return;
   }
-
-  const existing = plans[idx];
-
-  if (existing.mode !== mode) {
-    // Mode changed — full reset
-    await createRevisionPlan(noteId, intervals, mode);
-    return;
-  }
-
-  // Same mode — preserve all scheduling state, just update intervals metadata
-  plans[idx] = { ...existing, intervals };
+  plans[idx] = { ...plans[idx], intervals };
   await saveRevisionPlans(plans);
 }
 
@@ -241,29 +207,8 @@ export async function getDueNotes(): Promise<{ note: Note; plan: RevisionPlan }[
     .filter((item) => !!item.note);
 }
 
-// SM-2 algorithm
-function computeSM2NextInterval(plan: RevisionPlan, quality: number): { nextInterval: number; newEaseFactor: number } {
-  let ef = plan.easeFactor;
-  let interval: number;
-
-  if (quality < 3) {
-    interval = 1;
-  } else {
-    if (plan.currentStep === 0) interval = 1;
-    else if (plan.currentStep === 1) interval = 6;
-    else interval = Math.round(plan.lastInterval * ef);
-  }
-
-  ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-  ef = Math.max(1.3, ef);
-  interval = Math.max(1, interval);
-
-  return { nextInterval: interval, newEaseFactor: ef };
-}
-
 export async function completeRevision(
-  noteId: string,
-  sm2Quality?: number
+  noteId: string
 ): Promise<{
   xpGained: number;
   leveledUp: boolean;
@@ -276,28 +221,13 @@ export async function completeRevision(
   if (idx === -1) return { xpGained: 0, leveledUp: false, newLevel: 1, newBadges: [] };
   const plan = plans[idx];
 
-  let nextInterval: number;
-  if (plan.mode === "sm2" && sm2Quality !== undefined) {
-    const { nextInterval: ni, newEaseFactor } = computeSM2NextInterval(plan, sm2Quality);
-    nextInterval = ni;
-    plan.easeFactor = newEaseFactor;
-    if (sm2Quality < 3) {
-      plan.currentStep = 0;
-    } else {
-      plan.currentStep += 1;
-    }
-    plan.lastInterval = nextInterval;
-  } else {
-    const nextStep = Math.min(plan.currentStep + 1, plan.intervals.length - 1);
-    nextInterval = plan.intervals[nextStep] || plan.intervals[plan.intervals.length - 1];
-    plan.currentStep = nextStep;
-    plan.lastInterval = nextInterval;
-  }
-
+  const nextStep = Math.min(plan.currentStep + 1, plan.intervals.length - 1);
+  const nextInterval = plan.intervals[nextStep] || plan.intervals[plan.intervals.length - 1];
+  plan.currentStep = nextStep;
   plan.nextRevisionDate = startOfDay(Date.now()) + nextInterval * 24 * 60 * 60 * 1000;
   plans[idx] = plan;
   await saveRevisionPlans(plans);
-  await logRevision(noteId, "completed", sm2Quality);
+  await logRevision(noteId, "completed");
   return await updateStreak();
 }
 
@@ -326,7 +256,7 @@ export async function saveRevisionLogs(logs: RevisionLog[]): Promise<void> {
   await AsyncStorage.setItem(KEYS.REVISION_LOGS, JSON.stringify(logs));
 }
 
-async function logRevision(noteId: string, status: "completed" | "skipped", quality?: number): Promise<void> {
+async function logRevision(noteId: string, status: "completed" | "skipped"): Promise<void> {
   const notes = await getNotes();
   const note = notes.find((n) => n.id === noteId);
   const logs = await getRevisionLogs();
@@ -336,7 +266,6 @@ async function logRevision(noteId: string, status: "completed" | "skipped", qual
     noteTitle: note?.title || "Unknown",
     date: Date.now(),
     status,
-    quality,
   };
   await saveRevisionLogs([...logs, log]);
 }

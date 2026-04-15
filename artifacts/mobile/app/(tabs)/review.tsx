@@ -187,12 +187,6 @@ const viewerStyles = StyleSheet.create({
   hintText: { color: "#ffffff66", fontSize: 12 },
 });
 
-const SM2_RATINGS = [
-  { quality: 2, label: "Hard", icon: "frown" as const, color: "#EF4444", desc: "Barely remembered" },
-  { quality: 4, label: "Good", icon: "meh" as const, color: "#F59E0B", desc: "Recalled with effort" },
-  { quality: 5, label: "Easy", icon: "smile" as const, color: "#22C55E", desc: "Perfect recall!" },
-];
-
 function DueCard({
   note,
   plan,
@@ -206,12 +200,12 @@ function DueCard({
   plan: RevisionPlan;
   categoryName: string;
   categoryColor: string;
-  onDone: (quality?: number) => void;
+  onDone: () => void;
   onSkip: () => void;
   busy: boolean;
 }) {
   const colors = useColors();
-  const [phase, setPhase] = useState<"preview" | "study" | "rating">("preview");
+  const [phase, setPhase] = useState<"preview" | "study">("preview");
   const [imgIndex, setImgIndex] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStart, setViewerStart] = useState(0);
@@ -227,12 +221,9 @@ function DueCard({
 
   const openViewer = (idx: number) => { setViewerStart(idx); setViewerOpen(true); };
 
-  const isSM2 = plan.mode === "sm2";
   const hasImages = note.images && note.images.length > 0;
   const intervalLabels = ["Day 1", "Day 3", "Day 7", "Day 14", "Day 30", "Day 60", "Day 90"];
-  const stepLabel = isSM2
-    ? `Rep ${plan.currentStep + 1}`
-    : (intervalLabels[plan.currentStep] ?? `Step ${plan.currentStep + 1}`);
+  const stepLabel = intervalLabels[plan.currentStep] ?? `Step ${plan.currentStep + 1}`;
 
   const handleStart = () => {
     setPhase("study");
@@ -260,20 +251,12 @@ function DueCard({
   };
 
   const handleComplete = () => {
-    if (isSM2) {
-      setPhase("rating");
-    } else {
-      animateAndComplete(() => onDone());
-    }
-  };
-
-  const handleRate = (quality: number) => {
-    animateAndComplete(() => onDone(quality));
+    animateAndComplete(() => onDone());
   };
 
   const flashBorder = flashAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [phase === "rating" ? colors.warning + "50" : colors.border, "#22C55E80"],
+    outputRange: [colors.border, "#22C55E80"],
   });
 
   const expandScale = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] });
@@ -319,12 +302,8 @@ function DueCard({
                 </Text>
               </View>
             )}
-            <View style={[
-              cardStyles.stepBadge,
-              { backgroundColor: isSM2 ? colors.warning + "20" : colors.primary + "20" },
-            ]}>
-              {isSM2 && <Feather name="zap" size={10} color={colors.warning} />}
-              <Text style={[cardStyles.stepText, { color: isSM2 ? colors.warning : colors.primary }]}>
+            <View style={[cardStyles.stepBadge, { backgroundColor: colors.primary + "20" }]}>
+              <Text style={[cardStyles.stepText, { color: colors.primary }]}>
                 {stepLabel}
               </Text>
             </View>
@@ -404,15 +383,6 @@ function DueCard({
               </Text>
             ) : null}
 
-            {/* SM-2 info row */}
-            {isSM2 && phase === "study" && (
-              <View style={[cardStyles.sm2Hint, { backgroundColor: colors.warning + "12", borderColor: colors.warning + "30" }]}>
-                <Feather name="zap" size={12} color={colors.warning} />
-                <Text style={[cardStyles.sm2HintText, { color: colors.warning }]}>
-                  Smart mode — you'll rate your recall after completing
-                </Text>
-              </View>
-            )}
           </Animated.View>
         )}
 
@@ -466,50 +436,15 @@ function DueCard({
             style={cardStyles.completeWrap}
           >
             <LinearGradient
-              colors={isSM2 ? ["#F59E0B", "#D97706"] : ["#22C55E", "#16A34A"]}
+              colors={["#22C55E", "#16A34A"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={cardStyles.completeBtn}
             >
-              <Feather name={isSM2 ? "zap" : "check-circle"} size={16} color="#fff" />
-              <Text style={cardStyles.completeText}>
-                {isSM2 ? "Rate My Recall" : "Mark Complete"}
-              </Text>
+              <Feather name="check-circle" size={16} color="#fff" />
+              <Text style={cardStyles.completeText}>Mark Complete</Text>
             </LinearGradient>
           </TouchableOpacity>
-        )}
-
-        {phase === "rating" && (
-          <View style={cardStyles.ratingPanel}>
-            <View style={cardStyles.ratingHeader}>
-              <Feather name="zap" size={14} color={colors.warning} />
-              <Text style={[cardStyles.ratingQuestion, { color: colors.foreground }]}>
-                How well did you recall this?
-              </Text>
-            </View>
-            <View style={cardStyles.ratingBtns}>
-              {SM2_RATINGS.map((r) => (
-                <TouchableOpacity
-                  key={r.quality}
-                  onPress={() => handleRate(r.quality)}
-                  disabled={busy}
-                  activeOpacity={0.75}
-                  style={[cardStyles.ratingBtn, { borderColor: r.color + "60", backgroundColor: r.color + "12" }]}
-                >
-                  <Feather name={r.icon} size={20} color={r.color} />
-                  <Text style={[cardStyles.ratingLabel, { color: r.color }]}>{r.label}</Text>
-                  <Text style={[cardStyles.ratingDesc, { color: colors.mutedForeground }]}>{r.desc}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              onPress={() => setPhase("study")}
-              style={cardStyles.cancelBtn}
-              activeOpacity={0.7}
-            >
-              <Text style={[cardStyles.cancelText, { color: colors.mutedForeground }]}>← Back</Text>
-            </TouchableOpacity>
-          </View>
         )}
       </View>
     </Animated.View>
@@ -571,16 +506,6 @@ const cardStyles = StyleSheet.create({
   dots: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
   dot: { height: 6, borderRadius: 3 },
   photoHint: { fontSize: 11, textAlign: "center" },
-  sm2Hint: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  sm2HintText: { flex: 1, fontSize: 12, lineHeight: 17 },
   actions: { flexDirection: "row", gap: 10 },
   skipBtn: {
     flex: 1,
@@ -611,23 +536,6 @@ const cardStyles = StyleSheet.create({
     paddingVertical: 13,
   },
   completeText: { fontSize: 15, fontWeight: "700", color: "#fff" },
-  ratingPanel: { gap: 10 },
-  ratingHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
-  ratingQuestion: { fontSize: 14, fontWeight: "600" },
-  ratingBtns: { flexDirection: "row", gap: 8 },
-  ratingBtn: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  ratingLabel: { fontSize: 13, fontWeight: "700" },
-  ratingDesc: { fontSize: 10, textAlign: "center" },
-  cancelBtn: { alignItems: "center", paddingVertical: 4 },
-  cancelText: { fontSize: 13 },
 });
 
 export default function ReviewScreen() {
@@ -647,11 +555,11 @@ export default function ReviewScreen() {
     return { name: cat?.name ?? "General", color: cat?.color ?? "#6366F1" };
   };
 
-  const handleDone = async (noteId: string, quality?: number) => {
+  const handleDone = async (noteId: string) => {
     if (busy) return;
     setBusy(noteId);
     try {
-      const earned = await markCompleted(noteId, quality);
+      const earned = await markCompleted(noteId);
       const noteTitle = dueNotes.find((n) => n.note.id === noteId)?.note.title ?? "";
       setCelebPopup({ xp: earned, title: noteTitle });
     } finally {
@@ -756,7 +664,7 @@ export default function ReviewScreen() {
                   plan={plan}
                   categoryName={name}
                   categoryColor={color}
-                  onDone={(quality) => handleDone(note.id, quality)}
+                  onDone={() => handleDone(note.id)}
                   onSkip={() => handleSkip(note.id)}
                   busy={busy === note.id}
                 />
