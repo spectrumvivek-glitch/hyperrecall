@@ -93,7 +93,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="review"
         options={{
-          title: "Recall",
+          title: "Revise",
           tabBarIcon: ({ color }) => (
             <View style={{ position: "relative" }}>
               {isIOS ? (
