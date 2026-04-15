@@ -114,12 +114,7 @@ export default function NoteDetailScreen() {
 
       // 1. Upload any newly added local images to Firebase Storage
       if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
-        try {
-          finalImages = await uploadImages(user.uid, id!, images);
-        } catch (uploadErr: any) {
-          // Upload failed — save with current URIs (data: URIs persist locally)
-          console.warn("Image upload failed, saving with local URIs:", uploadErr?.message);
-        }
+        finalImages = await uploadImages(user.uid, id!, images);
       }
 
       // 2. Delete images that were removed during edit (from Firebase Storage)

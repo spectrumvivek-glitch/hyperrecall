@@ -98,12 +98,7 @@ export default function AddNoteScreen() {
 
       // Upload any non-Firebase images to Storage when user is signed in
       if (user?.uid && images.some((img) => !isFirebaseUrl(img.uri))) {
-        try {
-          finalImages = await uploadImages(user.uid, tempNoteId, images);
-        } catch (uploadErr: any) {
-          // Upload failed — save with current URIs (data: URIs persist locally)
-          console.warn("Image upload failed, saving with local URIs:", uploadErr?.message);
-        }
+        finalImages = await uploadImages(user.uid, tempNoteId, images);
       }
 
       await addNote(
@@ -115,7 +110,8 @@ export default function AddNoteScreen() {
       );
       router.back();
     } catch (err: any) {
-      Alert.alert("Error", "Failed to save note. Please try again.");
+      const msg = err?.message ?? "Failed to save note. Please try again.";
+      Alert.alert("Error", msg);
     } finally {
       setIsSaving(false);
     }

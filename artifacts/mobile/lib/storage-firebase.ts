@@ -8,9 +8,10 @@
  * another user's files (see storage.rules).
  *
  * Upload strategy:
- *  - Converts local URIs to Blobs via fetch() — works on both web and native.
- *  - Uses uploadBytesResumable for per-image progress callbacks.
- *  - Uploads multiple images in parallel for speed.
+ *  - data: URIs (base64)  → decoded directly with atob() — no fetch() needed
+ *  - blob: / file: URIs   → fetched as Blob via fetch()
+ *  - Existing Firebase URLs → skipped (already uploaded)
+ *  - Parallel uploads for speed
  */
 
 import {
@@ -46,16 +47,49 @@ export function isFirebaseUrl(uri: string): boolean {
   );
 }
 
+// ─── URI → Blob conversion ───────────────────────────────────────────────────
+
+/**
+ * Convert any image URI to a Blob.
+ *
+ * - `data:` URIs   — decoded via atob() without fetch() (avoids iframe CSP hangs)
+ * - `blob:` / `file:` / `http:` URIs — fetched normally
+ */
+async function uriToBlob(uri: string): Promise<Blob> {
+  if (uri.startsWith("data:")) {
+    // Parse  "data:<mime>;base64,<data>"
+    const commaIdx = uri.indexOf(",");
+    if (commaIdx === -1) throw new Error("Invalid data URI");
+
+    const header = uri.slice(0, commaIdx);           // "data:image/jpeg;base64"
+    const base64 = uri.slice(commaIdx + 1);           // the actual base64 string
+    const mimeMatch = header.match(/data:([^;]+)/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+
+    const binaryStr = atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  }
+
+  // blob:, file:, http:, https: URIs
+  const response = await fetch(uri);
+  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+  return response.blob();
+}
+
 // ─── Single image upload ──────────────────────────────────────────────────────
 
 /**
  * Uploads a single image to Firebase Storage.
  * Returns the permanent HTTPS download URL.
  *
- * @param userId    Firebase Auth UID
- * @param noteId    Note ID (used as a folder name)
- * @param imageId   Unique image ID (used as filename)
- * @param uri       Local file URI (file://) or blob URL from image picker
+ * @param userId      Firebase Auth UID
+ * @param noteId      Note ID (used as folder name)
+ * @param imageId     Unique image ID (used as filename)
+ * @param uri         Local URI — data:, blob:, file:, or https:
  * @param onProgress  Optional callback with upload percentage 0–100
  */
 export async function uploadNoteImage(
@@ -67,9 +101,8 @@ export async function uploadNoteImage(
 ): Promise<string> {
   const storageRef = imageRef(userId, noteId, imageId);
 
-  // Convert local URI to Blob — works in both Expo web and native
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  // Convert to Blob — handles data: URIs without fetch() to avoid CSP hangs
+  const blob = await uriToBlob(uri);
 
   return new Promise<string>((resolve, reject) => {
     const task = uploadBytesResumable(storageRef, blob, {
@@ -79,13 +112,20 @@ export async function uploadNoteImage(
     task.on(
       "state_changed",
       (snap) => {
-        const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
-        onProgress?.(Math.round(pct));
+        if (snap.totalBytes > 0) {
+          const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
+          onProgress?.(Math.min(99, Math.round(pct)));
+        }
       },
       reject,
       async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
-        resolve(url);
+        try {
+          const url = await getDownloadURL(task.snapshot.ref);
+          onProgress?.(100);
+          resolve(url);
+        } catch (e) {
+          reject(e);
+        }
       }
     );
   });
