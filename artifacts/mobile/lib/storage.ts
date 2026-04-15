@@ -518,6 +518,129 @@ export function getDayLabel(ts: number): string {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
+// ── Exam Mode ─────────────────────────────────────────────────────────────────
+
+export interface ExamReviewItem {
+  noteId: string;
+  sessionIndex: number; // 0–13
+  scheduledDate: number; // ms timestamp (start of day)
+  completed: boolean;
+  completedAt?: number;
+}
+
+export interface ExamSession {
+  id: string;
+  name: string;
+  examDate: number; // ms timestamp
+  noteIds: string[];
+  schedule: ExamReviewItem[];
+  createdAt: number;
+  isArchived: boolean;
+}
+
+const EXAM_SESSIONS_KEY = "sr_exam_sessions";
+
+// 14 proportions – expanding intervals normalized to [0, 1]
+// Front-loaded: first reviews happen quickly, later ones are widely spaced
+const EXAM_PROPORTIONS = [0, 0.01, 0.03, 0.06, 0.11, 0.18, 0.26, 0.36, 0.47, 0.59, 0.71, 0.83, 0.93, 1.0];
+
+export function generateExamScheduleItems(noteIds: string[], examDate: number): ExamReviewItem[] {
+  const today = startOfDay(Date.now());
+  const lastDay = startOfDay(examDate) - 24 * 60 * 60 * 1000; // day before exam
+  const totalDays = Math.max(0, Math.round((lastDay - today) / (24 * 60 * 60 * 1000)));
+  const items: ExamReviewItem[] = [];
+  for (const noteId of noteIds) {
+    for (let i = 0; i < 14; i++) {
+      const dayOffset = Math.min(Math.round(EXAM_PROPORTIONS[i] * totalDays), totalDays);
+      items.push({
+        noteId,
+        sessionIndex: i,
+        scheduledDate: today + dayOffset * 24 * 60 * 60 * 1000,
+        completed: false,
+      });
+    }
+  }
+  return items;
+}
+
+export async function getExamSessions(): Promise<ExamSession[]> {
+  const raw = await AsyncStorage.getItem(EXAM_SESSIONS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+async function saveExamSessions(sessions: ExamSession[]): Promise<void> {
+  await AsyncStorage.setItem(EXAM_SESSIONS_KEY, JSON.stringify(sessions));
+}
+
+export async function createExamSession(
+  name: string,
+  examDate: number,
+  noteIds: string[]
+): Promise<ExamSession> {
+  const sessions = await getExamSessions();
+  const schedule = generateExamScheduleItems(noteIds, examDate);
+  const session: ExamSession = {
+    id: genId(),
+    name,
+    examDate,
+    noteIds,
+    schedule,
+    createdAt: Date.now(),
+    isArchived: false,
+  };
+  await saveExamSessions([...sessions, session]);
+  return session;
+}
+
+export async function deleteExamSession(id: string): Promise<void> {
+  const sessions = await getExamSessions();
+  await saveExamSessions(sessions.filter((s) => s.id !== id));
+}
+
+export async function completeExamReviewItem(
+  sessionId: string,
+  noteId: string,
+  sessionIndex: number
+): Promise<void> {
+  const sessions = await getExamSessions();
+  const si = sessions.findIndex((s) => s.id === sessionId);
+  if (si === -1) return;
+  const itemIdx = sessions[si].schedule.findIndex(
+    (item) => item.noteId === noteId && item.sessionIndex === sessionIndex
+  );
+  if (itemIdx !== -1) {
+    sessions[si].schedule[itemIdx] = {
+      ...sessions[si].schedule[itemIdx],
+      completed: true,
+      completedAt: Date.now(),
+    };
+  }
+  await saveExamSessions(sessions);
+}
+
+export async function skipExamReviewItem(
+  sessionId: string,
+  noteId: string,
+  sessionIndex: number
+): Promise<void> {
+  const sessions = await getExamSessions();
+  const si = sessions.findIndex((s) => s.id === sessionId);
+  if (si === -1) return;
+  const session = sessions[si];
+  const itemIdx = session.schedule.findIndex(
+    (item) => item.noteId === noteId && item.sessionIndex === sessionIndex
+  );
+  if (itemIdx !== -1) {
+    const tomorrow = startOfDay(Date.now()) + 24 * 60 * 60 * 1000;
+    const lastDay = startOfDay(session.examDate) - 24 * 60 * 60 * 1000;
+    const newDate = Math.min(tomorrow, lastDay);
+    if (session.schedule[itemIdx].scheduledDate < tomorrow) {
+      sessions[si].schedule[itemIdx] = { ...sessions[si].schedule[itemIdx], scheduledDate: newDate };
+    }
+  }
+  await saveExamSessions(sessions);
+}
+
 // Seed default categories if empty
 export async function seedDefaultsIfNeeded(): Promise<void> {
   // Fast path: skip the category check on every subsequent launch
