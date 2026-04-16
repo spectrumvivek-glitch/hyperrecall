@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import FeatherFont from "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ttf";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Font from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
@@ -62,6 +63,7 @@ function RootLayoutNav() {
 export default function RootLayout() {
   const [fontsLoaded, fontError] = Font.useFonts({
     ...Feather.font,
+    Feather: FeatherFont,
   });
 
   useEffect(() => {
