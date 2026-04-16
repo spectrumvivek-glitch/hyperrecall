@@ -1,10 +1,9 @@
 import { Feather } from "@expo/vector-icons";
-import FeatherFont from "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ttf";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Font from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -61,21 +60,30 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = Font.useFonts({
-    ...Feather.font,
-    Feather: FeatherFont,
-  });
+  const [fontsReady, setFontsReady] = useState(false);
 
   useEffect(() => {
-    if (fontError) {
-      console.warn("Font loading error:", fontError);
-    }
-    if (fontsLoaded || fontError) {
+    let cancelled = false;
+    (async () => {
+      try {
+        await Feather.loadFont();
+      } catch (err) {
+        console.warn("Feather font load failed:", err);
+      }
+      if (!cancelled) setFontsReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fontsReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsReady]);
 
-  if (!fontsLoaded && !fontError) {
+  if (!fontsReady) {
     return null;
   }
 
