@@ -26,6 +26,7 @@ import { BadgeCard } from "@/components/BadgeCard";
 import { Confetti } from "@/components/Confetti";
 import { DailyStreakPopup } from "@/components/DailyStreakPopup";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
 import { Note, RevisionPlan } from "@/lib/storage";
@@ -283,6 +284,8 @@ export default function DashboardScreen() {
     xpInfo, improvementPct, pendingLevelUp, dismissLevelUp, shareAndEarnXp,
     newBadges, dismissNewBadges,
   } = useApp();
+  const { user } = useAuth();
+  const firstName = (user?.displayName?.trim().split(/\s+/)[0]) || (user?.email ? user.email.split("@")[0] : "Learner");
 
   const [showConfetti, setShowConfetti] = useState(false);
   const prevBadgeCount = useRef((userStats.earnedBadges ?? []).length);
@@ -391,7 +394,7 @@ export default function DashboardScreen() {
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
               Good{new Date().getHours() < 12 ? " morning" : new Date().getHours() < 17 ? " afternoon" : " evening"} 👋
             </Text>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Recallify</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>{firstName}</Text>
           </View>
           <StreakBadge streak={userStats.currentStreak} size="md" pulse={userStats.currentStreak > 0} />
         </View>
