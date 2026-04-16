@@ -265,16 +265,20 @@ async function logRevision(noteId: string, status: "completed" | "skipped"): Pro
 export async function getUserStats(): Promise<UserStats> {
   const raw = await AsyncStorage.getItem(KEYS.USER_STATS);
   if (raw) {
-    const parsed = JSON.parse(raw) as UserStats;
-    return {
+    const parsed = JSON.parse(raw) as Partial<UserStats>;
+    const defaults: UserStats = {
+      currentStreak: 0,
+      lastActiveDate: 0,
+      totalCompleted: 0,
+      totalSkipped: 0,
       totalXp: 0,
       todayCompleted: 0,
       yesterdayCompleted: 0,
       lastXpDate: 0,
       earnedBadges: [],
       dailyGoal: 5,
-      ...parsed,
     };
+    return { ...defaults, ...parsed };
   }
   return {
     currentStreak: 0,

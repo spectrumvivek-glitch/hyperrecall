@@ -3,7 +3,6 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert,
   Image,
   Platform,
   ScrollView,
@@ -35,6 +34,7 @@ export default function AddNoteScreen() {
   const [images, setImages] = useState<NoteImage[]>([]);
   const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isWorking = isSaving;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -44,7 +44,7 @@ export default function AddNoteScreen() {
     if (Platform.OS !== "web") {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert("Permission Required", "Allow photo library access to add images.");
+        setErrorMsg("Permission required: Allow photo library access to add images.");
         return;
       }
     }
@@ -55,8 +55,7 @@ export default function AddNoteScreen() {
       base64: false,
     });
     if (!result.canceled && result.assets.length > 0) {
-      // Convert blob/file URIs to persistent data URIs on web so images
-      // survive page reloads even before they are uploaded to Firebase.
+      setErrorMsg(null);
       const persistentUris = await Promise.all(
         result.assets.map((asset) => makePersistentUri(asset.uri))
       );
@@ -75,12 +74,13 @@ export default function AddNoteScreen() {
   };
 
   const handleSave = async () => {
+    setErrorMsg(null);
     if (title.trim().length === 0) {
-      Alert.alert("Required", "Please enter a title for your note.");
+      setErrorMsg("Please enter a title for your note.");
       return;
     }
     if (intervals.length === 0) {
-      Alert.alert("Required", "Please add at least one revision interval.");
+      setErrorMsg("Please add at least one revision interval.");
       return;
     }
 
@@ -95,8 +95,7 @@ export default function AddNoteScreen() {
       );
       router.back();
     } catch (err: any) {
-      const msg = err?.message ?? "Failed to save note. Please try again.";
-      Alert.alert("Error", msg);
+      setErrorMsg(err?.message ?? "Failed to save note. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -128,6 +127,14 @@ export default function AddNoteScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {errorMsg ? (
+          <TouchableOpacity onPress={() => setErrorMsg(null)} activeOpacity={0.8} style={styles.errorBanner}>
+            <Feather name="alert-circle" size={15} color="#DC2626" />
+            <Text style={styles.errorText}>{errorMsg}</Text>
+            <Feather name="x" size={14} color="#DC2626" />
+          </TouchableOpacity>
+        ) : null}
+
         {/* Title */}
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Title *</Text>
@@ -327,4 +334,22 @@ const styles = StyleSheet.create({
   progressTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
   progressFill: { height: 4, borderRadius: 2 },
   progressLabel: { fontSize: 12 },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#DC2626",
+    lineHeight: 18,
+  },
 });

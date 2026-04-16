@@ -40,6 +40,7 @@ export default function NoteDetailScreen() {
   const [intervals, setIntervals] = useState<number[]>(plan?.intervals || [1, 3, 7, 15, 30]);
   const initialIntervals = useRef(plan?.intervals || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isWorking = isSaving;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -74,7 +75,10 @@ export default function NoteDetailScreen() {
   const pickImage = async () => {
     if (Platform.OS !== "web") {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) return;
+      if (!perm.granted) {
+        setErrorMsg("Permission required: Allow photo library access to add images.");
+        return;
+      }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
@@ -102,10 +106,13 @@ export default function NoteDetailScreen() {
   };
 
   const handleSave = async () => {
-    if (title.trim().length === 0) return;
+    setErrorMsg(null);
+    if (title.trim().length === 0) {
+      setErrorMsg("Please enter a title for your note.");
+      return;
+    }
     setIsSaving(true);
     try {
-      // Delete local files for images removed during edit
       const originalUris = new Map(note.images.map((img) => [img.id, img.uri]));
       const remainingIds = new Set(images.map((img) => img.id));
       const removedUris = [...originalUris.entries()]
@@ -113,7 +120,6 @@ export default function NoteDetailScreen() {
         .map(([, uri]) => uri);
       await Promise.all(removedUris.map((uri) => deleteLocalImage(uri)));
 
-      // Save note locally and sync to Firestore
       const intervalsChanged =
         JSON.stringify(intervals) !== JSON.stringify(initialIntervals.current);
       await editNote(
@@ -128,7 +134,7 @@ export default function NoteDetailScreen() {
       );
       setIsEditing(false);
     } catch {
-      Alert.alert("Error", "Failed to save changes. Please try again.");
+      setErrorMsg("Failed to save changes. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -200,6 +206,14 @@ export default function NoteDetailScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {errorMsg ? (
+          <TouchableOpacity onPress={() => setErrorMsg(null)} activeOpacity={0.8} style={styles.errorBanner}>
+            <Feather name="alert-circle" size={15} color="#DC2626" />
+            <Text style={styles.errorText}>{errorMsg}</Text>
+            <Feather name="x" size={14} color="#DC2626" />
+          </TouchableOpacity>
+        ) : null}
+
         {/* Meta info */}
         {!isEditing && (
           <View style={styles.meta}>
@@ -515,4 +529,22 @@ const styles = StyleSheet.create({
   categoryRow: { flexDirection: "row", gap: 8 },
   categoryChip: { paddingHorizontal: 14, paddingVertical: 7 },
   categoryChipText: { fontSize: 13 },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#DC2626",
+    lineHeight: 18,
+  },
 });
