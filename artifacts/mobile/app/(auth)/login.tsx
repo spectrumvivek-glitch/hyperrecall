@@ -1,9 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -32,69 +31,73 @@ export default function LoginScreen() {
   } = useAuth();
 
   const [mode, setMode] = useState<Mode>("login");
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const isSignup = mode === "signup";
-
-  // Show auth errors from context as alerts
-  useEffect(() => {
-    if (authError && authError.length > 0) {
-      Alert.alert(isSignup ? "Sign Up Failed" : "Sign In Failed", authError, [
-        { text: "OK", onPress: clearAuthError },
-      ]);
-    }
-  }, [authError]);
+  const visibleError = localError || authError;
 
   function switchMode(next: Mode) {
     setMode(next);
+    setDisplayName("");
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setLocalError(null);
+    clearAuthError();
+  }
+
+  function dismissError() {
+    setLocalError(null);
     clearAuthError();
   }
 
   async function handleSubmit() {
+    dismissError();
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
+    const trimmedName = displayName.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
-      Alert.alert("Missing fields", "Please enter your email and password.");
+      setLocalError("Please enter your email and password.");
+      return;
+    }
+    if (isSignup && trimmedPassword.length < 6) {
+      setLocalError("Password must be at least 6 characters.");
       return;
     }
     if (isSignup && trimmedPassword !== confirmPassword.trim()) {
-      Alert.alert(
-        "Passwords don't match",
-        "Please make sure both passwords are the same."
-      );
+      setLocalError("Passwords don't match. Please make sure both passwords are the same.");
       return;
     }
 
     try {
       if (isSignup) {
-        await signUp(trimmedEmail, trimmedPassword);
+        await signUp(trimmedEmail, trimmedPassword, trimmedName || undefined);
       } else {
         await signIn(trimmedEmail, trimmedPassword);
       }
     } catch {
-      // authError is set in context, useEffect above will show it
+      // authError is set in AuthContext and will show via visibleError
     }
   }
 
   async function handleGoogle() {
+    dismissError();
     if (!googleAvailable) {
-      Alert.alert(
-        "Google Sign-In — Mobile Setup Required",
-        "On mobile, set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to your Firebase project's Web OAuth 2.0 client ID."
+      setLocalError(
+        "Google Sign-In requires setup. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in your environment."
       );
       return;
     }
     try {
       await signInWithGoogle();
     } catch {
-      // authError is set in context, useEffect above will show it
+      // authError is set in AuthContext
     }
   }
 
@@ -130,36 +133,20 @@ export default function LoginScreen() {
           {/* Mode toggle */}
           <View style={styles.toggle}>
             <TouchableOpacity
-              style={[
-                styles.toggleBtn,
-                mode === "login" && styles.toggleActive,
-              ]}
+              style={[styles.toggleBtn, mode === "login" && styles.toggleActive]}
               onPress={() => switchMode("login")}
               activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.toggleText,
-                  mode === "login" && styles.toggleTextActive,
-                ]}
-              >
+              <Text style={[styles.toggleText, mode === "login" && styles.toggleTextActive]}>
                 Log In
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.toggleBtn,
-                mode === "signup" && styles.toggleActive,
-              ]}
+              style={[styles.toggleBtn, mode === "signup" && styles.toggleActive]}
               onPress={() => switchMode("signup")}
               activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.toggleText,
-                  mode === "signup" && styles.toggleTextActive,
-                ]}
-              >
+              <Text style={[styles.toggleText, mode === "signup" && styles.toggleTextActive]}>
                 Sign Up
               </Text>
             </TouchableOpacity>
@@ -174,16 +161,39 @@ export default function LoginScreen() {
               : "Sign in to continue your progress"}
           </Text>
 
+          {/* Inline Error Banner */}
+          {visibleError ? (
+            <TouchableOpacity onPress={dismissError} activeOpacity={0.8} style={styles.errorBanner}>
+              <Feather name="alert-circle" size={15} color="#DC2626" />
+              <Text style={styles.errorText}>{visibleError}</Text>
+              <Feather name="x" size={14} color="#DC2626" />
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Display Name (signup only) */}
+          {isSignup && (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Name</Text>
+              <View style={styles.inputRow}>
+                <Feather name="user" size={16} color="#94a3b8" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Your name"
+                  placeholderTextColor="#94a3b8"
+                  autoCapitalize="words"
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  editable={!isAuthenticating}
+                />
+              </View>
+            </View>
+          )}
+
           {/* Email */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Email</Text>
             <View style={styles.inputRow}>
-              <Feather
-                name="mail"
-                size={16}
-                color="#94a3b8"
-                style={styles.inputIcon}
-              />
+              <Feather name="mail" size={16} color="#94a3b8" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="you@example.com"
@@ -201,12 +211,7 @@ export default function LoginScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Password</Text>
             <View style={styles.inputRow}>
-              <Feather
-                name="lock"
-                size={16}
-                color="#94a3b8"
-                style={styles.inputIcon}
-              />
+              <Feather name="lock" size={16} color="#94a3b8" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="••••••••"
@@ -216,15 +221,8 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
                 editable={!isAuthenticating}
               />
-              <TouchableOpacity
-                onPress={() => setShowPassword((v) => !v)}
-                style={styles.eyeBtn}
-              >
-                <Feather
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={16}
-                  color="#94a3b8"
-                />
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
+                <Feather name={showPassword ? "eye-off" : "eye"} size={16} color="#94a3b8" />
               </TouchableOpacity>
             </View>
           </View>
@@ -234,12 +232,7 @@ export default function LoginScreen() {
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Confirm Password</Text>
               <View style={styles.inputRow}>
-                <Feather
-                  name="lock"
-                  size={16}
-                  color="#94a3b8"
-                  style={styles.inputIcon}
-                />
+                <Feather name="lock" size={16} color="#94a3b8" style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder="••••••••"
@@ -258,10 +251,7 @@ export default function LoginScreen() {
             onPress={handleSubmit}
             disabled={isAuthenticating}
             activeOpacity={0.85}
-            style={[
-              styles.primaryBtn,
-              isAuthenticating && { opacity: 0.75 },
-            ]}
+            style={[styles.primaryBtn, isAuthenticating && { opacity: 0.75 }]}
           >
             <LinearGradient
               colors={["#6366F1", "#8B5CF6"]}
@@ -335,9 +325,7 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
         borderColor: "#E8EDF4",
       }}
     >
-      <Text style={{ fontSize: size * 0.6, fontWeight: "800", color: "#4285F4" }}>
-        G
-      </Text>
+      <Text style={{ fontSize: size * 0.6, fontWeight: "800", color: "#4285F4" }}>G</Text>
     </View>
   );
 }
@@ -412,6 +400,24 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   cardSub: { fontSize: 13, color: "#64748B", marginTop: -8 },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#DC2626",
+    lineHeight: 18,
+  },
   fieldGroup: { gap: 6 },
   label: { fontSize: 13, fontWeight: "600", color: "#374151" },
   inputRow: {
