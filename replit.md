@@ -146,7 +146,7 @@ At `artifacts/api-server/`. Express server at port 8080.
 - **Apps**: Test Store (`appac78be0202`), App Store (bundle `com.recallify.app`), Play Store (package `com.recallify.app`).
 - **Entitlement**: `recallify_pro` ("Recallify Pro") attached to all 9 products (3 stores × 3 tiers).
 - **Offering**: `default` (current) with packages `$rc_lifetime`, `$rc_annual`, `$rc_monthly`.
-- **Products**: `recallify_lifetime` ($79.99 one-time), `recallify_yearly` ($29.99/yr), `recallify_monthly` ($4.99/mo). Test-store prices set in USD + EUR.
+- **Products**: `recallify_lifetime` (₹1,999 one-time), `recallify_yearly` (₹999/yr), `recallify_monthly` (₹99/mo). RevenueCat test store does not support INR, so test-store prices are stored in USD with matching numerical amounts (99 / 999 / 1999). Production prices come from App Store Connect / Google Play Console — configure the Indian price tier to ₹99 / ₹999 / ₹1,999 there. Paywall UI displays the canonical ₹ labels via a hardcoded map keyed on package identifier in `paywall.tsx` (`packagePrice()`).
 - **Public API keys** (env vars, scope `shared`):
   - `EXPO_PUBLIC_REVENUECAT_TEST_API_KEY` (test store)
   - `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` (App Store)

@@ -62,10 +62,11 @@ const PRODUCTS: ProductSpec[] = [
     type: "subscription",
     packageIdentifier: "$rc_monthly",
     packageDisplayName: "Monthly Subscription",
-    prices: [
-      { amount_micros: 4990000, currency: "USD" },
-      { amount_micros: 4490000, currency: "EUR" },
-    ],
+    // Test-store prices use USD (RevenueCat test store does not support INR).
+    // Numerical amount mirrors target INR price for parity in dev.
+    // Real production prices come from App Store Connect / Google Play Console
+    // (configure ₹99 / ₹999 / ₹1999 in the Indian price tier).
+    prices: [{ amount_micros: 99000000, currency: "USD" }],
   },
   {
     identifier: "recallify_yearly",
@@ -76,10 +77,7 @@ const PRODUCTS: ProductSpec[] = [
     type: "subscription",
     packageIdentifier: "$rc_annual",
     packageDisplayName: "Yearly Subscription",
-    prices: [
-      { amount_micros: 29990000, currency: "USD" },
-      { amount_micros: 26990000, currency: "EUR" },
-    ],
+    prices: [{ amount_micros: 999000000, currency: "USD" }],
   },
   {
     identifier: "recallify_lifetime",
@@ -90,10 +88,7 @@ const PRODUCTS: ProductSpec[] = [
     type: "non_consumable",
     packageIdentifier: "$rc_lifetime",
     packageDisplayName: "Lifetime Access",
-    prices: [
-      { amount_micros: 79990000, currency: "USD" },
-      { amount_micros: 71990000, currency: "EUR" },
-    ],
+    prices: [{ amount_micros: 1999000000, currency: "USD" }],
   },
 ];
 
