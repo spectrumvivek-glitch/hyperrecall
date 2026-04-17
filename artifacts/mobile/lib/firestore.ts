@@ -1,42 +1,31 @@
 /**
- * Firestore data layer — subcollection architecture
+ * Firestore data layer — Recallify cloud sync
  *
- * Schema (designed to scale to 20M+ users):
- *   users/{uid}                    — user profile doc
- *   users/{uid}/notes/{noteId}     — user's notes (real-time capable)
- *   users/{uid}/reviews/{reviewId} — review schedules
- *   users/{uid}/stats              — aggregated stats doc
+ * Schema:
+ *   users/{uid}                       — user profile doc
+ *   users/{uid}/data/main             — categories + plans + stats (small, atomic)
+ *   users/{uid}/notes/{noteId}        — individual notes (scales)
  *
- * Why subcollections over a flat collection with userId filters?
- *   1. Security rules trivially: `request.auth.uid == userId` — no rules leak
- *   2. No composite indexes on userId + other fields
- *   3. Firestore bills per document read; scoped queries eliminate cross-user scans
- *   4. Scales linearly — each user's data is isolated, no hot-spots
- *   5. Pagination cursors stay within a single user's data
+ * Notes:
+ * - Images are NOT synced (per project goal — stored locally only).
+ * - Notes are synced per-document so users with thousands of notes scale fine.
+ * - Categories/plans/stats are small JSON arrays merged into a single doc.
  */
 
 import {
-  FirestoreError,
-  QueryDocumentSnapshot,
   Timestamp,
-  addDoc,
   collection,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
   serverTimestamp,
   setDoc,
-  startAfter,
-  updateDoc,
   writeBatch,
 } from "firebase/firestore";
 
 import { db } from "./firebase";
+import type { Category, Note, RevisionPlan, UserStats } from "./storage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,58 +34,27 @@ export interface CloudNote {
   title: string;
   content: string;
   categoryId: string;
-  /** Firebase Storage download URLs for attached images */
-  imageUrls: string[];
-  createdAt: number | null;
-  updatedAt: number | null;
-  syncedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
-export interface CloudStats {
-  totalXp: number;
-  totalCompleted: number;
-  currentStreak: number;
-  lastActiveDate: number;
-  updatedAt: number | null;
+export interface CloudUserData {
+  categories: Category[];
+  plans: RevisionPlan[];
+  stats: UserStats | null;
+  updatedAt: number;
 }
 
-export type NoteListener = (notes: CloudNote[]) => void;
-export type NoteErrorListener = (err: FirestoreError) => void;
-
-// ─── Path helpers — single source of truth for Firestore paths ────────────────
+// ─── Path helpers ─────────────────────────────────────────────────────────────
 
 const userDoc = (uid: string) => doc(db, "users", uid);
+const userMetaDoc = (uid: string) => doc(db, "users", uid, "data", "main");
 const notesCol = (uid: string) => collection(db, "users", uid, "notes");
 const noteDoc = (uid: string, noteId: string) =>
   doc(db, "users", uid, "notes", noteId);
-const reviewsCol = (uid: string) => collection(db, "users", uid, "reviews");
-const reviewDoc = (uid: string, reviewId: string) =>
-  doc(db, "users", uid, "reviews", reviewId);
-const statsDoc = (uid: string) => doc(db, "users", uid, "stats");
-
-// ─── Mapper ───────────────────────────────────────────────────────────────────
-
-function mapNote(d: QueryDocumentSnapshot): CloudNote {
-  const data = d.data();
-  return {
-    id: d.id,
-    title: data.title ?? "",
-    content: data.content ?? "",
-    categoryId: data.categoryId ?? "",
-    imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
-    createdAt:
-      data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : null,
-    updatedAt:
-      data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : null,
-    syncedAt: Date.now(),
-  };
-}
 
 // ─── User Profile ─────────────────────────────────────────────────────────────
 
-/**
- * Upserts the user profile. Safe to call on every login (merge: true).
- */
 export async function upsertUserProfile(
   userId: string,
   email: string,
@@ -113,114 +71,49 @@ export async function upsertUserProfile(
   );
 }
 
-// ─── Real-time Notes Subscription ────────────────────────────────────────────
+export async function deleteUserProfile(userId: string): Promise<void> {
+  await deleteDoc(userDoc(userId));
+}
+
+// ─── Notes ────────────────────────────────────────────────────────────────────
 
 /**
- * Opens a Firestore real-time listener for the user's notes.
- * Returns an unsubscribe function — always call it on component unmount.
- *
- * Cost optimisation: limited to 200 most-recently updated notes.
- * Use getNotesPage() for users with larger collections.
+ * Push a single note to the cloud (without images).
  */
-export function subscribeToNotes(
-  userId: string,
-  onData: NoteListener,
-  onError: NoteErrorListener
-): () => void {
-  const q = query(notesCol(userId), orderBy("updatedAt", "desc"), limit(200));
-  return onSnapshot(q, (snap) => onData(snap.docs.map(mapNote)), onError);
-}
-
-// ─── Note CRUD ────────────────────────────────────────────────────────────────
-
-export async function addCloudNote(
-  userId: string,
-  note: Pick<CloudNote, "title" | "content" | "categoryId" | "imageUrls">
-): Promise<string> {
-  const ref = await addDoc(notesCol(userId), {
-    ...note,
-    imageUrls: note.imageUrls ?? [],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function updateCloudNote(
-  userId: string,
-  noteId: string,
-  updates: Partial<Pick<CloudNote, "title" | "content" | "categoryId" | "imageUrls">>
-): Promise<void> {
-  await updateDoc(noteDoc(userId, noteId), {
-    ...updates,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export async function deleteCloudNote(
-  userId: string,
-  noteId: string
-): Promise<void> {
-  await deleteDoc(noteDoc(userId, noteId));
-}
-
-// ─── Pagination (cursor-based, cost-efficient) ────────────────────────────────
-
-export interface NotesPage {
-  notes: CloudNote[];
-  hasMore: boolean;
-  lastDoc: QueryDocumentSnapshot | null;
+export async function pushNote(userId: string, note: Note): Promise<void> {
+  await setDoc(
+    noteDoc(userId, note.id),
+    {
+      title: note.title,
+      content: note.content,
+      categoryId: note.categoryId,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
+    },
+    { merge: true }
+  );
 }
 
 /**
- * Fetches a page of notes using cursor-based pagination.
- * Pass the `lastDoc` from the previous page as `cursor` to get the next page.
+ * Push many notes at once using batched writes (max ~490 per batch).
  */
-export async function getNotesPage(
+const BATCH_LIMIT = 490;
+export async function pushAllNotes(
   userId: string,
-  pageSize = 50,
-  cursor?: QueryDocumentSnapshot
-): Promise<NotesPage> {
-  const constraints: Parameters<typeof query>[1][] = [
-    orderBy("updatedAt", "desc"),
-    limit(pageSize + 1),
-  ];
-  if (cursor) constraints.push(startAfter(cursor));
-
-  const snap = await getDocs(query(notesCol(userId), ...constraints));
-  const hasMore = snap.docs.length > pageSize;
-  const docs = hasMore ? snap.docs.slice(0, pageSize) : snap.docs;
-
-  return {
-    notes: docs.map(mapNote),
-    hasMore,
-    lastDoc: docs[docs.length - 1] ?? null,
-  };
-}
-
-// ─── Batch Sync (up to 20M notes) ────────────────────────────────────────────
-
-const BATCH_LIMIT = 490; // Firestore hard limit is 500 ops per batch
-
-/**
- * Bulk upserts notes for a user in Firestore-safe batches.
- * Use for initial data migration or periodic offline → cloud sync.
- */
-export async function batchSyncNotes(
-  userId: string,
-  notes: Array<{ id: string } & Pick<CloudNote, "title" | "content" | "categoryId">>
+  notes: Note[]
 ): Promise<void> {
   for (let i = 0; i < notes.length; i += BATCH_LIMIT) {
     const chunk = notes.slice(i, i + BATCH_LIMIT);
     const batch = writeBatch(db);
-    for (const note of chunk) {
+    for (const n of chunk) {
       batch.set(
-        noteDoc(userId, note.id),
+        noteDoc(userId, n.id),
         {
-          title: note.title,
-          content: note.content,
-          categoryId: note.categoryId,
-          updatedAt: serverTimestamp(),
+          title: n.title,
+          content: n.content,
+          categoryId: n.categoryId,
+          createdAt: n.createdAt,
+          updatedAt: n.updatedAt,
         },
         { merge: true }
       );
@@ -229,69 +122,64 @@ export async function batchSyncNotes(
   }
 }
 
-// ─── Reviews ─────────────────────────────────────────────────────────────────
-
-export async function scheduleReview(
+export async function removeNoteFromCloud(
   userId: string,
-  noteId: string,
-  nextReviewDate: Date
-): Promise<string> {
-  const ref = await addDoc(reviewsCol(userId), {
-    noteId,
-    nextReviewDate: nextReviewDate.toISOString(),
-    createdAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function deleteReview(
-  userId: string,
-  reviewId: string
+  noteId: string
 ): Promise<void> {
-  await deleteDoc(reviewDoc(userId, reviewId));
+  await deleteDoc(noteDoc(userId, noteId));
 }
 
-// ─── Stats Sync ───────────────────────────────────────────────────────────────
+export async function fetchAllNotes(userId: string): Promise<CloudNote[]> {
+  const snap = await getDocs(notesCol(userId));
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      title: data.title ?? "",
+      content: data.content ?? "",
+      categoryId: data.categoryId ?? "",
+      createdAt:
+        typeof data.createdAt === "number"
+          ? data.createdAt
+          : data.createdAt instanceof Timestamp
+            ? data.createdAt.toMillis()
+            : Date.now(),
+      updatedAt:
+        typeof data.updatedAt === "number"
+          ? data.updatedAt
+          : data.updatedAt instanceof Timestamp
+            ? data.updatedAt.toMillis()
+            : Date.now(),
+    };
+  });
+}
 
-/**
- * Persists aggregated user stats to the cloud.
- * Called after completing a revision or updating the streak.
- */
-export async function syncStats(
+// ─── Combined metadata (categories + plans + stats) ──────────────────────────
+
+export async function pushUserMeta(
   userId: string,
-  stats: Omit<CloudStats, "updatedAt">
+  data: { categories: Category[]; plans: RevisionPlan[]; stats: UserStats }
 ): Promise<void> {
   await setDoc(
-    statsDoc(userId),
-    { ...stats, updatedAt: serverTimestamp() },
-    { merge: true }
+    userMetaDoc(userId),
+    {
+      categories: data.categories,
+      plans: data.plans,
+      stats: data.stats,
+      updatedAt: Date.now(),
+    },
+    { merge: false } // overwrite — we always push the full latest state
   );
 }
 
-export async function getCloudStats(
-  userId: string
-): Promise<CloudStats | null> {
-  const snap = await getDoc(statsDoc(userId));
+export async function fetchUserMeta(userId: string): Promise<CloudUserData | null> {
+  const snap = await getDoc(userMetaDoc(userId));
   if (!snap.exists()) return null;
-  const d = snap.data();
+  const data = snap.data();
   return {
-    totalXp: d.totalXp ?? 0,
-    totalCompleted: d.totalCompleted ?? 0,
-    currentStreak: d.currentStreak ?? 0,
-    lastActiveDate: d.lastActiveDate ?? 0,
-    updatedAt:
-      d.updatedAt instanceof Timestamp ? d.updatedAt.toMillis() : null,
+    categories: Array.isArray(data.categories) ? data.categories : [],
+    plans: Array.isArray(data.plans) ? data.plans : [],
+    stats: data.stats ?? null,
+    updatedAt: typeof data.updatedAt === "number" ? data.updatedAt : 0,
   };
-}
-
-// ─── Account Deletion ─────────────────────────────────────────────────────────
-
-/**
- * Deletes a user's profile doc.
- * Note: subcollection docs (notes, reviews) must be deleted client-side
- * before calling this, or handled by a Cloud Functions onDelete trigger
- * in production (recommended at scale).
- */
-export async function deleteUserProfile(userId: string): Promise<void> {
-  await deleteDoc(userDoc(userId));
 }

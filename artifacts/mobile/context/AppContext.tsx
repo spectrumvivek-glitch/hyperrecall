@@ -6,6 +6,14 @@ import React, {
   useState,
 } from "react";
 
+import { useAuth } from "@/context/AuthContext";
+import {
+  clearSyncSession,
+  deleteNoteAsync,
+  pushMetaAsync,
+  pushNoteAsync,
+  syncFromCloud,
+} from "@/lib/cloudSync";
 import { initNotificationsOnFirstLaunch } from "@/lib/notifications";
 import {
   Category,
@@ -95,6 +103,8 @@ function buildXpInfo(stats: UserStats): XpInfo {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.uid ?? null;
   const [categories, setCategories] = useState<Category[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [revisionPlans, setRevisionPlans] = useState<RevisionPlan[]>([]);
@@ -146,21 +156,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Cloud sync on auth change ──────────────────────────────────────────────
+  // When the user logs in (or switches accounts), pull their data from the cloud
+  // and refresh local state. On logout, clear session tracking so the next login
+  // re-syncs.
+  useEffect(() => {
+    if (!uid) {
+      clearSyncSession();
+      return;
+    }
+    (async () => {
+      await syncFromCloud(uid);
+      await refresh();
+    })();
+  }, [uid, refresh]);
+
   const addCategory = useCallback(async (name: string, color: string) => {
     const cat = await createCategory(name, color);
     await refresh();
+    pushMetaAsync(uid);
     return cat;
-  }, [refresh]);
+  }, [refresh, uid]);
 
   const removeCategory = useCallback(async (id: string) => {
     await deleteCategory(id);
     await refresh();
-  }, [refresh]);
+    pushMetaAsync(uid);
+  }, [refresh, uid]);
 
   const renameCategoryFn = useCallback(async (id: string, name: string) => {
     await renameCategory(id, name);
     await refresh();
-  }, [refresh]);
+    pushMetaAsync(uid);
+  }, [refresh, uid]);
 
   const addNote = useCallback(async (
     title: string,
@@ -172,8 +200,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const note = await createNote(title, categoryId, content, images);
     await createRevisionPlan(note.id, intervals);
     await refresh();
+    pushNoteAsync(uid, note);
+    pushMetaAsync(uid); // plans changed
     return note;
-  }, [refresh]);
+  }, [refresh, uid]);
 
   const editNote = useCallback(async (id: string, updates: Partial<Note>, intervals?: number[]) => {
     await updateNote(id, updates);
@@ -181,16 +211,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await updateRevisionPlanSchedule(id, intervals);
     }
     await refresh();
-  }, [refresh]);
+    const updated = (await getNotes()).find((n) => n.id === id);
+    if (updated) pushNoteAsync(uid, updated);
+    if (intervals && intervals.length > 0) pushMetaAsync(uid);
+  }, [refresh, uid]);
 
   const removeNote = useCallback(async (id: string) => {
     await deleteNote(id);
     await refresh();
-  }, [refresh]);
+    deleteNoteAsync(uid, id);
+    pushMetaAsync(uid); // plans changed (associated plan removed)
+  }, [refresh, uid]);
 
   const markCompleted = useCallback(async (noteId: string): Promise<number> => {
     const result = await completeRevision(noteId);
     await refresh();
+    pushMetaAsync(uid); // plans + stats changed
     setPendingXp(result.xpGained);
     if (result.newBadges && result.newBadges.length > 0) {
       setNewBadges(result.newBadges);
@@ -208,7 +244,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }
     return result.xpGained;
-  }, [refresh]);
+  }, [refresh, uid]);
 
   const markSkipped = useCallback(async (noteId: string) => {
     await skipRevision(noteId);
@@ -216,18 +252,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     stats.totalSkipped += 1;
     await saveUserStats(stats);
     await refresh();
-  }, [refresh]);
+    pushMetaAsync(uid);
+  }, [refresh, uid]);
 
   const shareAndEarnXp = useCallback(async () => {
     const result = await awardShareXp();
     setPendingXp(result.xpGained);
     await refresh();
+    pushMetaAsync(uid);
     if (result.leveledUp) {
       const stats = await getUserStats();
       const info = getXpProgress(stats.totalXp);
       setPendingLevelUp({ newLevel: result.newLevel, levelName: info.levelName, xpGained: result.xpGained });
     }
-  }, [refresh]);
+  }, [refresh, uid]);
 
   const dismissLevelUp = useCallback(() => setPendingLevelUp(null), []);
   const dismissStreakMilestone = useCallback(() => setStreakMilestone(null), []);

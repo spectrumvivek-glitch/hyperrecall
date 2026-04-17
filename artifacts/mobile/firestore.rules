@@ -2,61 +2,40 @@ rules_version = '2';
 
 // ─── Recallify — Firestore Security Rules ─────────────────────────────────────
 //
-// Architecture: subcollections under users/{uid}
+// Schema:
 //   users/{uid}                — profile doc
-//   users/{uid}/notes/{id}     — notes
-//   users/{uid}/reviews/{id}   — review schedules
-//   users/{uid}/stats          — aggregated stats
+//   users/{uid}/data/{docId}   — combined meta (categories + plans + stats)
+//   users/{uid}/notes/{noteId} — individual notes
 //
-// All data is scoped under the owner's UID, so a single `isOwner` check
-// is sufficient for every path — no compound rules needed.
+// All data is scoped under the owner's UID.
 //
 // Deploy with:
 //   firebase deploy --only firestore:rules
-//
 // ─────────────────────────────────────────────────────────────────────────────
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: true when the request comes from the authenticated user
-    // whose UID matches the path variable.
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Helper: validate note write shape (used in create/update)
-    function validNote() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['title', 'content', 'updatedAt'])
-          && data.title is string
-          && data.content is string;
     }
 
     // ─── User profile ─────────────────────────────────────────────────────
     match /users/{userId} {
       allow read, write: if isOwner(userId);
 
-      // ─── Notes ──────────────────────────────────────────────────────────
-      match /notes/{noteId} {
-        allow read:   if isOwner(userId);
-        allow create: if isOwner(userId) && validNote();
-        allow update: if isOwner(userId) && validNote();
-        allow delete: if isOwner(userId);
-      }
-
-      // ─── Review schedules ────────────────────────────────────────────────
-      match /reviews/{reviewId} {
+      // ─── Combined meta (categories, plans, stats) ────────────────────────
+      match /data/{docId} {
         allow read, write: if isOwner(userId);
       }
 
-      // ─── Aggregated stats ────────────────────────────────────────────────
-      match /stats {
+      // ─── Notes ───────────────────────────────────────────────────────────
+      match /notes/{noteId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // Deny all other paths by default (implicit, but explicit is clearer)
+    // Deny all other paths by default
     match /{document=**} {
       allow read, write: if false;
     }

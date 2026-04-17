@@ -1,80 +1,44 @@
-import { FirestoreError } from "firebase/firestore";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { CloudNote, subscribeToNotes } from "@/lib/firestore";
-
-export interface CloudNotesState {
-  notes: CloudNote[];
-  isLoading: boolean;
-  error: string | null;
-}
+import { CloudNote, fetchAllNotes } from "@/lib/firestore";
 
 /**
- * Subscribes to the signed-in user's notes in real time via Firestore onSnapshot.
- * Automatically unsubscribes when userId changes or the component unmounts.
+ * Fetches the current count of notes stored in the cloud for this user.
+ * Used by the Settings screen to display sync status.
  *
- * Returns:
- *   notes      — live-updated array of cloud notes
- *   isLoading  — true until the first snapshot arrives
- *   error      — last Firestore error message, or null
+ * Re-fetches when the user changes. Not real-time — call refresh() to update.
  */
-export function useCloudNotes(userId: string | null): CloudNotesState {
+export function useCloudNotes(userId: string | null) {
   const [notes, setNotes] = useState<CloudNote[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const unsubRef = useRef<(() => void) | null>(null);
+
+  const load = async (uid: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAllNotes(uid);
+      setNotes(data);
+    } catch (err: any) {
+      setError(err?.message ?? "Sync error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Tear down any existing listener first
-    unsubRef.current?.();
-    unsubRef.current = null;
-
     if (!userId) {
       setNotes([]);
-      setIsLoading(false);
       setError(null);
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
-
-    const unsub = subscribeToNotes(
-      userId,
-      (fresh) => {
-        setNotes(fresh);
-        setIsLoading(false);
-      },
-      (err: FirestoreError) => {
-        console.warn("[useCloudNotes] Firestore error:", err.code, err.message);
-        setError(friendlyError(err));
-        setIsLoading(false);
-      }
-    );
-
-    unsubRef.current = unsub;
-    return () => {
-      unsub();
-      unsubRef.current = null;
-    };
+    load(userId);
   }, [userId]);
 
-  return { notes, isLoading, error };
-}
-
-// ─── Error mapping ────────────────────────────────────────────────────────────
-
-function friendlyError(err: FirestoreError): string {
-  switch (err.code) {
-    case "permission-denied":
-      return "You don't have permission to access this data.";
-    case "unavailable":
-      return "Offline — showing cached data.";
-    case "unauthenticated":
-      return "Please sign in to sync your notes.";
-    case "resource-exhausted":
-      return "Too many requests. Syncing will resume shortly.";
-    default:
-      return "Sync error. Your data is safe locally.";
-  }
+  return {
+    notes,
+    isLoading,
+    error,
+    refresh: () => (userId ? load(userId) : Promise.resolve()),
+  };
 }
