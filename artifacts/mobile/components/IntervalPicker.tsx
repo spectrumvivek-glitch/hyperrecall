@@ -33,7 +33,6 @@ const PRESETS = [
       353, 356, 358, 360, 362, 363, 364, 365, 365, 365,
     ],
     color: "#ef4444",
-    badge: "Best for Students",
   },
   {
     label: "Relaxed",
