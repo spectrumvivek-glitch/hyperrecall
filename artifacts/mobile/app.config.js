@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: "Recallify",
+    name: "HyperRecall",
     slug: "mobile",
     version: "1.0.0",
     orientation: "portrait",

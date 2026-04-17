@@ -128,7 +128,7 @@ export default function NoteDetailScreen() {
         showProGate(
           router,
           "Note limit reached",
-          `Free accounts can have up to ${FREE_MAX_NOTES_PER_CATEGORY} notes per category. "${catName}" is full. Upgrade to Recallify Pro for unlimited notes.`,
+          `Free accounts can have up to ${FREE_MAX_NOTES_PER_CATEGORY} notes per category. "${catName}" is full. Upgrade to HyperRecall Pro for unlimited notes.`,
         );
         return;
       }

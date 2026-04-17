@@ -124,7 +124,7 @@ export default function LoginScreen() {
           >
             <Feather name="zap" size={32} color="#fff" />
           </LinearGradient>
-          <Text style={styles.appName}>Recallify</Text>
+          <Text style={styles.appName}>HyperRecall</Text>
           <Text style={styles.tagline}>Your smart revision companion</Text>
         </View>
 

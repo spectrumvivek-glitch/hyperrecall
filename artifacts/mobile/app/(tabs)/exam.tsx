@@ -996,7 +996,7 @@ export default function ExamScreen() {
           >
             <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 }}>
               <Feather name="zap" size={18} color="#fff" />
-              <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Upgrade to Recallify Pro</Text>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Upgrade to HyperRecall Pro</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

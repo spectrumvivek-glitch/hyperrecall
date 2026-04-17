@@ -142,7 +142,7 @@ export default function SettingsScreen() {
       showProGate(
         router,
         "Category limit reached",
-        `Free accounts can have up to ${FREE_MAX_CATEGORIES} categories. Upgrade to Recallify Pro for unlimited categories.`,
+        `Free accounts can have up to ${FREE_MAX_CATEGORIES} categories. Upgrade to HyperRecall Pro for unlimited categories.`,
       );
       return;
     }
@@ -213,7 +213,7 @@ export default function SettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>
-                {isPro ? "Recallify Pro" : "Upgrade to Recallify Pro"}
+                {isPro ? "HyperRecall Pro" : "Upgrade to HyperRecall Pro"}
               </Text>
               <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
                 {isPro
@@ -471,7 +471,7 @@ export default function SettingsScreen() {
         <SectionCard>
           <View style={styles.infoRow}>
             <Feather name="zap" size={18} color={colors.primary} />
-            <Text style={[styles.infoLabel, { color: colors.foreground }]}>Recallify</Text>
+            <Text style={[styles.infoLabel, { color: colors.foreground }]}>HyperRecall</Text>
             <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>v1.0.0</Text>
           </View>
           {divider}

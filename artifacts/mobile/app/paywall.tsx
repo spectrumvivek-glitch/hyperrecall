@@ -103,7 +103,7 @@ export default function PaywallScreen() {
     const result = await purchasePackage(pkg);
     setBusyId(null);
     if (result === "purchased") {
-      Alert.alert("Welcome to Recallify Pro!", "Thanks for subscribing.");
+      Alert.alert("Welcome to HyperRecall Pro!", "Thanks for subscribing.");
       router.back();
     } else if (result === "error") {
       Alert.alert("Purchase failed", error ?? "Please try again.");
@@ -116,7 +116,7 @@ export default function PaywallScreen() {
     setRestoring(false);
     Alert.alert(
       ok ? "Restored" : "Nothing to restore",
-      ok ? "Welcome back to Recallify Pro." : "We didn't find any active purchases on this account.",
+      ok ? "Welcome back to HyperRecall Pro." : "We didn't find any active purchases on this account.",
     );
     if (ok) router.back();
   };
@@ -139,7 +139,7 @@ export default function PaywallScreen() {
         <View style={[styles.heroIcon, { backgroundColor: colors.primary + "1a" }]}>
           <Feather name="zap" size={32} color={colors.primary} />
         </View>
-        <Text style={[styles.heroTitle, { color: colors.foreground }]}>Recallify Pro</Text>
+        <Text style={[styles.heroTitle, { color: colors.foreground }]}>HyperRecall Pro</Text>
         <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
           Unlock the full spaced repetition experience
         </Text>
@@ -169,7 +169,7 @@ export default function PaywallScreen() {
           >
             <Feather name="check-circle" size={20} color={colors.primary} />
             <Text style={[styles.proBannerText, { color: colors.foreground }]}>
-              You're on Recallify Pro
+              You're on HyperRecall Pro
             </Text>
           </View>
         ) : !isAvailable ? (
@@ -177,8 +177,8 @@ export default function PaywallScreen() {
             <Feather name="smartphone" size={16} color={colors.warning} />
             <Text style={[styles.noticeText, { color: colors.warning }]}>
               {Platform.OS === "web"
-                ? "Open Recallify on your phone (via a development build) to subscribe."
-                : "Subscriptions require the native build of Recallify."}
+                ? "Open HyperRecall on your phone (via a development build) to subscribe."
+                : "Subscriptions require the native build of HyperRecall."}
             </Text>
           </View>
         ) : isLoading ? (

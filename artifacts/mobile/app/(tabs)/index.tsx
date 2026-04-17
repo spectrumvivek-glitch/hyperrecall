@@ -259,16 +259,16 @@ function UpcomingReviews({
 
 async function shareStreak(streak: number, totalXp: number, level: number, levelName: string) {
   const message =
-    `🔥 I'm on a ${streak}-day study streak with Recallify!\n\n` +
+    `🔥 I'm on a ${streak}-day study streak with HyperRecall!\n\n` +
     `⚡ Level ${level} ${levelName} • ${totalXp} XP earned\n\n` +
-    `Recallify uses spaced repetition to help you remember anything — study smarter, not harder. ` +
+    `HyperRecall uses spaced repetition to help you remember anything — study smarter, not harder. ` +
     `Track streaks, earn XP, unlock badges, and master any subject!\n\n` +
-    `Search "Recallify" on Play Store or App Store and download now!\n\n` +
-    `#Recallify #SpacedRepetition #StudySmart #Learning`;
+    `Search "HyperRecall" on Play Store or App Store and download now!\n\n` +
+    `#HyperRecall #SpacedRepetition #StudySmart #Learning`;
   try {
     await Share.share({
       message,
-      title: "Recallify — Learn Smarter with Spaced Repetition",
+      title: "HyperRecall — Learn Smarter with Spaced Repetition",
     });
   } catch {
     // user cancelled or error

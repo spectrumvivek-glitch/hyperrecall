@@ -11,7 +11,7 @@ export function showProGate(
 ) {
   const goToPaywall = () => router.push("/paywall");
   if (Platform.OS === "web") {
-    if (typeof window !== "undefined" && window.confirm(`${title}\n\n${message}\n\nUpgrade to Recallify Pro?`)) {
+    if (typeof window !== "undefined" && window.confirm(`${title}\n\n${message}\n\nUpgrade to HyperRecall Pro?`)) {
       goToPaywall();
     }
     return;

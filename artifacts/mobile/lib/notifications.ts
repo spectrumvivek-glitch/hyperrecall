@@ -116,12 +116,12 @@ export async function scheduleDailyRevisionReminder(
     const content =
       dueCount === 0
         ? {
-            title: "Recallify — Keep it up! 🎉",
+            title: "HyperRecall — Keep it up! 🎉",
             body: "No notes due today. Add new notes to stay ahead.",
             sound: true,
           }
         : {
-            title: `Recallify — ${dueCount} note${dueCount > 1 ? "s" : ""} due today 📚`,
+            title: `HyperRecall — ${dueCount} note${dueCount > 1 ? "s" : ""} due today 📚`,
             body: "Time to revise! Tap to start your session.",
             sound: true,
           };
