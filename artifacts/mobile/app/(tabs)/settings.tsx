@@ -45,7 +45,9 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: o
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { categories, addCategory, removeCategory, notes, dueNotes } = useApp();
+  const { categories, addCategory, removeCategory, renameCategory, notes, dueNotes } = useApp();
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState("");
   const { user, signOut, isAuthenticating } = useAuth();
   const isOnline = useConnectionState();
   const { notes: cloudNotes, isLoading: cloudLoading, error: cloudError } = useCloudNotes(user?.uid ?? null);
@@ -136,6 +138,28 @@ export default function SettingsScreen() {
     setShowAddCat(false);
   };
 
+  const handleStartRename = (id: string, name: string) => {
+    setEditingCatId(id);
+    setEditingCatName(name);
+  };
+
+  const handleSaveRename = async () => {
+    if (!editingCatId) return;
+    const trimmed = editingCatName.trim();
+    if (trimmed.length === 0) {
+      setEditingCatId(null);
+      return;
+    }
+    await renameCategory(editingCatId, trimmed);
+    setEditingCatId(null);
+    setEditingCatName("");
+  };
+
+  const handleCancelRename = () => {
+    setEditingCatId(null);
+    setEditingCatName("");
+  };
+
   const handleDeleteCategory = (id: string, name: string) => {
     const noteCount = notes.filter((n) => n.categoryId === id).length;
     if (Platform.OS === "web") {
@@ -216,16 +240,44 @@ export default function SettingsScreen() {
                 <View style={styles.catRow}>
                   <View style={styles.catLeft}>
                     <View style={[styles.catColorBar, { backgroundColor: cat.color }]} />
-                    <View>
-                      <Text style={[styles.catName, { color: colors.foreground }]}>{cat.name}</Text>
-                      <Text style={[styles.catCount, { color: colors.mutedForeground }]}>
-                        {noteCount} note{noteCount !== 1 ? "s" : ""}
-                      </Text>
-                    </View>
+                    {editingCatId === cat.id ? (
+                      <TextInput
+                        value={editingCatName}
+                        onChangeText={setEditingCatName}
+                        autoFocus
+                        onSubmitEditing={handleSaveRename}
+                        placeholder="Category name"
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[styles.catInput, { color: colors.foreground, backgroundColor: colors.muted, borderRadius: colors.radius / 2, flex: 1 }]}
+                      />
+                    ) : (
+                      <View>
+                        <Text style={[styles.catName, { color: colors.foreground }]}>{cat.name}</Text>
+                        <Text style={[styles.catCount, { color: colors.mutedForeground }]}>
+                          {noteCount} note{noteCount !== 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  <TouchableOpacity onPress={() => handleDeleteCategory(cat.id, cat.name)} style={styles.deleteBtn} activeOpacity={0.7}>
-                    <Feather name="trash-2" size={16} color={colors.destructive} />
-                  </TouchableOpacity>
+                  {editingCatId === cat.id ? (
+                    <View style={{ flexDirection: "row", gap: 4 }}>
+                      <TouchableOpacity onPress={handleSaveRename} style={styles.deleteBtn} activeOpacity={0.7}>
+                        <Feather name="check" size={18} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={handleCancelRename} style={styles.deleteBtn} activeOpacity={0.7}>
+                        <Feather name="x" size={18} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: "row", gap: 4 }}>
+                      <TouchableOpacity onPress={() => handleStartRename(cat.id, cat.name)} style={styles.deleteBtn} activeOpacity={0.7}>
+                        <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteCategory(cat.id, cat.name)} style={styles.deleteBtn} activeOpacity={0.7}>
+                        <Feather name="trash-2" size={16} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               </React.Fragment>
             );

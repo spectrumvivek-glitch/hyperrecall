@@ -19,6 +19,7 @@ import {
   createNote,
   createRevisionPlan,
   deleteCategory,
+  renameCategory,
   deleteNote,
   getDueNotes,
   getCategories,
@@ -67,6 +68,7 @@ interface AppContextValue {
 
   addCategory: (name: string, color: string) => Promise<Category>;
   removeCategory: (id: string) => Promise<void>;
+  renameCategory: (id: string, name: string) => Promise<void>;
 
   addNote: (
     title: string,
@@ -152,6 +154,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const removeCategory = useCallback(async (id: string) => {
     await deleteCategory(id);
+    await refresh();
+  }, [refresh]);
+
+  const renameCategoryFn = useCallback(async (id: string, name: string) => {
+    await renameCategory(id, name);
     await refresh();
   }, [refresh]);
 
@@ -246,6 +253,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dismissNewBadges,
         addCategory,
         removeCategory,
+        renameCategory: renameCategoryFn,
         addNote,
         editNote,
         removeNote,

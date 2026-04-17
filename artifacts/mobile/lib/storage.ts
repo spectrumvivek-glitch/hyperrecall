@@ -93,6 +93,15 @@ export async function deleteCategory(id: string): Promise<void> {
   await saveCategories(cats.filter((c) => c.id !== id));
 }
 
+export async function renameCategory(id: string, name: string): Promise<void> {
+  const cats = await getCategories();
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return;
+  await saveCategories(
+    cats.map((c) => (c.id === id ? { ...c, name: trimmed } : c))
+  );
+}
+
 // Notes
 export async function getNotes(): Promise<Note[]> {
   const raw = await AsyncStorage.getItem(KEYS.NOTES);
