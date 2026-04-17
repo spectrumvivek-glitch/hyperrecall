@@ -19,6 +19,8 @@ import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { deleteLocalImage, makePersistentUri } from "@/lib/imageUtils";
+import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
+import { useSubscription } from "@/lib/revenuecat";
 import { NoteImage, generateId } from "@/lib/storage";
 
 export default function NoteDetailScreen() {
@@ -27,6 +29,7 @@ export default function NoteDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { notes, categories, revisionPlans, editNote, removeNote } = useApp();
+  const { isPro } = useSubscription();
 
   const note = notes.find((n) => n.id === id);
   const plan = revisionPlans.find((p) => p.noteId === id);
@@ -110,6 +113,25 @@ export default function NoteDetailScreen() {
     if (title.trim().length === 0) {
       setErrorMsg("Please enter a title for your note.");
       return;
+    }
+    if (
+      !isPro &&
+      selectedCategory &&
+      selectedCategory !== note.categoryId
+    ) {
+      const notesInCategory = notes.filter(
+        (n) => n.categoryId === selectedCategory && n.id !== id,
+      ).length;
+      if (notesInCategory >= FREE_MAX_NOTES_PER_CATEGORY) {
+        const catName =
+          categories.find((c) => c.id === selectedCategory)?.name ?? "this category";
+        showProGate(
+          router,
+          "Note limit reached",
+          `Free accounts can have up to ${FREE_MAX_NOTES_PER_CATEGORY} notes per category. "${catName}" is full. Upgrade to Recallify Pro for unlimited notes.`,
+        );
+        return;
+      }
     }
     setIsSaving(true);
     try {

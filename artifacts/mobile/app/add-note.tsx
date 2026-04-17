@@ -18,6 +18,8 @@ import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { makePersistentUri } from "@/lib/imageUtils";
+import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
+import { useSubscription } from "@/lib/revenuecat";
 import { NoteImage, generateId } from "@/lib/storage";
 
 const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
@@ -26,7 +28,8 @@ export default function AddNoteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { categories, addNote } = useApp();
+  const { categories, notes, addNote } = useApp();
+  const { isPro } = useSubscription();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -82,6 +85,20 @@ export default function AddNoteScreen() {
     if (intervals.length === 0) {
       setErrorMsg("Please add at least one revision interval.");
       return;
+    }
+
+    const targetCategoryId = selectedCategory || categories[0]?.id || "";
+    if (!isPro && targetCategoryId) {
+      const notesInCategory = notes.filter((n) => n.categoryId === targetCategoryId).length;
+      if (notesInCategory >= FREE_MAX_NOTES_PER_CATEGORY) {
+        const catName = categories.find((c) => c.id === targetCategoryId)?.name ?? "this category";
+        showProGate(
+          router,
+          "Note limit reached",
+          `Free accounts can have up to ${FREE_MAX_NOTES_PER_CATEGORY} notes per category. "${catName}" is full. Upgrade to Recallify Pro for unlimited notes.`,
+        );
+        return;
+      }
     }
 
     setIsSaving(true);

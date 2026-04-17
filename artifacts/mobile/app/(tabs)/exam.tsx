@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -20,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useSubscription } from "@/lib/revenuecat";
 import {
   ExamReviewItem,
   ExamSession,
@@ -905,7 +907,9 @@ const mStyles = StyleSheet.create({
 export default function ExamScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { notes, categories } = useApp();
+  const { isPro, isLoading: subLoading } = useSubscription();
 
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -942,6 +946,63 @@ export default function ExamScreen() {
 
   const totalDueToday = examSessions.reduce((acc, s) => acc + getTodayDue(s).length, 0);
   const hasExams = examSessions.length > 0;
+
+  if (subLoading) {
+    return (
+      <View style={[scStyles.scroll, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <Feather name="loader" size={28} color={colors.mutedForeground} />
+      </View>
+    );
+  }
+
+  if (!isPro) {
+    return (
+      <View style={[scStyles.scroll, { backgroundColor: colors.background, paddingTop: topPad + 20, paddingHorizontal: 22, paddingBottom: bottomPad + 110 }]}>
+        <View style={{ alignItems: "center", paddingTop: 40, gap: 16 }}>
+          <LinearGradient
+            colors={["#6366F1", "#8B5CF6"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center" }}
+          >
+            <Feather name="award" size={42} color="#fff" />
+          </LinearGradient>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: colors.foreground, textAlign: "center", letterSpacing: -0.5 }}>
+            Exam Mode is Pro
+          </Text>
+          <Text style={{ fontSize: 15, lineHeight: 22, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 8 }}>
+            Get 14 auto-scheduled, front-loaded reviews per note before any exam — designed for maximum retention.
+          </Text>
+          <View style={{ width: "100%", gap: 10, marginTop: 8 }}>
+            {([
+              ["calendar", "Set your exam date"],
+              ["edit-3", "Pick the notes to master"],
+              ["trending-up", "14 spaced reviews per note"],
+              ["zap", "Front-loaded for the exam"],
+            ] as const).map(([icon, text]) => (
+              <View
+                key={text}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 14 }}
+              >
+                <Feather name={icon as any} size={18} color={colors.primary} />
+                <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{text}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/paywall")}
+            activeOpacity={0.85}
+            style={{ borderRadius: 16, overflow: "hidden", marginTop: 18, width: "100%" }}
+          >
+            <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 }}>
+              <Feather name="zap" size={18} color="#fff" />
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Upgrade to Recallify Pro</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <>

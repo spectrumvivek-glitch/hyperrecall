@@ -28,6 +28,7 @@ import {
   saveNotificationSettings,
   scheduleDailyRevisionReminder,
 } from "@/lib/notifications";
+import { FREE_MAX_CATEGORIES, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
 
 const CATEGORY_COLORS = [
@@ -137,6 +138,14 @@ export default function SettingsScreen() {
 
   const handleAddCategory = async () => {
     if (newCatName.trim().length === 0) return;
+    if (!isPro && categories.length >= FREE_MAX_CATEGORIES) {
+      showProGate(
+        router,
+        "Category limit reached",
+        `Free accounts can have up to ${FREE_MAX_CATEGORIES} categories. Upgrade to Recallify Pro for unlimited categories.`,
+      );
+      return;
+    }
     await addCategory(newCatName.trim(), selectedColor);
     setNewCatName("");
     setShowAddCat(false);

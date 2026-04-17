@@ -140,6 +140,15 @@ At `artifacts/api-server/`. Express server at port 8080.
 - `GET /api/gamification/progress?totalCompleted=&todayCompleted=&dailyGoal=&totalNotes=&scheduledNotes=` — returns daily + deck progress
 - `POST /api/gamification/review` — accepts user stats, returns newly earned badges
 
+## Free vs Pro Tier Gating
+
+- **Limits source of truth**: `artifacts/mobile/lib/proGate.ts` exports `FREE_MAX_CATEGORIES = 3`, `FREE_MAX_NOTES_PER_CATEGORY = 10`, and `showProGate(router, title, message)` which prompts the user with an Alert (or `window.confirm` on web) and routes to `/paywall` on confirm.
+- **Free tier limits**:
+  - Max 3 categories total — gated in `app/(tabs)/settings.tsx` `handleAddCategory()`.
+  - Max 10 notes per category — gated in `app/add-note.tsx` `handleSave()` and `app/note-detail.tsx` `handleSave()` (latter prevents moving a note into a full category via category change).
+  - Exam Mode fully locked — `app/(tabs)/exam.tsx` shows a Pro upsell screen (with feature list and "Upgrade to Recallify Pro" CTA) instead of the create flow when `isPro === false`. While `useSubscription().isLoading` is true, a loader is shown to avoid CTA flicker on app boot.
+- **Pro users**: unlimited categories, unlimited notes, full Exam Mode access. Determined by `useSubscription().isPro` (RevenueCat entitlement `recallify_pro`).
+
 ## Subscriptions (RevenueCat)
 
 - **Project**: `proj90767a5f` (named "Recallify") on RevenueCat.
