@@ -217,9 +217,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [refresh, uid]);
 
   const removeNote = useCallback(async (id: string) => {
+    // Capture image IDs BEFORE deleting so we can clean them up from Storage
+    const allNotes = await getNotes();
+    const target = allNotes.find((n) => n.id === id);
+    const imageIds = target?.images.map((img) => img.id) ?? [];
     await deleteNote(id);
     await refresh();
-    deleteNoteAsync(uid, id);
+    deleteNoteAsync(uid, id, imageIds);
     pushMetaAsync(uid); // plans changed (associated plan removed)
   }, [refresh, uid]);
 

@@ -29,11 +29,17 @@ import type { Category, Note, RevisionPlan, UserStats } from "./storage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface CloudImage {
+  id: string;
+  url: string;
+}
+
 export interface CloudNote {
   id: string;
   title: string;
   content: string;
   categoryId: string;
+  images: CloudImage[];
   createdAt: number;
   updatedAt: number;
 }
@@ -78,15 +84,22 @@ export async function deleteUserProfile(userId: string): Promise<void> {
 // ─── Notes ────────────────────────────────────────────────────────────────────
 
 /**
- * Push a single note to the cloud (without images).
+ * Push a single note to the cloud, including image download URLs.
+ * Image URLs must already be uploaded — this function does NOT upload images itself
+ * (call uploadNoteImages first via cloudSync.pushNoteAsync).
  */
-export async function pushNote(userId: string, note: Note): Promise<void> {
+export async function pushNote(
+  userId: string,
+  note: Note,
+  imageUrls: CloudImage[]
+): Promise<void> {
   await setDoc(
     noteDoc(userId, note.id),
     {
       title: note.title,
       content: note.content,
       categoryId: note.categoryId,
+      images: imageUrls,
       createdAt: note.createdAt,
       updatedAt: note.updatedAt,
     },
@@ -96,11 +109,13 @@ export async function pushNote(userId: string, note: Note): Promise<void> {
 
 /**
  * Push many notes at once using batched writes (max ~490 per batch).
+ * The imageUrlsByNoteId map provides the cloud image URLs for each note.
  */
 const BATCH_LIMIT = 490;
 export async function pushAllNotes(
   userId: string,
-  notes: Note[]
+  notes: Note[],
+  imageUrlsByNoteId: Map<string, CloudImage[]>
 ): Promise<void> {
   for (let i = 0; i < notes.length; i += BATCH_LIMIT) {
     const chunk = notes.slice(i, i + BATCH_LIMIT);
@@ -112,6 +127,7 @@ export async function pushAllNotes(
           title: n.title,
           content: n.content,
           categoryId: n.categoryId,
+          images: imageUrlsByNoteId.get(n.id) ?? [],
           createdAt: n.createdAt,
           updatedAt: n.updatedAt,
         },
@@ -133,11 +149,16 @@ export async function fetchAllNotes(userId: string): Promise<CloudNote[]> {
   const snap = await getDocs(notesCol(userId));
   return snap.docs.map((d) => {
     const data = d.data();
+    const rawImages = Array.isArray(data.images) ? data.images : [];
+    const images: CloudImage[] = rawImages
+      .filter((i: any) => i && typeof i.url === "string" && typeof i.id === "string")
+      .map((i: any) => ({ id: i.id, url: i.url }));
     return {
       id: d.id,
       title: data.title ?? "",
       content: data.content ?? "",
       categoryId: data.categoryId ?? "",
+      images,
       createdAt:
         typeof data.createdAt === "number"
           ? data.createdAt
