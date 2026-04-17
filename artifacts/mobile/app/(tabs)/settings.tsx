@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,6 +28,7 @@ import {
   saveNotificationSettings,
   scheduleDailyRevisionReminder,
 } from "@/lib/notifications";
+import { useSubscription } from "@/lib/revenuecat";
 
 const CATEGORY_COLORS = [
   "#4f46e5", "#10b981", "#f59e0b", "#ec4899",
@@ -50,6 +52,8 @@ export default function SettingsScreen() {
   const [editingCatName, setEditingCatName] = useState("");
   const { user, signOut, isAuthenticating } = useAuth();
   const isOnline = useConnectionState();
+  const router = useRouter();
+  const { isPro, isAvailable: subAvailable, isLoading: subLoading } = useSubscription();
   const { notes: cloudNotes, isLoading: cloudLoading, error: cloudError } = useCloudNotes(user?.uid ?? null);
 
   const handleSignOut = () => {
@@ -185,6 +189,37 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
+
+      {/* Subscription */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Subscription</Text>
+        <SectionCard>
+          <TouchableOpacity
+            onPress={() => router.push("/paywall")}
+            style={styles.settingRow}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + "18" }]}>
+              <Feather name={isPro ? "check-circle" : "zap"} size={18} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>
+                {isPro ? "Recallify Pro" : "Upgrade to Recallify Pro"}
+              </Text>
+              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+                {isPro
+                  ? "All Pro features unlocked"
+                  : subLoading
+                    ? "Loading plans…"
+                    : subAvailable
+                      ? "Unlimited notes, sync, analytics & more"
+                      : "View plans"}
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </SectionCard>
+      </View>
 
       {/* Categories */}
       <View style={styles.section}>

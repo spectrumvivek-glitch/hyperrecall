@@ -18,7 +18,7 @@ module.exports = {
       bundleIdentifier: "com.recallify.app",
     },
     android: {
-      package: "com.studybrain.app",
+      package: "com.recallify.app",
     },
     web: {
       favicon: "./assets/images/icon.png",

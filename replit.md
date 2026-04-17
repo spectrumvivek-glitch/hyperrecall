@@ -140,8 +140,24 @@ At `artifacts/api-server/`. Express server at port 8080.
 - `GET /api/gamification/progress?totalCompleted=&todayCompleted=&dailyGoal=&totalNotes=&scheduledNotes=` — returns daily + deck progress
 - `POST /api/gamification/review` — accepts user stats, returns newly earned badges
 
+## Subscriptions (RevenueCat)
+
+- **Project**: `proj90767a5f` (named "Recallify") on RevenueCat.
+- **Apps**: Test Store (`appac78be0202`), App Store (bundle `com.recallify.app`), Play Store (package `com.recallify.app`).
+- **Entitlement**: `recallify_pro` ("Recallify Pro") attached to all 9 products (3 stores × 3 tiers).
+- **Offering**: `default` (current) with packages `$rc_lifetime`, `$rc_annual`, `$rc_monthly`.
+- **Products**: `recallify_lifetime` ($79.99 one-time), `recallify_yearly` ($29.99/yr), `recallify_monthly` ($4.99/mo). Test-store prices set in USD + EUR.
+- **Public API keys** (env vars, scope `shared`):
+  - `EXPO_PUBLIC_REVENUECAT_TEST_API_KEY` (test store)
+  - `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` (App Store)
+  - `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` (Play Store)
+- **Seed script**: `scripts/seedRevenueCat.ts` (run with `pnpm exec tsx scripts/seedRevenueCat.ts`). Idempotent — safe to re-run after editing.
+- **Mobile integration**: `artifacts/mobile/lib/revenuecat.tsx` exports `SubscriptionProvider` and `useSubscription({ isPro, packages, purchasePackage, restorePurchases, ... })`. Native `react-native-purchases` is dynamically imported only on real iOS/Android builds (Expo Go and web are handled gracefully). Provider is wired into `app/_layout.tsx` between `AuthProvider` and `AppProvider`; user is automatically `logIn`/`logOut`'d to RevenueCat on auth changes.
+- **Paywall screen**: `artifacts/mobile/app/paywall.tsx` (modal, `/paywall`). Settings → Subscription → opens paywall.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 - `pnpm --filter @workspace/mobile run dev` — run mobile app
+- `pnpm exec tsx scripts/seedRevenueCat.ts` — re-seed RevenueCat project (idempotent)
