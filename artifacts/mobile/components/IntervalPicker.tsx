@@ -15,19 +15,34 @@ const PRESETS = [
   {
     label: "Classic",
     description: "Balanced long-term retention",
-    intervals: [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365],
+    intervals: [
+      0, 1, 2, 4, 7, 10, 14, 19, 25, 32, 41,
+      52, 65, 81, 100, 122, 148, 178, 212, 250, 293,
+      320, 335, 345, 350, 355, 358, 360, 362, 364, 365,
+    ],
     color: "#4f46e5",
+    badge: "Best for Students",
   },
   {
     label: "Aggressive",
     description: "Fast review, frequent revisits",
-    intervals: [0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 14, 18, 22, 30, 40, 55, 70, 90, 120, 150, 180, 210, 240, 300, 365],
+    intervals: [
+      0, 1, 2, 3, 4, 6, 8, 10, 13, 16, 20,
+      25, 31, 38, 47, 58, 71, 86, 104, 125, 149,
+      176, 206, 239, 275, 305, 320, 330, 338, 344, 349,
+      353, 356, 358, 360, 362, 363, 364, 365, 365, 365,
+    ],
     color: "#ef4444",
+    badge: "Best for Students",
   },
   {
     label: "Relaxed",
     description: "Slower pace, longer gaps",
-    intervals: [0, 2, 3, 5, 8, 12, 16, 22, 30, 40, 55, 70, 85, 100, 120, 140, 160, 180, 210, 240, 270, 300, 330, 350, 365],
+    intervals: [
+      0, 1, 3, 6, 10, 15, 22, 31, 43, 58, 76,
+      98, 124, 155, 190, 230, 275, 310, 330, 345, 352,
+      357, 360, 362, 364, 365,
+    ],
     color: "#10b981",
   },
 ];
@@ -79,9 +94,17 @@ export function IntervalPicker({ intervals, onChange }: Props) {
               >
                 <View style={[styles.presetDot, { backgroundColor: preset.color }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.presetLabel, { color: isActive ? preset.color : colors.foreground }]}>
-                    {preset.label}
-                  </Text>
+                  <View style={styles.presetTitleRow}>
+                    <Text style={[styles.presetLabel, { color: isActive ? preset.color : colors.foreground }]}>
+                      {preset.label}
+                    </Text>
+                    {preset.badge && (
+                      <View style={[styles.badge, { backgroundColor: preset.color + "1A", borderColor: preset.color + "55" }]}>
+                        <Feather name="award" size={10} color={preset.color} />
+                        <Text style={[styles.badgeText, { color: preset.color }]}>{preset.badge}</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={[styles.presetDesc, { color: colors.mutedForeground }]}>
                     {preset.description}
                   </Text>
@@ -164,8 +187,19 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   presetDot: { width: 10, height: 10, borderRadius: 5 },
-  presetLabel: { fontSize: 14 },
+  presetTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  presetLabel: { fontSize: 14, fontWeight: "600" },
   presetDesc: { fontSize: 11, marginTop: 1 },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  badgeText: { fontSize: 9, fontWeight: "700", letterSpacing: 0.2 },
   chips: { flexDirection: "row", gap: 6 },
   chip: {
     flexDirection: "row",
