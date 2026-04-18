@@ -68,6 +68,10 @@ module.exports = {
     extra: {
       firebaseApiKey: process.env.GOOGLE_API_KEY ?? "",
       googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "",
+      eas: {
+        projectId: "ae680483-bbab-41de-b831-f357934ee0ed",
+      },
     },
+    owner: "suyash0009",
   },
 };
