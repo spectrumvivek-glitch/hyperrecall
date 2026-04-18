@@ -147,7 +147,7 @@ export default function NotesScreen() {
       />
 
       {/* Sort row */}
-      <View style={[styles.sortRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <View style={[styles.sortRow, { backgroundColor: colors.muted, borderTopColor: colors.border, borderBottomColor: colors.border }]}>
         <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort:</Text>
         <View style={styles.sortOptions}>
           {SORT_OPTIONS.map((opt) => {
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   chipList: {},
   chipRow: {
     paddingHorizontal: 18,
-    paddingBottom: 10,
+    paddingBottom: 16,
     gap: 8,
     flexDirection: "row",
   },
@@ -277,8 +277,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
     gap: 10,
+    borderTopWidth: 1,
     borderBottomWidth: 1,
   },
   sortLabel: { fontSize: 12, fontWeight: "600" },
