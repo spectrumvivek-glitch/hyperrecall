@@ -546,7 +546,6 @@ export async function seedDefaultsIfNeeded(): Promise<void> {
     const defaults = [
       { name: "Mathematics", color: "#4f46e5" },
       { name: "Science", color: "#10b981" },
-      { name: "History", color: "#f59e0b" },
       { name: "Languages", color: "#ec4899" },
     ];
     for (const d of defaults) {

@@ -58,15 +58,18 @@ export default function SettingsScreen() {
   const { notes: cloudNotes, isLoading: cloudLoading, error: cloudError } = useCloudNotes(user?.uid ?? null);
 
   const handleSignOut = () => {
+    const doSignOut = async () => {
+      await signOut().catch(() => {});
+    };
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.confirm("Sign out of HyperRecall?")) {
+        void doSignOut();
+      }
+      return;
+    }
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut().catch(() => {});
-        },
-      },
+      { text: "Sign Out", style: "destructive", onPress: doSignOut },
     ]);
   };
   const [newCatName, setNewCatName] = useState("");
