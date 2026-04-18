@@ -19,6 +19,25 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
+      versionCode: 1,
+      permissions: [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.READ_MEDIA_IMAGES",
+      ],
+      blockedPermissions: [
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+      ],
     },
     web: {
       favicon: "./assets/images/icon.png",
