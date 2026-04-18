@@ -1,7 +1,7 @@
 module.exports = {
   expo: {
     name: "HyperRecall",
-    slug: "mobile",
+    slug: "hyperrecall",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
