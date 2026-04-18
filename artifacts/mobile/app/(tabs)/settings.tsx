@@ -143,7 +143,6 @@ export default function SettingsScreen() {
     if (newCatName.trim().length === 0) return;
     if (!isPro && categories.length >= FREE_MAX_CATEGORIES) {
       showProGate(
-        router,
         "Category limit reached",
         `Free accounts can have up to ${FREE_MAX_CATEGORIES} categories. Upgrade to HyperRecall Pro for unlimited categories.`,
       );

@@ -11,6 +11,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ProGateHost } from "@/lib/proGate";
 import { SubscriptionProvider } from "@/lib/revenuecat";
 
 SplashScreen.preventAutoHideAsync();
@@ -102,6 +103,7 @@ export default function RootLayout() {
                 <GestureHandlerRootView>
                   <KeyboardProvider>
                     <RootLayoutNav />
+                    <ProGateHost />
                   </KeyboardProvider>
                 </GestureHandlerRootView>
               </AppProvider>

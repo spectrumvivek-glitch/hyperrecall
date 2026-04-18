@@ -93,7 +93,6 @@ export default function AddNoteScreen() {
       if (notesInCategory >= FREE_MAX_NOTES_PER_CATEGORY) {
         const catName = categories.find((c) => c.id === targetCategoryId)?.name ?? "this category";
         showProGate(
-          router,
           "Note limit reached",
           `Free accounts can have up to ${FREE_MAX_NOTES_PER_CATEGORY} notes per category. "${catName}" is full. Upgrade to HyperRecall Pro for unlimited notes.`,
         );
