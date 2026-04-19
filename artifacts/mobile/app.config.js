@@ -19,7 +19,7 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
-      versionCode: 3,
+      versionCode: 4,
       permissions: [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
@@ -60,6 +60,7 @@ module.exports = {
           sounds: [],
         },
       ],
+      "@react-native-google-signin/google-signin",
     ],
     experiments: {
       typedRoutes: true,

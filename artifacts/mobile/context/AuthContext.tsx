@@ -1,5 +1,4 @@
 import Constants from "expo-constants";
-import * as WebBrowser from "expo-web-browser";
 import {
   EmailAuthProvider,
   GoogleAuthProvider,
@@ -26,17 +25,35 @@ import { Platform } from "react-native";
 import { auth } from "@/lib/firebase";
 import { deleteUserProfile, upsertUserProfile } from "@/lib/firestore";
 
-WebBrowser.maybeCompleteAuthSession();
-
 const extra = Constants.expoConfig?.extra ?? {};
 const GOOGLE_WEB_CLIENT_ID: string =
   extra.googleWebClientId ||
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
   "";
-const GOOGLE_ANDROID_CLIENT_ID: string =
-  extra.googleAndroidClientId ||
-  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-  "";
+
+// Lazy-load the native Google Sign-In module so the web build doesn't break.
+// On web we use Firebase popup; on native we use the native account picker.
+let GoogleSignin: any = null;
+let googleSigninConfigured = false;
+function getGoogleSignin() {
+  if (Platform.OS === "web") return null;
+  if (!GoogleSignin) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      GoogleSignin = require("@react-native-google-signin/google-signin").GoogleSignin;
+    } catch {
+      return null;
+    }
+  }
+  if (GoogleSignin && !googleSigninConfigured && GOOGLE_WEB_CLIENT_ID) {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: false,
+    });
+    googleSigninConfigured = true;
+  }
+  return GoogleSignin;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,11 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Google Sign-In via popup works on web without a client ID.
-  // On native we need both the Web Client ID (for Firebase credential exchange)
-  // and the Android Client ID (for the OAuth redirect on Android standalone builds).
+  // On native we need the Web Client ID (used by the native SDK to mint an
+  // idToken that Firebase accepts).
   const googleAvailable =
-    Platform.OS === "web" ||
-    (Boolean(GOOGLE_WEB_CLIENT_ID) && Boolean(GOOGLE_ANDROID_CLIENT_ID));
+    Platform.OS === "web" || Boolean(GOOGLE_WEB_CLIENT_ID);
 
   // ─── Listen to auth state changes ────────────────────────────────────────
 
@@ -143,11 +159,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // On native, the login screen drives the OAuth flow via
-    // expo-auth-session/providers/google and then calls signInWithGoogleIdToken.
-    throw new Error(
-      "On mobile, use signInWithGoogleIdToken from the login screen."
-    );
+    // Native: use the native Google account picker (production-grade).
+    await withAuth(async () => {
+      const Gs = getGoogleSignin();
+      if (!Gs) {
+        throw new Error(
+          "Google Sign-In native module unavailable. Rebuild the app with the latest config."
+        );
+      }
+      if (!GOOGLE_WEB_CLIENT_ID) {
+        throw new Error(
+          "Google Sign-In not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID."
+        );
+      }
+      try {
+        await Gs.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      } catch {
+        throw new Error("Google Play Services is required for Google Sign-In.");
+      }
+      const result = await Gs.signIn();
+      // v13+ returns { type, data: { idToken, user } }; older returns idToken on root.
+      const idToken: string | undefined =
+        result?.data?.idToken ?? result?.idToken;
+      if (!idToken) {
+        // Cancelled by user, or no idToken returned
+        const cancelled =
+          result?.type === "cancelled" || result?.type === "noSavedCredentialFound";
+        if (cancelled) return;
+        throw new Error("Google sign-in did not return an ID token.");
+      }
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+    });
   }, []);
 
   const signInWithGoogleIdToken = useCallback(

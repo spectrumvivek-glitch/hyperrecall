@@ -1,8 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import * as Google from "expo-auth-session/providers/google";
-import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,50 +18,17 @@ import { useAuth } from "@/context/AuthContext";
 
 type Mode = "login" | "signup";
 
-const extra = Constants.expoConfig?.extra ?? {};
-const GOOGLE_WEB_CLIENT_ID: string =
-  extra.googleWebClientId || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
-const GOOGLE_ANDROID_CLIENT_ID: string =
-  extra.googleAndroidClientId ||
-  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-  "";
-const GOOGLE_IOS_CLIENT_ID: string =
-  extra.googleIosClientId || process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
-
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const {
     signIn,
     signUp,
     signInWithGoogle,
-    signInWithGoogleIdToken,
     googleAvailable,
     isAuthenticating,
     authError,
     clearAuthError,
   } = useAuth();
-
-  // Native Google Sign-In via expo-auth-session.
-  // The Android Client ID maps the OAuth redirect to com.googleusercontent.apps.<id>:/oauthredirect,
-  // which is what Google expects for native standalone Android builds.
-  const [googleRequest, googleResponse, promptGoogle] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_WEB_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-  });
-
-  useEffect(() => {
-    if (googleResponse?.type === "success") {
-      const idToken =
-        (googleResponse.params as any)?.id_token ||
-        (googleResponse.authentication as any)?.idToken;
-      if (idToken) {
-        signInWithGoogleIdToken(idToken).catch(() => {
-          // authError surfaces via visibleError
-        });
-      }
-    }
-  }, [googleResponse, signInWithGoogleIdToken]);
 
   const [mode, setMode] = useState<Mode>("login");
   const [displayName, setDisplayName] = useState("");
@@ -123,28 +88,10 @@ export default function LoginScreen() {
 
   async function handleGoogle() {
     dismissError();
-    if (Platform.OS === "web") {
-      try {
-        await signInWithGoogle();
-      } catch {
-        // authError surfaces via visibleError
-      }
-      return;
-    }
-    if (!GOOGLE_WEB_CLIENT_ID || !GOOGLE_ANDROID_CLIENT_ID) {
-      setLocalError(
-        "Google Sign-In not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID and EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID."
-      );
-      return;
-    }
-    if (!googleRequest) {
-      setLocalError("Google Sign-In is still loading. Please try again.");
-      return;
-    }
     try {
-      await promptGoogle();
-    } catch (err: any) {
-      setLocalError(err?.message ?? "Google Sign-In failed.");
+      await signInWithGoogle();
+    } catch {
+      // authError surfaces via visibleError
     }
   }
 
@@ -343,7 +290,7 @@ export default function LoginScreen() {
             </View>
             {!googleAvailable && (
               <Text style={styles.googleNote}>
-                Mobile: set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in environment
+                Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to enable Google Sign-In
               </Text>
             )}
           </TouchableOpacity>
