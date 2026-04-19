@@ -17,22 +17,13 @@ import { NoteCard } from "@/components/NoteCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-type SortKey = "updated" | "title" | "due";
-
-const SORT_OPTIONS: { key: SortKey; label: string; icon: keyof typeof Feather.glyphMap }[] = [
-  { key: "updated", label: "Recent", icon: "clock" },
-  { key: "title", label: "A–Z", icon: "type" },
-  { key: "due", label: "Due", icon: "refresh-cw" },
-];
-
 export default function NotesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { notes, categories, revisionPlans, dueNotes } = useApp();
+  const { notes, categories, dueNotes } = useApp();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("updated");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -41,7 +32,7 @@ export default function NotesScreen() {
     catId === null ? notes.length : notes.filter((n) => n.categoryId === catId).length;
 
   const filtered = useMemo(() => {
-    let list = notes.filter((n) => {
+    const list = notes.filter((n) => {
       const matchSearch =
         search.length === 0 ||
         n.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -49,18 +40,8 @@ export default function NotesScreen() {
       const matchCat = !selectedCategory || n.categoryId === selectedCategory;
       return matchSearch && matchCat;
     });
-
-    if (sortKey === "updated") list = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
-    else if (sortKey === "title") list = [...list].sort((a, b) => a.title.localeCompare(b.title));
-    else if (sortKey === "due") {
-      list = [...list].sort((a, b) => {
-        const pa = revisionPlans.find((p) => p.noteId === a.id);
-        const pb = revisionPlans.find((p) => p.noteId === b.id);
-        return (pa?.nextRevisionDate ?? Infinity) - (pb?.nextRevisionDate ?? Infinity);
-      });
-    }
-    return list;
-  }, [notes, search, selectedCategory, sortKey, revisionPlans]);
+    return [...list].sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [notes, search, selectedCategory]);
 
   const dueCount = dueNotes.length;
 
@@ -146,35 +127,6 @@ export default function NotesScreen() {
           );
         }}
       />
-
-      {/* Sort row */}
-      <View style={[styles.sortRow, { backgroundColor: colors.muted, borderTopColor: colors.border, borderBottomColor: colors.border }]}>
-        <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort:</Text>
-        <View style={styles.sortOptions}>
-          {SORT_OPTIONS.map((opt) => {
-            const active = sortKey === opt.key;
-            return (
-              <TouchableOpacity
-                key={opt.key}
-                onPress={() => setSortKey(opt.key)}
-                style={[
-                  styles.sortChip,
-                  {
-                    backgroundColor: active ? colors.primary + "18" : "transparent",
-                    borderColor: active ? colors.primary + "50" : "transparent",
-                  },
-                ]}
-                activeOpacity={0.7}
-              >
-                <Feather name={opt.icon} size={11} color={active ? colors.primary : colors.mutedForeground} />
-                <Text style={[styles.sortChipText, { color: active ? colors.primary : colors.mutedForeground }]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
 
       {/* Notes list */}
       <FlatList
@@ -280,27 +232,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   chipCountText: { fontSize: 11, fontWeight: "800" },
-  sortRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 12,
-    gap: 10,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-  },
-  sortLabel: { fontSize: 12, fontWeight: "600" },
-  sortOptions: { flexDirection: "row", gap: 6 },
-  sortChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  sortChipText: { fontSize: 12, fontWeight: "700" },
   listContent: { paddingHorizontal: 18, paddingTop: 14 },
 });
