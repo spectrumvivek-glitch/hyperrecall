@@ -112,6 +112,7 @@ export default function NotesScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chipRow}
         style={[styles.chipList, { backgroundColor: colors.background }]}
+        nestedScrollEnabled
         renderItem={({ item }) => {
           const isSelected = selectedCategory === item.id;
           const count = getCatNoteCount(item.id);
@@ -179,6 +180,7 @@ export default function NotesScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
+        style={{ flex: 1 }}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: bottomPad + 110 },
@@ -247,12 +249,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
   },
-  chipList: {},
+  chipList: {
+    flexGrow: 0,
+    flexShrink: 0,
+    maxHeight: 56,
+  },
   chipRow: {
     paddingHorizontal: 18,
     paddingBottom: 16,
     gap: 8,
     flexDirection: "row",
+    alignItems: "center",
   },
   chip: {
     flexDirection: "row",

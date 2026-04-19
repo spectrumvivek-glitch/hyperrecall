@@ -957,7 +957,11 @@ export default function ExamScreen() {
 
   if (!isPro) {
     return (
-      <View style={[scStyles.scroll, { backgroundColor: colors.background, paddingTop: topPad + 20, paddingHorizontal: 22, paddingBottom: bottomPad + 110 }]}>
+      <ScrollView
+        style={[scStyles.scroll, { backgroundColor: colors.background }]}
+        contentContainerStyle={{ paddingTop: topPad + 20, paddingHorizontal: 22, paddingBottom: bottomPad + 110 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={{ alignItems: "center", paddingTop: 40, gap: 16 }}>
           <LinearGradient
             colors={["#6366F1", "#8B5CF6"]}
@@ -1000,7 +1004,7 @@ export default function ExamScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     );
   }
 
