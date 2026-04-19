@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   KeyboardAvoidingView,
-  Modal,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +19,7 @@ export function UsernamePromptModal() {
   const { isReady, hasUsername, setUsername } = useUserProfile();
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const visible = isReady && !hasUsername;
 
@@ -42,6 +43,12 @@ export function UsernamePromptModal() {
           useNativeDriver: true,
         }),
       ]).start();
+
+      // Make sure the input grabs focus reliably on Android
+      const t = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 350);
+      return () => clearTimeout(t);
     }
   }, [visible]);
 
@@ -60,13 +67,16 @@ export function UsernamePromptModal() {
 
   const canSubmit = name.trim().length > 0 && !submitting;
 
+  // Render as absolute overlay (NOT inside <Modal>) — Modal + TextInput on
+  // Android new architecture often refuses keyboard focus. A plain overlay
+  // avoids that bug entirely.
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+    <View style={styles.root} pointerEvents="auto">
+      <Animated.View style={[styles.overlayBg, { opacity }]} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.overlay}
+        style={styles.kbAvoid}
       >
-        <Animated.View style={[styles.overlayBg, { opacity }]} />
         <Animated.View
           style={[
             styles.card,
@@ -86,24 +96,30 @@ export function UsernamePromptModal() {
             What should we call you?
           </Text>
 
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name"
-            placeholderTextColor={colors.mutedForeground}
-            autoFocus
-            maxLength={30}
-            returnKeyType="done"
-            onSubmitEditing={handleSubmit}
+          <Pressable
+            onPress={() => inputRef.current?.focus()}
             style={[
-              styles.input,
+              styles.inputWrap,
               {
-                color: colors.foreground,
                 backgroundColor: colors.muted,
                 borderColor: colors.border,
               },
             ]}
-          />
+          >
+            <TextInput
+              ref={inputRef}
+              value={name}
+              onChangeText={setName}
+              placeholder="Your name"
+              placeholderTextColor={colors.mutedForeground}
+              maxLength={30}
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+              autoCorrect={false}
+              autoCapitalize="words"
+              style={[styles.input, { color: colors.foreground }]}
+            />
+          </Pressable>
 
           <TouchableOpacity
             onPress={handleSubmit}
@@ -133,20 +149,25 @@ export function UsernamePromptModal() {
           </Text>
         </Animated.View>
       </KeyboardAvoidingView>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 28,
+  root: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
+    elevation: 9999,
   },
   overlayBg: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  kbAvoid: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 28,
   },
   card: {
     width: "100%",
@@ -169,15 +190,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: -4,
   },
-  input: {
+  inputWrap: {
     width: "100%",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
+    marginTop: 8,
+  },
+  input: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
     fontWeight: "600",
-    marginTop: 8,
   },
   btn: {
     width: "100%",
