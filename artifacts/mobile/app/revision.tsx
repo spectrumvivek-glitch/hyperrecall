@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Platform,
   StyleSheet,
@@ -43,22 +44,33 @@ export default function RevisionScreen() {
   const handleComplete = async () => {
     const item = sessionNotes[currentIndex];
     if (!item) return;
-    const earned = await markCompleted(item.note.id);
-    const newTotalXp = sessionXp + earned;
-    setSessionCompleted((c) => c + 1);
-    setSessionXp(newTotalXp);
-    setXpAmount(earned);
-    setShowXp(true);
-    setCelebPopup({ xp: earned, title: item.note.title });
-    advance();
+    try {
+      const earned = (await markCompleted(item.note.id)) ?? 0;
+      const newTotalXp = sessionXp + earned;
+      setSessionCompleted((c) => c + 1);
+      setSessionXp(newTotalXp);
+      setXpAmount(earned);
+      setShowXp(true);
+      setCelebPopup({ xp: earned, title: item.note.title });
+    } catch (err: any) {
+      console.warn("[revision] markCompleted failed:", err);
+      Alert.alert("Couldn't save", err?.message ?? "Please try again.");
+    } finally {
+      advance();
+    }
   };
 
   const handleSkip = async () => {
     const item = sessionNotes[currentIndex];
     if (!item) return;
-    await markSkipped(item.note.id);
-    setSessionSkipped((s) => s + 1);
-    advance();
+    try {
+      await markSkipped(item.note.id);
+      setSessionSkipped((s) => s + 1);
+    } catch (err: any) {
+      console.warn("[revision] markSkipped failed:", err);
+    } finally {
+      advance();
+    }
   };
 
   const advance = () => {

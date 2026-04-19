@@ -1,5 +1,4 @@
 import Constants from "expo-constants";
-import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import {
   EmailAuthProvider,
@@ -34,6 +33,10 @@ const GOOGLE_WEB_CLIENT_ID: string =
   extra.googleWebClientId ||
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
   "";
+const GOOGLE_ANDROID_CLIENT_ID: string =
+  extra.googleAndroidClientId ||
+  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+  "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +54,8 @@ export interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  /** Native: complete Google sign-in after expo-auth-session returns an id_token */
+  signInWithGoogleIdToken: (idToken: string, accessToken?: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Permanently deletes the Firebase Auth account + Firestore profile */
   deleteAccount: (password?: string) => Promise<void>;
@@ -68,9 +73,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Google Sign-In via popup works on web without a client ID.
-  // On native we need the OAuth web client ID for the custom flow.
+  // On native we need both the Web Client ID (for Firebase credential exchange)
+  // and the Android Client ID (for the OAuth redirect on Android standalone builds).
   const googleAvailable =
-    Platform.OS === "web" || Boolean(GOOGLE_WEB_CLIENT_ID);
+    Platform.OS === "web" ||
+    (Boolean(GOOGLE_WEB_CLIENT_ID) && Boolean(GOOGLE_ANDROID_CLIENT_ID));
 
   // ─── Listen to auth state changes ────────────────────────────────────────
 
@@ -136,37 +143,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Native: custom OAuth via in-app browser
-    if (!GOOGLE_WEB_CLIENT_ID) {
-      throw new Error(
-        "Google Sign-In on mobile requires EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID."
-      );
-    }
-
-    await withAuth(async () => {
-      const redirectUri = AuthSession.makeRedirectUri({ scheme: "mobile" });
-      const nonce = Math.random().toString(36).slice(2);
-      const params = new URLSearchParams({
-        client_id: GOOGLE_WEB_CLIENT_ID,
-        response_type: "id_token",
-        redirect_uri: redirectUri,
-        scope: "openid profile email",
-        nonce,
-      });
-
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      if (result.type === "success" && result.url) {
-        const hash = result.url.split("#")[1] ?? "";
-        const idToken = new URLSearchParams(hash).get("id_token");
-        if (idToken) {
-          const credential = GoogleAuthProvider.credential(idToken);
-          await signInWithCredential(auth, credential);
-        }
-      }
-    });
+    // On native, the login screen drives the OAuth flow via
+    // expo-auth-session/providers/google and then calls signInWithGoogleIdToken.
+    throw new Error(
+      "On mobile, use signInWithGoogleIdToken from the login screen."
+    );
   }, []);
+
+  const signInWithGoogleIdToken = useCallback(
+    async (idToken: string, accessToken?: string) =>
+      withAuth(async () => {
+        const credential = GoogleAuthProvider.credential(idToken, accessToken);
+        await signInWithCredential(auth, credential);
+      }),
+    []
+  );
 
   const signOut = useCallback(
     () => withAuth(() => firebaseSignOut(auth)),
@@ -231,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signUp,
         signInWithGoogle,
+        signInWithGoogleIdToken,
         signOut,
         deleteAccount,
         updateDisplayName,
