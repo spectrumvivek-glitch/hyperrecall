@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 
+import { ZoomableImageViewer } from "@/components/ZoomableImageViewer";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { Note, RevisionPlan } from "@/lib/storage";
@@ -31,6 +32,8 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
   const { categories } = useApp();
   const [expanded, setExpanded] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerStartIndex, setViewerStartIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const category = categories.find((c) => c.id === note.categoryId);
@@ -59,6 +62,12 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
+      <ZoomableImageViewer
+        visible={viewerOpen}
+        images={note.images}
+        initialIndex={viewerStartIndex}
+        onClose={() => setViewerOpen(false)}
+      />
       {/* Header */}
       <View style={styles.header}>
         {category && (
@@ -96,8 +105,21 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
             }}
             style={styles.imageScroll}
           >
-            {note.images.map((img) => (
-              <Image key={img.id} source={{ uri: img.uri }} style={[styles.image, { borderRadius: colors.radius - 4 }]} resizeMode="contain" />
+            {note.images.map((img, i) => (
+              <TouchableOpacity
+                key={img.id}
+                activeOpacity={0.9}
+                onPress={() => {
+                  setViewerStartIndex(i);
+                  setViewerOpen(true);
+                }}
+              >
+                <Image
+                  source={{ uri: img.uri }}
+                  style={[styles.image, { borderRadius: colors.radius - 4 }]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
             ))}
           </ScrollView>
           {note.images.length > 1 && (
