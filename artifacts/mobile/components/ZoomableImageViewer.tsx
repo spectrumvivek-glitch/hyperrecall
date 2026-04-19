@@ -17,6 +17,8 @@ import {
   GestureHandlerRootView,
 } from "react-native-gesture-handler";
 import Animated, {
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -232,16 +234,16 @@ function ZoomableImage({ uri, onZoomChange }: ZoomableImageProps) {
     };
   });
 
-  // Track zoom state for the parent paging toggle.
-  // We poll via a useDerivedValue alternative: useEffect on a tracked state.
-  const [, forceTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => {
-      onZoomChange(scale.value > 1.02);
-    }, 120);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Track zoom state for the parent paging toggle using Reanimated's
+  // built-in reaction system (no setInterval, no JS-thread polling).
+  useAnimatedReaction(
+    () => scale.value > 1.02,
+    (zoomed, prev) => {
+      if (zoomed !== prev) {
+        runOnJS(onZoomChange)(zoomed);
+      }
+    }
+  );
 
   const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
 

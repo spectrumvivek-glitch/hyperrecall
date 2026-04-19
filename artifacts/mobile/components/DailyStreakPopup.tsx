@@ -70,16 +70,11 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
   const colors = useColors();
   const { emoji, headline, sub } = streakMessage(streak);
 
-  // Entry animation
+  // Entry animation only — infinite loops removed to prevent Android crashes
+  // (Animated.Text + useNativeDriver + infinite loop in a Modal is a known crash combo)
   const scale = useRef(new Animated.Value(0.7)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
-
-  // Flame pulse
-  const flamePulse = useRef(new Animated.Value(1)).current;
-
-  // Glow opacity
-  const glowOpacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
     if (!visible) {
@@ -89,7 +84,6 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
       return;
     }
 
-    // Entry
     Animated.parallel([
       Animated.spring(scale, {
         toValue: 1,
@@ -109,47 +103,6 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
         useNativeDriver: true,
       }),
     ]).start();
-
-    // Flame pulse loop
-    const pulseFn = Animated.loop(
-      Animated.sequence([
-        Animated.timing(flamePulse, {
-          toValue: 1.18,
-          duration: 700,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.quad),
-        }),
-        Animated.timing(flamePulse, {
-          toValue: 0.95,
-          duration: 700,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.quad),
-        }),
-      ])
-    );
-    pulseFn.start();
-
-    // Glow pulse loop
-    const glowFn = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpacity, {
-          toValue: 0.7,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowOpacity, {
-          toValue: 0.2,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    glowFn.start();
-
-    return () => {
-      pulseFn.stop();
-      glowFn.stop();
-    };
   }, [visible]);
 
   // Gradient colours based on streak level
@@ -197,17 +150,13 @@ export function DailyStreakPopup({ visible, streak, totalXp, levelName, onDismis
               end={{ x: 1, y: 1 }}
               style={styles.cardTop}
             >
-              {/* Glow blob */}
-              <Animated.View
-                style={[styles.glowBlob, { backgroundColor: "#fff", opacity: glowOpacity }]}
+              {/* Glow blob (static) */}
+              <View
+                style={[styles.glowBlob, { backgroundColor: "#fff", opacity: 0.4 }]}
               />
 
-              {/* Emoji */}
-              <Animated.Text
-                style={[styles.flameEmoji, { transform: [{ scale: flamePulse }] }]}
-              >
-                {emoji}
-              </Animated.Text>
+              {/* Emoji (static, no infinite pulse) */}
+              <Text style={styles.flameEmoji}>{emoji}</Text>
 
               {/* Streak number */}
               {streak > 0 && (

@@ -12,11 +12,9 @@ interface Props {
 const STREAK_COLOR = "#FF6B00";
 const STREAK_GLOW = "#FF6B0030";
 
-export function StreakBadge({ streak, size = "md", pulse = false }: Props) {
+export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Props) {
   const colors = useColors();
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const config = {
     sm: { iconSize: 14, fontSize: 13, padH: 8, padV: 4 },
@@ -26,44 +24,7 @@ export function StreakBadge({ streak, size = "md", pulse = false }: Props) {
 
   const isActive = streak > 0;
 
-  useEffect(() => {
-    if (isActive && pulse) {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.parallel([
-            Animated.spring(scaleAnim, {
-              toValue: 1.15,
-              useNativeDriver: true,
-              tension: 120,
-              friction: 5,
-            }),
-            Animated.timing(glowAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-          ]),
-          Animated.parallel([
-            Animated.spring(scaleAnim, {
-              toValue: 1,
-              useNativeDriver: true,
-              tension: 120,
-              friction: 5,
-            }),
-            Animated.timing(glowAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-          ]),
-          Animated.delay(1400),
-        ])
-      );
-      loopRef.current = loop;
-      loop.start();
-    } else {
-      loopRef.current?.stop();
-      scaleAnim.setValue(1);
-      glowAnim.setValue(0);
-    }
-    return () => {
-      loopRef.current?.stop();
-    };
-  }, [isActive, pulse]);
-
-  // Pop animation when streak changes
+  // Pop animation when streak changes (one-shot, no infinite loop to avoid crashes)
   const prevStreak = useRef(streak);
   useEffect(() => {
     if (streak > 0 && streak !== prevStreak.current) {
@@ -74,8 +35,6 @@ export function StreakBadge({ streak, size = "md", pulse = false }: Props) {
       ]).start();
     }
   }, [streak]);
-
-  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] });
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -91,17 +50,6 @@ export function StreakBadge({ streak, size = "md", pulse = false }: Props) {
           },
         ]}
       >
-        {/* Glow ring */}
-        {isActive && (
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFill,
-              styles.glowRing,
-              { borderColor: STREAK_COLOR, opacity: glowOpacity },
-            ]}
-            pointerEvents="none"
-          />
-        )}
         <Text style={{ fontSize: config.iconSize, lineHeight: config.iconSize + 4 }}>🔥</Text>
         <Text
           style={[
@@ -125,10 +73,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     borderWidth: 1,
-  },
-  glowRing: {
-    borderRadius: 20,
-    borderWidth: 2,
   },
   text: {
     fontWeight: "800",
