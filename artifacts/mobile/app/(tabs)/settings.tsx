@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import { useUserProfile } from "@/context/UserProfileContext";
 import { useColors } from "@/hooks/useColors";
 import { useCloudNotes } from "@/lib/hooks/useCloudNotes";
 import { useConnectionState } from "@/lib/hooks/useConnectionState";
@@ -52,6 +53,22 @@ export default function SettingsScreen() {
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
   const { user, signOut, isAuthenticating } = useAuth();
+  const { username, setUsername } = useUserProfile();
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const startEditName = () => {
+    setNameDraft(username);
+    setEditingName(true);
+  };
+  const saveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (trimmed.length === 0) {
+      setEditingName(false);
+      return;
+    }
+    await setUsername(trimmed);
+    setEditingName(false);
+  };
   const isOnline = useConnectionState();
   const router = useRouter();
   const { isPro, isAvailable: subAvailable, isLoading: subLoading } = useSubscription();
@@ -200,6 +217,55 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
+
+      {/* Profile */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Profile</Text>
+        <SectionCard>
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: colors.primary + "18" }]}>
+              <Feather name="user" size={18} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Your name</Text>
+              {editingName ? (
+                <TextInput
+                  value={nameDraft}
+                  onChangeText={setNameDraft}
+                  autoFocus
+                  maxLength={30}
+                  onBlur={saveName}
+                  onSubmitEditing={saveName}
+                  returnKeyType="done"
+                  placeholder="Your name"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={{
+                    fontSize: 14,
+                    color: colors.foreground,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.primary,
+                    paddingVertical: 2,
+                    marginTop: 2,
+                  }}
+                />
+              ) : (
+                <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {username || "Tap edit to set your name"}
+                </Text>
+              )}
+            </View>
+            {editingName ? (
+              <TouchableOpacity onPress={saveName} hitSlop={10}>
+                <Feather name="check" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={startEditName} hitSlop={10}>
+                <Feather name="edit-2" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </SectionCard>
+      </View>
 
       {/* Subscription */}
       <View style={styles.section}>

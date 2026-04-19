@@ -9,8 +9,10 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { UsernamePromptModal } from "@/components/UsernamePromptModal";
 import { AppProvider } from "@/context/AppContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { UserProfileProvider } from "@/context/UserProfileContext";
 import { ProGateHost } from "@/lib/proGate";
 import { SubscriptionProvider } from "@/lib/revenuecat";
 
@@ -75,16 +77,19 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <SubscriptionProvider>
-              <AppProvider>
-                <GestureHandlerRootView>
-                  <KeyboardProvider>
-                    <RootLayoutNav />
-                    <ProGateHost />
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
-              </AppProvider>
-            </SubscriptionProvider>
+            <UserProfileProvider>
+              <SubscriptionProvider>
+                <AppProvider>
+                  <GestureHandlerRootView>
+                    <KeyboardProvider>
+                      <RootLayoutNav />
+                      <ProGateHost />
+                      <UsernamePromptModal />
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </AppProvider>
+              </SubscriptionProvider>
+            </UserProfileProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>

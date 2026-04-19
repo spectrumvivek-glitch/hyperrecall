@@ -27,6 +27,7 @@ import { Confetti } from "@/components/Confetti";
 import { DailyStreakPopup } from "@/components/DailyStreakPopup";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import { useUserProfile } from "@/context/UserProfileContext";
 import { useColors } from "@/hooks/useColors";
 import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
 import { Note, RevisionPlan } from "@/lib/storage";
@@ -285,7 +286,10 @@ export default function DashboardScreen() {
     newBadges, dismissNewBadges,
   } = useApp();
   const { user } = useAuth();
-  const firstName = (user?.displayName?.trim().split(/\s+/)[0]) || (user?.email ? user.email.split("@")[0] : "Learner");
+  const { username } = useUserProfile();
+  const firstName = username
+    ? username.split(/\s+/)[0]
+    : (user?.displayName?.trim().split(/\s+/)[0]) || (user?.email ? user.email.split("@")[0] : "Learner");
 
   const [showConfetti, setShowConfetti] = useState(false);
   const prevBadgeCount = useRef((userStats.earnedBadges ?? []).length);
