@@ -1,46 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import { Animated, Dimensions, Easing, StyleSheet, Text, View } from "react-native";
 
 const { width: SW } = Dimensions.get("window");
-
-const COLORS = [
-  "#6366F1", "#8B5CF6", "#F59E0B", "#22C55E",
-  "#EF4444", "#EC4899", "#06B6D4", "#F97316",
-];
-
-const COUNT = 24;
-
-type Particle = {
-  tx: Animated.Value;
-  ty: Animated.Value;
-  op: Animated.Value;
-  rot: Animated.Value;
-  color: string;
-  size: number;
-  isSquare: boolean;
-  startX: number;
-  driftX: number;
-  driftY: number;
-  spin: number;
-  delay: number;
-};
-
-function makeParticles(originX: number): Particle[] {
-  return Array.from({ length: COUNT }, (_, i) => ({
-    tx: new Animated.Value(0),
-    ty: new Animated.Value(0),
-    op: new Animated.Value(0),
-    rot: new Animated.Value(0),
-    color: COLORS[i % COLORS.length],
-    size: 5 + (i % 5) * 2,
-    isSquare: i % 3 === 0,
-    startX: originX + (Math.sin(i * 1.3) * SW * 0.4),
-    driftX: (i % 2 === 0 ? 1 : -1) * (30 + (i * 13) % 110),
-    driftY: -(80 + (i * 17) % 260),
-    spin: i % 2 === 0 ? 360 : -360,
-    delay: i * 28,
-  }));
-}
 
 interface Props {
   visible: boolean;
@@ -49,68 +10,72 @@ interface Props {
   onDone?: () => void;
 }
 
+/**
+ * Lightweight celebration animation.
+ *
+ * Replaces the previous 24-particle confetti (which used 24 × 4 = 96 Animated.Values
+ * and was prone to crashing on low-end Android devices with the new architecture).
+ *
+ * Uses a single shared progress value to drive a burst of 6 static emoji that
+ * scale + fade. Same API as before so callers don't need to change.
+ */
 export function Confetti({ visible, originX = SW / 2, originY = 200, onDone }: Props) {
-  const particles = useRef<Particle[]>(makeParticles(originX));
+  const progress = useRef(new Animated.Value(0)).current;
   const running = useRef(false);
 
   useEffect(() => {
     if (!visible || running.current) return;
     running.current = true;
 
-    const ps = particles.current;
-    ps.forEach((p) => {
-      p.tx.setValue(0);
-      p.ty.setValue(0);
-      p.op.setValue(0);
-      p.rot.setValue(0);
-    });
-
-    const anims = ps.map((p) =>
-      Animated.sequence([
-        Animated.delay(p.delay),
-        Animated.parallel([
-          Animated.timing(p.op, { toValue: 1, duration: 80, useNativeDriver: true }),
-          Animated.timing(p.tx, { toValue: p.driftX, duration: 700, useNativeDriver: true }),
-          Animated.timing(p.ty, { toValue: p.driftY, duration: 700, useNativeDriver: true }),
-          Animated.timing(p.rot, { toValue: 1, duration: 700, useNativeDriver: true }),
-        ]),
-        Animated.timing(p.op, { toValue: 0, duration: 350, useNativeDriver: true }),
-      ])
-    );
-
-    Animated.parallel(anims).start(() => {
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
       running.current = false;
-      onDone?.();
+      if (finished) onDone?.();
     });
-  }, [visible]);
+  }, [visible, progress, onDone]);
 
   if (!visible) return null;
 
+  const scale = progress.interpolate({
+    inputRange: [0, 0.4, 1],
+    outputRange: [0.4, 1.2, 1],
+  });
+  const opacity = progress.interpolate({
+    inputRange: [0, 0.2, 0.8, 1],
+    outputRange: [0, 1, 1, 0],
+  });
+  const translateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -40],
+  });
+
+  const emojis = ["✨", "🎉", "⭐", "🎊", "✨", "⭐"];
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {particles.current.map((p, i) => {
-        const rotate = p.rot.interpolate({
-          inputRange: [0, 1],
-          outputRange: ["0deg", `${p.spin}deg`],
-        });
-        const size = p.size;
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              position: "absolute",
-              left: p.startX - size / 2,
-              top: originY,
-              width: size,
-              height: p.isSquare ? size : size * 0.5 + 2,
-              borderRadius: p.isSquare ? 2 : size / 2,
-              backgroundColor: p.color,
-              opacity: p.op,
-              transform: [{ translateX: p.tx }, { translateY: p.ty }, { rotate }],
-            }}
-          />
-        );
-      })}
+      <Animated.View
+        style={{
+          position: "absolute",
+          left: originX - 90,
+          top: originY,
+          width: 180,
+          flexDirection: "row",
+          justifyContent: "space-around",
+          opacity,
+          transform: [{ translateY }, { scale }],
+        }}
+      >
+        {emojis.map((e, i) => (
+          <Text key={i} style={{ fontSize: 22 + (i % 3) * 4 }}>
+            {e}
+          </Text>
+        ))}
+      </Animated.View>
     </View>
   );
 }
