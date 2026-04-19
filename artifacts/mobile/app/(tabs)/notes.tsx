@@ -21,7 +21,7 @@ export default function NotesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { notes, categories, dueNotes } = useApp();
+  const { notes, categories, revisionPlans, dueNotes } = useApp();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
