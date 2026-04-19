@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -17,10 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { makePersistentUri } from "@/lib/imageUtils";
+import { pickImagesFromLibrary } from "@/lib/imagePicker";
 import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
-import { NoteImage, generateId } from "@/lib/storage";
+import { NoteImage } from "@/lib/storage";
 
 const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
 
@@ -44,31 +43,14 @@ export default function AddNoteScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const pickImage = async () => {
-    if (Platform.OS !== "web") {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        setErrorMsg("Permission required: Allow photo library access to add images.");
-        return;
-      }
+    const { images: picked, errorMessage } = await pickImagesFromLibrary();
+    if (errorMessage) {
+      setErrorMsg(errorMessage);
+      return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.8,
-      allowsMultipleSelection: true,
-      base64: false,
-    });
-    if (!result.canceled && result.assets.length > 0) {
+    if (picked.length > 0) {
       setErrorMsg(null);
-      const persistentUris = await Promise.all(
-        result.assets.map((asset) => makePersistentUri(asset.uri))
-      );
-      const newImages: NoteImage[] = result.assets.map((asset, i) => ({
-        id: generateId(),
-        noteId: "",
-        uri: persistentUris[i],
-        thumbnailUri: persistentUris[i],
-      }));
-      setImages((prev) => [...prev, ...newImages]);
+      setImages((prev) => [...prev, ...picked]);
     }
   };
 

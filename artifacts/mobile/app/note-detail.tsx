@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -18,10 +17,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { deleteLocalImage, makePersistentUri } from "@/lib/imageUtils";
+import { deleteLocalImage } from "@/lib/imageUtils";
+import { pickImagesFromLibrary } from "@/lib/imagePicker";
 import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
-import { NoteImage, generateId } from "@/lib/storage";
+import { NoteImage } from "@/lib/storage";
 
 export default function NoteDetailScreen() {
   const colors = useColors();
@@ -76,31 +76,15 @@ export default function NoteDetailScreen() {
   }
 
   const pickImage = async () => {
-    if (Platform.OS !== "web") {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        setErrorMsg("Permission required: Allow photo library access to add images.");
-        return;
-      }
+    const { images: picked, errorMessage } = await pickImagesFromLibrary();
+    if (errorMessage) {
+      setErrorMsg(errorMessage);
+      return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.8,
-      allowsMultipleSelection: true,
-      base64: false,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      // Convert blob/file URIs to persistent data URIs on web
-      const persistentUris = await Promise.all(
-        result.assets.map((asset) => makePersistentUri(asset.uri))
-      );
-      const newImages: NoteImage[] = result.assets.map((asset, i) => ({
-        id: generateId(),
-        noteId: id || "",
-        uri: persistentUris[i],
-        thumbnailUri: persistentUris[i],
-      }));
-      setImages((prev) => [...prev, ...newImages]);
+    if (picked.length > 0) {
+      setErrorMsg(null);
+      const stamped = picked.map((img) => ({ ...img, noteId: id || "" }));
+      setImages((prev) => [...prev, ...stamped]);
     }
   };
 
