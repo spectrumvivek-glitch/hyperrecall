@@ -6,39 +6,11 @@ import React from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-
-function DueBadge({ count }: { count: number }) {
-  if (count === 0) return null;
-  return (
-    <View
-      style={{
-        position: "absolute",
-        top: -5,
-        right: -10,
-        backgroundColor: "#EF4444",
-        borderRadius: 8,
-        minWidth: 17,
-        height: 17,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 3,
-        borderWidth: 1.5,
-        borderColor: "#D7DEE8",
-      }}
-    >
-      <Text style={{ color: "#fff", fontSize: 9, fontWeight: "800" }}>
-        {count > 99 ? "99+" : count}
-      </Text>
-    </View>
-  );
-}
 
 export default function TabLayout() {
   const colors = useColors();
   const safeAreaInsets = useSafeAreaInsets();
-  const { dueNotes } = useApp();
 
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
@@ -88,22 +60,6 @@ export default function TabLayout() {
             ) : (
               <Feather name="home" size={22} color={color} />
             ),
-        }}
-      />
-      <Tabs.Screen
-        name="review"
-        options={{
-          title: "Revise",
-          tabBarIcon: ({ color }) => (
-            <View style={{ position: "relative" }}>
-              {isIOS ? (
-                <SymbolView name="checkmark.circle" tintColor={color} size={24} />
-              ) : (
-                <Feather name="check-circle" size={22} color={color} />
-              )}
-              <DueBadge count={dueNotes.length} />
-            </View>
-          ),
         }}
       />
       <Tabs.Screen
