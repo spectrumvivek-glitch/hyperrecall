@@ -11,3 +11,9 @@ id = "WCXeLfyFdyJ19jreFLWZT"
 uri = "file://exports/hyperrecall-icon-512.png"
 type = "image"
 title = "HyperRecall App Icon (512×512)"
+
+[[outputs]]
+id = "OMMdLyqceA85uBa29FdNz"
+uri = "file://exports/hyperrecall-feature-graphic-1024x500.png"
+type = "image"
+title = "HyperRecall Feature Graphic (1024×500)"
