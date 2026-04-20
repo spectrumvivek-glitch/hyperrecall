@@ -1,0 +1,43 @@
+Part A — In Google Play Console
+1. Make sure your app exists in Play Console with package name com.recallify.app and at least one signed APK/AAB has been uploaded to any track (Internal Testing is fine).
+
+2. Create a Google Cloud Service Account
+
+Go to Setup → API access in Play Console (left sidebar).
+Accept the Google Play Developer API terms if prompted.
+Click Create new service account → it pops open Google Cloud Console.
+In Google Cloud: click Create Service Account, name it something like revenuecat-server, click Create and Continue.
+Skip the optional roles, click Done.
+Find the service account in the list → click the 3-dot menu → Manage keys → Add key → Create new key → JSON. A .json file downloads. Save this file — you'll need it in Part B.
+3. Grant the service account access in Play Console
+
+Back on the Play Console API access page, click Refresh service accounts list — your new account appears.
+Click Grant access next to it.
+On the App permissions tab, add your Recallify app.
+On the Account permissions tab, enable:
+View financial data, orders, and cancellation survey responses
+Manage orders and subscriptions
+Click Invite user → Send invite.
+4. Set up Real-time Developer Notifications (RTDN)
+
+Open the RevenueCat dashboard → your project → Apps → Play Store app → Service credentials.
+RevenueCat shows you a Google Cloud Pub/Sub topic name (looks like projects/revenuecat-XXX/topics/...). Copy it.
+Back in Play Console, go to Monetize → Monetization setup (or for each subscription product, the "Real-time developer notifications" section).
+Paste the topic name into Topic name.
+Click Send test notification — it should say success.
+Part B — In RevenueCat dashboard
+1. Open app.revenuecat.com → your Recallify project → Project settings → Apps → click the Play Store app (com.recallify.app).
+
+2. Upload the JSON credentials
+
+Find the Service credentials JSON section.
+Click Upload credentials and pick the .json file you downloaded in Part A step 2.
+RevenueCat will validate it. If it errors saying "API access not granted yet," wait ~24 hours (Google sometimes takes that long to activate the service account) and retry.
+3. Verify
+
+The Play Store app card should now show a green check / "Configured" status.
+Once you have actual products created in Play Console (with the IDs recallify_monthly:monthly, recallify_yearly:yearly, recallify_lifetime), RevenueCat will be able to validate live purchases against them.
+Part C — Test it
+In Play Console: Setup → License testing → add your own Gmail address as a license tester.
+Build the app with EAS (eas build -p android --profile preview) and install the resulting AAB on a real device signed in with that Gmail.
+Open the paywall → tap a plan → you should get the Google purchase sheet showing "Test card, always approves" → complete → the app immediately flips to Pro and unlocks unlimited categories / notes / Exam Mode.
