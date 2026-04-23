@@ -63,6 +63,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="review"
+        options={{
+          title: "Review",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="checkmark.circle" tintColor={color} size={24} />
+            ) : (
+              <Feather name="check-circle" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="notes"
         options={{
           title: "Notes",
