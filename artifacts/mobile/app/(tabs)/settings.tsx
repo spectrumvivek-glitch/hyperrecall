@@ -71,7 +71,7 @@ export default function SettingsScreen() {
   };
   const isOnline = useConnectionState();
   const router = useRouter();
-  const { isPro, isAvailable: subAvailable, isLoading: subLoading } = useSubscription();
+  const { isPro, isPaidPro, trial, isAvailable: subAvailable, isLoading: subLoading } = useSubscription();
   const { notes: cloudNotes, isLoading: cloudLoading, error: cloudError } = useCloudNotes(user?.uid ?? null);
 
   const handleSignOut = () => {
@@ -281,16 +281,24 @@ export default function SettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>
-                {isPro ? "HyperRecall Pro" : "Upgrade to HyperRecall Pro"}
+                {isPaidPro
+                  ? "HyperRecall Pro"
+                  : trial.isActive
+                    ? "Free Trial Active"
+                    : "Upgrade to HyperRecall Pro"}
               </Text>
               <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
-                {isPro
+                {isPaidPro
                   ? "All Pro features unlocked"
-                  : subLoading
-                    ? "Loading plans…"
-                    : subAvailable
-                      ? "Unlimited notes, sync, analytics & more"
-                      : "View plans"}
+                  : trial.isActive
+                    ? `${trial.daysRemaining} day${trial.daysRemaining === 1 ? "" : "s"} left • tap to upgrade`
+                    : subLoading
+                      ? "Loading plans…"
+                      : trial.hasEverStarted
+                        ? "Trial ended — upgrade to keep Pro features"
+                        : subAvailable
+                          ? "Unlimited notes, sync, analytics & more"
+                          : "View plans"}
               </Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />

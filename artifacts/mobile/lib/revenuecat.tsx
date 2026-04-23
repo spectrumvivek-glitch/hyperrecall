@@ -11,6 +11,12 @@ import React, {
 import { Platform } from "react-native";
 
 import { useAuth } from "@/context/AuthContext";
+import {
+  computeTrialState,
+  getOrInitTrialStart,
+  TrialState,
+  TRIAL_DURATION_DAYS,
+} from "@/lib/trial";
 
 const ENTITLEMENT_ID = "recallify_pro";
 
@@ -46,6 +52,9 @@ type PurchaseResult = "purchased" | "cancelled" | "error";
 
 interface SubscriptionContextValue {
   isPro: boolean;
+  isPaidPro: boolean;
+  trial: TrialState;
+  trialDurationDays: number;
   isLoading: boolean;
   isAvailable: boolean;
   offering: PurchasesOffering | null;
@@ -61,7 +70,8 @@ const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [isPro, setIsPro] = useState(false);
+  const [isPaidPro, setIsPaidPro] = useState(false);
+  const [trial, setTrial] = useState<TrialState>(() => computeTrialState(null));
   const [isLoading, setIsLoading] = useState(isNativeRuntime);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -72,7 +82,28 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const handleCustomerInfo = useCallback((info: CustomerInfo) => {
     setCustomerInfo(info);
     const active = !!info.entitlements.active[ENTITLEMENT_ID];
-    setIsPro(active);
+    setIsPaidPro(active);
+  }, []);
+
+  // Initialize trial on first launch (any platform). Re-evaluate on focus.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const startedAt = await getOrInitTrialStart();
+        if (!cancelled) setTrial(computeTrialState(startedAt));
+      } catch (err) {
+        console.warn("[trial] init error:", err);
+      }
+    })();
+    // Recompute every minute so the active->expired flip is timely without app restart
+    const interval = setInterval(() => {
+      setTrial((prev) => (prev.startedAt ? computeTrialState(prev.startedAt) : prev));
+    }, 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   // Initialize SDK once on native runtime
@@ -189,9 +220,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }, [handleCustomerInfo]);
 
+  const isPro = isPaidPro || trial.isActive;
+
   const value = useMemo<SubscriptionContextValue>(
     () => ({
       isPro,
+      isPaidPro,
+      trial,
+      trialDurationDays: TRIAL_DURATION_DAYS,
       isLoading,
       isAvailable: isNativeRuntime,
       offering,
@@ -202,7 +238,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       purchasePackage,
       restorePurchases,
     }),
-    [isPro, isLoading, offering, customerInfo, error, refresh, purchasePackage, restorePurchases],
+    [isPro, isPaidPro, trial, isLoading, offering, customerInfo, error, refresh, purchasePackage, restorePurchases],
   );
 
   return (

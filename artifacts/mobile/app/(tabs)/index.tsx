@@ -21,6 +21,7 @@ import { LevelUpModal } from "@/components/LevelUpModal";
 import { NoteCard } from "@/components/NoteCard";
 import { StatCard } from "@/components/StatCard";
 import { StreakBadge } from "@/components/StreakBadge";
+import { TrialBanner } from "@/components/TrialBanner";
 import { BadgeCard } from "@/components/BadgeCard";
 import { Confetti } from "@/components/Confetti";
 import { DailyStreakPopup } from "@/components/DailyStreakPopup";
@@ -283,6 +284,9 @@ export default function DashboardScreen() {
           </View>
           <StreakBadge streak={userStats.currentStreak} size="md" pulse={userStats.currentStreak > 0} />
         </View>
+
+        {/* Trial Banner */}
+        <TrialBanner />
 
         {/* New Badge Banner */}
         {newBadges.length > 0 && (
