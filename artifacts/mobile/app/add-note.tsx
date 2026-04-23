@@ -70,16 +70,12 @@ export default function AddNoteScreen() {
     }
 
     const targetCategoryId = selectedCategory || categories[0]?.id || "";
-    if (!isPro && targetCategoryId) {
-      const notesInCategory = notes.filter((n) => n.categoryId === targetCategoryId).length;
-      if (notesInCategory >= FREE_MAX_NOTES_PER_CATEGORY) {
-        const catName = categories.find((c) => c.id === targetCategoryId)?.name ?? "this category";
-        showProGate(
-          "Note limit reached",
-          `Free accounts can have up to ${FREE_MAX_NOTES_PER_CATEGORY} notes per category. "${catName}" is full. Upgrade to HyperRecall Pro for unlimited notes.`,
-        );
-        return;
-      }
+    if (!isPro) {
+      showProGate(
+        "Free trial ended",
+        "Your 30-day free trial has ended. Upgrade to HyperRecall Pro to create new notes.",
+      );
+      return;
     }
 
     setIsSaving(true);

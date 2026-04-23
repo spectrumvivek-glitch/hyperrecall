@@ -158,10 +158,10 @@ export default function SettingsScreen() {
 
   const handleAddCategory = async () => {
     if (newCatName.trim().length === 0) return;
-    if (!isPro && categories.length >= FREE_MAX_CATEGORIES) {
+    if (!isPro) {
       showProGate(
-        "Category limit reached",
-        `Free accounts can have up to ${FREE_MAX_CATEGORIES} categories. Upgrade to HyperRecall Pro for unlimited categories.`,
+        "Free trial ended",
+        "Your 30-day free trial has ended. Upgrade to HyperRecall Pro to create new categories.",
       );
       return;
     }

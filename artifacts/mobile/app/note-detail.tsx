@@ -98,24 +98,6 @@ export default function NoteDetailScreen() {
       setErrorMsg("Please enter a title for your note.");
       return;
     }
-    if (
-      !isPro &&
-      selectedCategory &&
-      selectedCategory !== note.categoryId
-    ) {
-      const notesInCategory = notes.filter(
-        (n) => n.categoryId === selectedCategory && n.id !== id,
-      ).length;
-      if (notesInCategory >= FREE_MAX_NOTES_PER_CATEGORY) {
-        const catName =
-          categories.find((c) => c.id === selectedCategory)?.name ?? "this category";
-        showProGate(
-          "Note limit reached",
-          `Free accounts can have up to ${FREE_MAX_NOTES_PER_CATEGORY} notes per category. "${catName}" is full. Upgrade to HyperRecall Pro for unlimited notes.`,
-        );
-        return;
-      }
-    }
     setIsSaving(true);
     try {
       const originalUris = new Map(note.images.map((img) => [img.id, img.uri]));
