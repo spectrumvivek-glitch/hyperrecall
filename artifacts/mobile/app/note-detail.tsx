@@ -18,7 +18,7 @@ import { IntervalPicker } from "@/components/IntervalPicker";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { deleteLocalImage } from "@/lib/imageUtils";
-import { pickImagesFromLibrary } from "@/lib/imagePicker";
+import { chooseImageSource } from "@/lib/imagePicker";
 import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
 import { NoteImage } from "@/lib/storage";
@@ -76,7 +76,7 @@ export default function NoteDetailScreen() {
   }
 
   const pickImage = async () => {
-    const { images: picked, errorMessage } = await pickImagesFromLibrary();
+    const { images: picked, errorMessage } = await chooseImageSource();
     if (errorMessage) {
       setErrorMsg(errorMessage);
       return;

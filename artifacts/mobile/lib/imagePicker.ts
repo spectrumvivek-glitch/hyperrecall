@@ -73,3 +73,91 @@ export async function pickImagesFromLibrary(): Promise<PickResult> {
     };
   }
 }
+
+export async function takePhotoWithCamera(): Promise<PickResult> {
+  try {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          "Camera permission needed",
+          "Allow HyperRecall to use the camera so you can capture photos for your notes.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => {
+                Linking.openSettings().catch(() => {});
+              },
+            },
+          ],
+        );
+      }
+      return { images: [], errorMessage: "Camera permission denied." };
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      allowsEditing: false,
+      base64: false,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return { images: [] };
+    }
+
+    const persistentUris = await Promise.all(
+      result.assets.map((asset) =>
+        makePersistentUri(asset.uri).catch(() => asset.uri),
+      ),
+    );
+
+    const images: NoteImage[] = result.assets.map((asset, i) => ({
+      id: generateId(),
+      noteId: "",
+      uri: persistentUris[i],
+      thumbnailUri: persistentUris[i],
+    }));
+
+    return { images };
+  } catch (err: any) {
+    return {
+      images: [],
+      errorMessage: err?.message ?? "Couldn't open the camera.",
+    };
+  }
+}
+
+/**
+ * Show an action sheet letting the user choose between camera and library.
+ * Resolves with the picked images (or empty if cancelled).
+ */
+export function chooseImageSource(): Promise<PickResult> {
+  return new Promise((resolve) => {
+    if (Platform.OS === "web") {
+      pickImagesFromLibrary().then(resolve);
+      return;
+    }
+    Alert.alert(
+      "Add Image",
+      "Choose how you want to add an image",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => resolve(await takePhotoWithCamera()),
+        },
+        {
+          text: "Choose from Library",
+          onPress: async () => resolve(await pickImagesFromLibrary()),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => resolve({ images: [] }),
+        },
+      ],
+      { cancelable: true, onDismiss: () => resolve({ images: [] }) },
+    );
+  });
+}
