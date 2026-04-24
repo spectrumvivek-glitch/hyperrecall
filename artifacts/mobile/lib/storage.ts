@@ -319,6 +319,32 @@ export async function saveUserStats(stats: UserStats): Promise<void> {
   await AsyncStorage.setItem(KEYS.USER_STATS, JSON.stringify(stats));
 }
 
+/**
+ * Resets `currentStreak` to 0 if the user missed at least one full day.
+ *
+ * Rules:
+ *  - lastActive == today      → streak intact
+ *  - lastActive == yesterday  → streak intact (will continue if they complete today)
+ *  - lastActive  < yesterday  → streak BROKEN, set to 0
+ *
+ * Safe to call on every app load / refresh — does nothing if streak is already
+ * 0 or if no day has been missed.
+ */
+export async function expireStreakIfMissed(): Promise<UserStats> {
+  const stats = await getUserStats();
+  if (stats.currentStreak === 0 || !stats.lastActiveDate) return stats;
+
+  const today = startOfDay(Date.now());
+  const yesterday = today - 24 * 60 * 60 * 1000;
+  const lastActive = startOfDay(stats.lastActiveDate);
+
+  if (lastActive < yesterday) {
+    stats.currentStreak = 0;
+    await saveUserStats(stats);
+  }
+  return stats;
+}
+
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 90, 100, 180, 365];
 
 async function updateStreak(): Promise<{

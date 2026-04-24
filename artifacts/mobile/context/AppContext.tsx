@@ -34,6 +34,7 @@ import {
   getCategories,
   getNotes,
   getRevisionPlans,
+  expireStreakIfMissed,
   getUserStats,
   saveUserStats,
   seedDefaultsIfNeeded,
@@ -133,6 +134,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const improvementPct = calcImprovementPct(userStats.todayCompleted, userStats.yesterdayCompleted);
 
   const refresh = useCallback(async () => {
+    // Expire the streak first so the rest of the load sees the corrected value.
+    // (No-op unless the user actually missed a day.)
+    await expireStreakIfMissed();
     const [cats, nts, plans, stats, due] = await Promise.all([
       getCategories(),
       getNotes(),
