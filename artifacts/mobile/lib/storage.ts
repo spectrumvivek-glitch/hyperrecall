@@ -320,15 +320,19 @@ export async function saveUserStats(stats: UserStats): Promise<void> {
 }
 
 /**
- * Resets `currentStreak` to 0 if the user missed at least one full day.
+ * Streak maintenance — call on every app load / refresh.
  *
  * Rules:
- *  - lastActive == today      → streak intact
- *  - lastActive == yesterday  → streak intact (will continue if they complete today)
- *  - lastActive  < yesterday  → streak BROKEN, set to 0
+ *  - lastActive == today/yesterday  → streak intact, no change
+ *  - lastActive  < yesterday        → user missed at least one day. Then:
+ *      • If there are NO overdue revisions right now, the missed days are
+ *        treated as REST DAYS (nothing was due). Streak is preserved and
+ *        lastActiveDate is bridged forward to yesterday so the next
+ *        completion continues the streak correctly.
+ *      • If there ARE overdue revisions, the user truly skipped study days
+ *        with work to do → streak is reset to 0.
  *
- * Safe to call on every app load / refresh — does nothing if streak is already
- * 0 or if no day has been missed.
+ * No-op if the streak is already 0 or no activity has ever happened.
  */
 export async function expireStreakIfMissed(): Promise<UserStats> {
   const stats = await getUserStats();
@@ -338,8 +342,20 @@ export async function expireStreakIfMissed(): Promise<UserStats> {
   const yesterday = today - 24 * 60 * 60 * 1000;
   const lastActive = startOfDay(stats.lastActiveDate);
 
-  if (lastActive < yesterday) {
+  if (lastActive >= yesterday) return stats;
+
+  // User has missed at least one full day. Check for overdue revisions.
+  const plans = await getRevisionPlans();
+  const hasOverdue = plans.some((p) => startOfDay(p.nextRevisionDate) < today);
+
+  if (hasOverdue) {
+    // Real miss — work was due and not done.
     stats.currentStreak = 0;
+    await saveUserStats(stats);
+  } else {
+    // Rest day(s) — nothing was due. Preserve streak; bridge lastActive
+    // to yesterday so a completion today continues the streak.
+    stats.lastActiveDate = yesterday;
     await saveUserStats(stats);
   }
   return stats;
