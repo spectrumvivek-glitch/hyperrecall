@@ -15,13 +15,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IntervalPicker } from "@/components/IntervalPicker";
+import { PdfAttachmentCard } from "@/components/PdfAttachmentCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { deleteLocalImage } from "@/lib/imageUtils";
 import { chooseImageSource } from "@/lib/imagePicker";
+import { deleteLocalPdf, pickPdfFromDevice } from "@/lib/pdfPicker";
 import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
-import { NoteImage } from "@/lib/storage";
+import { NoteAttachment, NoteImage } from "@/lib/storage";
 
 export default function NoteDetailScreen() {
   const colors = useColors();
@@ -40,6 +42,7 @@ export default function NoteDetailScreen() {
   const [content, setContent] = useState(note?.content || "");
   const [selectedCategory, setSelectedCategory] = useState(note?.categoryId || "");
   const [images, setImages] = useState<NoteImage[]>(note?.images || []);
+  const [attachments, setAttachments] = useState<NoteAttachment[]>(note?.attachments || []);
   const [intervals, setIntervals] = useState<number[]>(plan?.intervals || [1, 3, 7, 15, 30]);
   const initialIntervals = useRef(plan?.intervals || []);
   const [isSaving, setIsSaving] = useState(false);
@@ -55,6 +58,7 @@ export default function NoteDetailScreen() {
       setContent(note.content);
       setSelectedCategory(note.categoryId);
       setImages(note.images);
+      setAttachments(note.attachments || []);
     }
     if (plan) {
       setIntervals(plan.intervals);
@@ -92,6 +96,23 @@ export default function NoteDetailScreen() {
     setImages((prev) => prev.filter((i) => i.id !== imgId));
   };
 
+  const pickPdf = async () => {
+    const { attachments: picked, errorMessage } = await pickPdfFromDevice();
+    if (errorMessage) {
+      setErrorMsg(errorMessage);
+      return;
+    }
+    if (picked.length > 0) {
+      setErrorMsg(null);
+      const stamped = picked.map((a) => ({ ...a, noteId: id || "" }));
+      setAttachments((prev) => [...prev, ...stamped]);
+    }
+  };
+
+  const removeAttachmentLocally = (attId: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== attId));
+  };
+
   const handleSave = async () => {
     setErrorMsg(null);
     if (title.trim().length === 0) {
@@ -107,6 +128,15 @@ export default function NoteDetailScreen() {
         .map(([, uri]) => uri);
       await Promise.all(removedUris.map((uri) => deleteLocalImage(uri)));
 
+      const originalPdfUris = new Map(
+        (note.attachments || []).map((a) => [a.id, a.uri]),
+      );
+      const remainingAttIds = new Set(attachments.map((a) => a.id));
+      const removedPdfUris = [...originalPdfUris.entries()]
+        .filter(([attId]) => !remainingAttIds.has(attId))
+        .map(([, uri]) => uri);
+      await Promise.all(removedPdfUris.map((uri) => deleteLocalPdf(uri)));
+
       const intervalsChanged =
         JSON.stringify(intervals) !== JSON.stringify(initialIntervals.current);
       await editNote(
@@ -116,6 +146,7 @@ export default function NoteDetailScreen() {
           content: content.trim(),
           categoryId: selectedCategory,
           images: images,
+          attachments: attachments,
         },
         intervalsChanged ? intervals : undefined
       );
@@ -129,8 +160,9 @@ export default function NoteDetailScreen() {
 
   const handleDelete = () => {
     const doDelete = async () => {
-      // Delete all local image files
+      // Delete all local image and PDF files
       await Promise.all(note.images.map((img) => deleteLocalImage(img.uri)));
+      await Promise.all((note.attachments || []).map((a) => deleteLocalPdf(a.uri)));
       await removeNote(id!);
       router.back();
     };
@@ -284,6 +316,45 @@ export default function NoteDetailScreen() {
                 ))}
               </View>
             </ScrollView>
+          )
+        )}
+
+        {/* PDFs */}
+        {isEditing ? (
+          <View style={styles.field}>
+            <View style={styles.fieldHeader}>
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+                PDFs ({attachments.length})
+              </Text>
+              <TouchableOpacity
+                onPress={pickPdf}
+                disabled={isWorking}
+                style={[styles.addImageBtn, { borderColor: colors.primary, borderRadius: colors.radius / 2 }]}
+                activeOpacity={0.7}
+              >
+                <Feather name="file-text" size={14} color={colors.primary} />
+                <Text style={[styles.addImageText, { color: colors.primary }]}>Add PDF</Text>
+              </TouchableOpacity>
+            </View>
+            {attachments.length > 0 && (
+              <View style={{ gap: 8 }}>
+                {attachments.map((att) => (
+                  <PdfAttachmentCard
+                    key={att.id}
+                    attachment={att}
+                    onRemove={() => removeAttachmentLocally(att.id)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        ) : (
+          (note.attachments?.length ?? 0) > 0 && (
+            <View style={{ gap: 8 }}>
+              {note.attachments!.map((att) => (
+                <PdfAttachmentCard key={att.id} attachment={att} />
+              ))}
+            </View>
           )
         )}
 

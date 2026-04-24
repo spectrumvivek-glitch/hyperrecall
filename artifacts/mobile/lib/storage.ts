@@ -16,12 +16,22 @@ export interface NoteImage {
   thumbnailUri: string;
 }
 
+export interface NoteAttachment {
+  id: string;
+  noteId: string;
+  uri: string;
+  name: string;
+  mimeType?: string;
+  sizeBytes?: number;
+}
+
 export interface Note {
   id: string;
   title: string;
   categoryId: string;
   content: string;
   images: NoteImage[];
+  attachments?: NoteAttachment[];
   createdAt: number;
   updatedAt: number;
 }
@@ -116,7 +126,8 @@ export async function createNote(
   title: string,
   categoryId: string,
   content: string,
-  images: NoteImage[]
+  images: NoteImage[],
+  attachments: NoteAttachment[] = []
 ): Promise<Note> {
   const notes = await getNotes();
   const note: Note = {
@@ -125,6 +136,7 @@ export async function createNote(
     categoryId,
     content,
     images,
+    attachments,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

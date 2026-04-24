@@ -18,6 +18,7 @@ import { initNotificationsOnFirstLaunch } from "@/lib/notifications";
 import {
   Category,
   Note,
+  NoteAttachment,
   NoteImage,
   RevisionPlan,
   UserStats,
@@ -83,7 +84,8 @@ interface AppContextValue {
     categoryId: string,
     content: string,
     images: NoteImage[],
-    intervals: number[]
+    intervals: number[],
+    attachments?: NoteAttachment[]
   ) => Promise<Note>;
   editNote: (id: string, updates: Partial<Note>, intervals?: number[]) => Promise<void>;
   removeNote: (id: string) => Promise<void>;
@@ -195,9 +197,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     categoryId: string,
     content: string,
     images: NoteImage[],
-    intervals: number[]
+    intervals: number[],
+    attachments: NoteAttachment[] = []
   ) => {
-    const note = await createNote(title, categoryId, content, images);
+    const note = await createNote(title, categoryId, content, images, attachments);
     await createRevisionPlan(note.id, intervals);
     await refresh();
     pushNoteAsync(uid, note);

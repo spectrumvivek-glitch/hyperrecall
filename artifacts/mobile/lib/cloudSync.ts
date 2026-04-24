@@ -5,6 +5,8 @@
  * - On user login: pullFromCloud merges cloud → local. If cloud is empty, push local up.
  * - On every local mutation: fire-and-forget push to cloud.
  * - Images ARE synced — uploaded to Firebase Storage and referenced by https URL.
+ * - PDF attachments are LOCAL-ONLY (file:// URIs are useless on other devices).
+ *   syncFromCloud preserves any local attachments by note-ID so they survive a pull.
  * - Network errors are swallowed silently — local AsyncStorage is the source of truth
  *   for the running app, so the UI never breaks if sync fails.
  */
@@ -129,7 +131,14 @@ export async function syncFromCloud(uid: string): Promise<void> {
       return;
     }
 
-    // Build merged notes — cloud is authoritative for everything including images.
+    // Preserve local attachments (PDFs are not synced to cloud — file:// URIs
+    // are device-specific). Match by note ID so existing PDFs survive the pull.
+    const localNotes = await getNotes();
+    const localAttachmentsByNoteId = new Map(
+      localNotes.map((n) => [n.id, n.attachments ?? []]),
+    );
+
+    // Build merged notes — cloud is authoritative for everything except attachments.
     const mergedNotes: Note[] = cloudNotes.map((c) => ({
       id: c.id,
       title: c.title,
@@ -141,6 +150,7 @@ export async function syncFromCloud(uid: string): Promise<void> {
         uri: img.url,
         thumbnailUri: img.url,
       })),
+      attachments: localAttachmentsByNoteId.get(c.id) ?? [],
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     }));

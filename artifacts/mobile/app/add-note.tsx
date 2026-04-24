@@ -14,12 +14,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IntervalPicker } from "@/components/IntervalPicker";
+import { PdfAttachmentCard } from "@/components/PdfAttachmentCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { chooseImageSource } from "@/lib/imagePicker";
+import { pickPdfFromDevice } from "@/lib/pdfPicker";
 import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
-import { NoteImage } from "@/lib/storage";
+import { NoteAttachment, NoteImage } from "@/lib/storage";
 
 const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
 
@@ -34,6 +36,7 @@ export default function AddNoteScreen() {
   const [content, setContent] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || "");
   const [images, setImages] = useState<NoteImage[]>([]);
+  const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
   const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -56,6 +59,22 @@ export default function AddNoteScreen() {
 
   const removeImage = (id: string) => {
     setImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const pickPdf = async () => {
+    const { attachments: picked, errorMessage } = await pickPdfFromDevice();
+    if (errorMessage) {
+      setErrorMsg(errorMessage);
+      return;
+    }
+    if (picked.length > 0) {
+      setErrorMsg(null);
+      setAttachments((prev) => [...prev, ...picked]);
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleSave = async () => {
@@ -85,7 +104,8 @@ export default function AddNoteScreen() {
         selectedCategory || categories[0]?.id || "",
         content.trim(),
         images,
-        intervals
+        intervals,
+        attachments
       );
       router.back();
     } catch (err: any) {
@@ -229,6 +249,36 @@ export default function AddNoteScreen() {
             </ScrollView>
           )}
 
+        </View>
+
+        {/* PDFs */}
+        <View style={styles.field}>
+          <View style={styles.fieldHeader}>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+              PDFs ({attachments.length})
+            </Text>
+            <TouchableOpacity
+              onPress={pickPdf}
+              disabled={isWorking}
+              style={[styles.addImageBtn, { borderColor: colors.primary, borderRadius: colors.radius / 2 }]}
+              activeOpacity={0.7}
+            >
+              <Feather name="file-text" size={14} color={colors.primary} />
+              <Text style={[styles.addImageText, { color: colors.primary }]}>Add PDF</Text>
+            </TouchableOpacity>
+          </View>
+
+          {attachments.length > 0 && (
+            <View style={{ gap: 8 }}>
+              {attachments.map((att) => (
+                <PdfAttachmentCard
+                  key={att.id}
+                  attachment={att}
+                  onRemove={() => removeAttachment(att.id)}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Revision Settings */}
