@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StreakBadge } from "@/components/StreakBadge";
 import { BadgesGrid } from "@/components/BadgeCard";
+import { RankLadder } from "@/components/RankLadder";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { RevisionLog, getDayLabel, getRevisionLogs, startOfDay } from "@/lib/storage";
@@ -159,7 +160,7 @@ function LeaderboardRow({
 export default function AnalyticsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { userStats, notes, categories } = useApp();
+  const { userStats, notes, categories, rankInfo } = useApp();
   const [revisionLogs, setRevisionLogs] = useState<RevisionLog[]>([]);
 
   // Rotate leaderboard every 30 seconds
@@ -277,6 +278,9 @@ export default function AnalyticsScreen() {
           <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Reviews</Text>
         </View>
       </View>
+
+      {/* Rank Ladder */}
+      <RankLadder rank={rankInfo} totalCompleted={userStats.totalCompleted} />
 
       {/* Leaderboard */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

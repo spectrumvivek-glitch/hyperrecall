@@ -43,6 +43,7 @@ import {
   updateRevisionPlanSchedule,
 } from "@/lib/storage";
 import { calcImprovementPct, getXpProgress } from "@/lib/xp";
+import { RankInfo, STEPS_PER_RANK, getRankInfo, getTierIndex } from "@/lib/ranks";
 
 export interface XpInfo {
   totalXp: number;
@@ -59,6 +60,13 @@ export interface LevelUpEvent {
   xpGained: number;
 }
 
+export interface RankUpEvent {
+  /** "step" = promoted within a rank (every 10 reviews); "rank" = promoted to a new rank (every 50). */
+  kind: "step" | "rank";
+  rank: RankInfo;
+  prevRank: RankInfo;
+}
+
 interface AppContextValue {
   categories: Category[];
   notes: Note[];
@@ -69,10 +77,13 @@ interface AppContextValue {
   xpInfo: XpInfo;
   improvementPct: number | null;
   pendingLevelUp: LevelUpEvent | null;
+  pendingRankUp: RankUpEvent | null;
   pendingXp: number;
   streakMilestone: number | null;
   newBadges: string[];
+  rankInfo: RankInfo;
   dismissLevelUp: () => void;
+  dismissRankUp: () => void;
   dismissStreakMilestone: () => void;
   dismissNewBadges: () => void;
 
@@ -126,11 +137,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dueNotes, setDueNotes] = useState<{ note: Note; plan: RevisionPlan }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingLevelUp, setPendingLevelUp] = useState<LevelUpEvent | null>(null);
+  const [pendingRankUp, setPendingRankUp] = useState<RankUpEvent | null>(null);
   const [pendingXp, setPendingXp] = useState(0);
   const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
   const [newBadges, setNewBadges] = useState<string[]>([]);
 
   const xpInfo = buildXpInfo(userStats);
+  const rankInfo = getRankInfo(userStats.totalCompleted);
   const improvementPct = calcImprovementPct(userStats.todayCompleted, userStats.yesterdayCompleted);
 
   const refresh = useCallback(async () => {
@@ -151,10 +164,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDueNotes(due);
   }, []);
 
+  // Initialise lastSeenRankTier so reopening the app (or syncing from a
+  // device that predates the rank ladder) never re-fires a celebration for
+  // a tier the user already earned. Idempotent; safe to call any time.
+  const ensureRankTierBackfilled = useCallback(async () => {
+    const stats = await getUserStats();
+    if (stats.lastSeenRankTier === undefined) {
+      stats.lastSeenRankTier = getTierIndex(stats.totalCompleted);
+      await saveUserStats(stats);
+    }
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       await seedDefaultsIfNeeded();
       await refresh();
+      await ensureRankTierBackfilled();
       setIsLoading(false);
       // Reuse already-fetched dueNotes — do not re-fetch; init notifications async
       initNotificationsOnFirstLaunch(0).catch(() => {});
@@ -173,9 +198,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     (async () => {
       await syncFromCloud(uid);
+      await ensureRankTierBackfilled();
       await refresh();
     })();
-  }, [uid, refresh]);
+  }, [uid, refresh, ensureRankTierBackfilled]);
 
   const addCategory = useCallback(async (name: string, color: string) => {
     const cat = await createCategory(name, color);
@@ -236,6 +262,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const markCompleted = useCallback(async (noteId: string): Promise<number> => {
     const result = await completeRevision(noteId);
+
+    // ── Rank-up detection ──────────────────────────────────────────────────
+    // completeRevision has already incremented totalCompleted in storage.
+    // If lastSeenRankTier is missing (e.g. cloud sync to a new device that
+    // never ran the init backfill, or stats imported from before this code
+    // shipped), derive the previous tier from the count BEFORE this review
+    // (totalCompleted - 1) so the very next boundary still emits exactly
+    // one event. Always persist lastSeenRankTier afterwards so subsequent
+    // calls have it set, regardless of whether a boundary was crossed.
+    const fresh = await getUserStats();
+    const newTier = getTierIndex(fresh.totalCompleted);
+    const prevTier =
+      fresh.lastSeenRankTier ??
+      getTierIndex(Math.max(0, fresh.totalCompleted - 1));
+    if (newTier > prevTier) {
+      const newRankInfo = getRankInfo(fresh.totalCompleted);
+      const prevRankInfo = getRankInfo(prevTier * 10);
+      const isFullRankUp =
+        Math.floor(newTier / STEPS_PER_RANK) >
+        Math.floor(prevTier / STEPS_PER_RANK);
+      setPendingRankUp({
+        kind: isFullRankUp ? "rank" : "step",
+        rank: newRankInfo,
+        prevRank: prevRankInfo,
+      });
+    }
+    if (fresh.lastSeenRankTier !== newTier) {
+      fresh.lastSeenRankTier = newTier;
+      await saveUserStats(fresh);
+    }
+
     await refresh();
     pushMetaAsync(uid); // plans + stats changed
     setPendingXp(result.xpGained);
@@ -279,6 +336,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [refresh, uid]);
 
   const dismissLevelUp = useCallback(() => setPendingLevelUp(null), []);
+  const dismissRankUp = useCallback(() => setPendingRankUp(null), []);
   const dismissStreakMilestone = useCallback(() => setStreakMilestone(null), []);
   const dismissNewBadges = useCallback(() => setNewBadges([]), []);
 
@@ -292,12 +350,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dueNotes,
         isLoading,
         xpInfo,
+        rankInfo,
         improvementPct,
         pendingLevelUp,
+        pendingRankUp,
         pendingXp,
         streakMilestone,
         newBadges,
         dismissLevelUp,
+        dismissRankUp,
         dismissStreakMilestone,
         dismissNewBadges,
         addCategory,

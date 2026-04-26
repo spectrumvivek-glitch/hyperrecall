@@ -19,6 +19,9 @@ import { EmptyState } from "@/components/EmptyState";
 import { ImprovementPopup } from "@/components/ImprovementPopup";
 import { LevelUpModal } from "@/components/LevelUpModal";
 import { NoteCard } from "@/components/NoteCard";
+import { RankProgressCard } from "@/components/RankProgressCard";
+import { RankUpModal } from "@/components/RankUpModal";
+import { RankUpToast } from "@/components/RankUpToast";
 import { StatCard } from "@/components/StatCard";
 import { StreakBadge } from "@/components/StreakBadge";
 import { TrialBanner } from "@/components/TrialBanner";
@@ -164,8 +167,8 @@ export default function DashboardScreen() {
   const router = useRouter();
   const {
     dueNotes, userStats, notes, revisionPlans, isLoading, refresh,
-    xpInfo, improvementPct, pendingLevelUp, dismissLevelUp, shareAndEarnXp,
-    newBadges, dismissNewBadges,
+    xpInfo, rankInfo, improvementPct, pendingLevelUp, dismissLevelUp, shareAndEarnXp,
+    newBadges, dismissNewBadges, pendingRankUp, dismissRankUp,
   } = useApp();
   const { user } = useAuth();
   const { username } = useUserProfile();
@@ -246,6 +249,20 @@ export default function DashboardScreen() {
         xpGained={pendingLevelUp?.xpGained ?? 0}
         onDismiss={dismissLevelUp}
       />
+      {pendingRankUp?.kind === "rank" && (
+        <RankUpModal
+          visible
+          rank={pendingRankUp.rank}
+          onDismiss={dismissRankUp}
+        />
+      )}
+      {pendingRankUp?.kind === "step" && (
+        <RankUpToast
+          visible
+          rank={pendingRankUp.rank}
+          onDismiss={dismissRankUp}
+        />
+      )}
       <Confetti
         visible={showConfetti}
         onDone={() => setShowConfetti(false)}
@@ -339,6 +356,9 @@ export default function DashboardScreen() {
             colors={colors}
           />
         </View>
+
+        {/* Rank Progress Card */}
+        <RankProgressCard rank={rankInfo} />
 
         {/* Stats Row */}
         <View style={styles.statsRow}>

@@ -63,6 +63,9 @@ export interface UserStats {
   lastXpDate: number;
   earnedBadges: string[];
   dailyGoal: number;
+  // Most-recently celebrated rank tier index (0-49). Used to suppress
+  // re-firing rank-up celebrations when the app reopens.
+  lastSeenRankTier?: number;
 }
 
 const KEYS = {
