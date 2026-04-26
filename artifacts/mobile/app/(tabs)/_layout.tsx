@@ -7,6 +7,48 @@ import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { useApp } from "@/context/AppContext";
+
+function ReviewIcon({ color, isIOS }: { color: string; isIOS: boolean }) {
+  const { dueNotes } = useApp();
+  const count = dueNotes.length;
+  return (
+    <View>
+      {isIOS ? (
+        <SymbolView name="checkmark.circle" tintColor={color} size={24} />
+      ) : (
+        <Feather name="check-circle" size={22} color={color} />
+      )}
+      {count > 0 && (
+        <View
+          style={{
+            position: "absolute",
+            top: -4,
+            right: -6,
+            backgroundColor: "#EF4444",
+            borderRadius: 8,
+            minWidth: 16,
+            height: 16,
+            paddingHorizontal: 3,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 9,
+              fontWeight: "700",
+              lineHeight: 12,
+            }}
+          >
+            {count > 99 ? "99+" : count}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const colors = useColors();
@@ -66,12 +108,7 @@ export default function TabLayout() {
         name="review"
         options={{
           title: "Review",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="checkmark.circle" tintColor={color} size={24} />
-            ) : (
-              <Feather name="check-circle" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <ReviewIcon color={color} isIOS={isIOS} />,
         }}
       />
       <Tabs.Screen
