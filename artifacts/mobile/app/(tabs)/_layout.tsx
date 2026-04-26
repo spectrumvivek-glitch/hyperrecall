@@ -74,6 +74,9 @@ export default function TabLayout() {
         tabBarIconStyle: {
           marginTop: 4,
         },
+        tabBarItemStyle: {
+          paddingHorizontal: 4,
+        },
         tabBarStyle: {
           position: "absolute",
           bottom: 0,
