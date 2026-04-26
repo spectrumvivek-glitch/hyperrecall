@@ -121,22 +121,9 @@ export default function NoteDetailScreen() {
     }
     setIsSaving(true);
     try {
-      const originalUris = new Map(note.images.map((img) => [img.id, img.uri]));
-      const remainingIds = new Set(images.map((img) => img.id));
-      const removedUris = [...originalUris.entries()]
-        .filter(([imgId]) => !remainingIds.has(imgId))
-        .map(([, uri]) => uri);
-      await Promise.all(removedUris.map((uri) => deleteLocalImage(uri)));
-
-      const originalPdfUris = new Map(
-        (note.attachments || []).map((a) => [a.id, a.uri]),
-      );
-      const remainingAttIds = new Set(attachments.map((a) => a.id));
-      const removedPdfUris = [...originalPdfUris.entries()]
-        .filter(([attId]) => !remainingAttIds.has(attId))
-        .map(([, uri]) => uri);
-      await Promise.all(removedPdfUris.map((uri) => deleteLocalPdf(uri)));
-
+      // Save FIRST so the user's edits are persisted even if cleanup of
+      // removed files later fails (file deletion is a best-effort housekeep
+      // task and must never block the save).
       const intervalsChanged =
         JSON.stringify(intervals) !== JSON.stringify(initialIntervals.current);
       await editNote(
@@ -150,9 +137,41 @@ export default function NoteDetailScreen() {
         },
         intervalsChanged ? intervals : undefined
       );
+
+      // Best-effort cleanup of files that were removed in this edit session.
+      // Wrapped so any FS error never reaches the user.
+      try {
+        const originalUris = new Map(note.images.map((img) => [img.id, img.uri]));
+        const remainingIds = new Set(images.map((img) => img.id));
+        const removedUris = [...originalUris.entries()]
+          .filter(([imgId]) => !remainingIds.has(imgId))
+          .map(([, uri]) => uri);
+        await Promise.all(
+          removedUris.map((uri) => deleteLocalImage(uri).catch(() => {})),
+        );
+
+        const originalPdfUris = new Map(
+          (note.attachments || []).map((a) => [a.id, a.uri]),
+        );
+        const remainingAttIds = new Set(attachments.map((a) => a.id));
+        const removedPdfUris = [...originalPdfUris.entries()]
+          .filter(([attId]) => !remainingAttIds.has(attId))
+          .map(([, uri]) => uri);
+        await Promise.all(
+          removedPdfUris.map((uri) => deleteLocalPdf(uri).catch(() => {})),
+        );
+      } catch (cleanupErr) {
+        console.warn("[note-detail] cleanup failed:", cleanupErr);
+      }
+
       setIsEditing(false);
-    } catch {
-      setErrorMsg("Failed to save changes. Please try again.");
+    } catch (err: any) {
+      console.warn("[note-detail] save failed:", err);
+      const detail =
+        typeof err?.message === "string" && err.message.length > 0
+          ? err.message
+          : "Please try again.";
+      setErrorMsg(`Failed to save changes. ${detail}`);
     } finally {
       setIsSaving(false);
     }
