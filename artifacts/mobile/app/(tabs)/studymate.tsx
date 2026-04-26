@@ -44,57 +44,59 @@ export default function StudyMateScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.topBar,
-          {
-            paddingTop: insets.top + 12,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.background,
-          },
-        ]}
-      >
-        <Text style={[styles.topTitle, { color: colors.foreground }]}>
-          StudyMate AI
-        </Text>
-        <TouchableOpacity
-          accessibilityLabel="Open settings"
-          onPress={() => router.push("/(tabs)/settings")}
-          style={[
-            styles.iconBtn,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-          activeOpacity={0.7}
-        >
-          <Feather name="settings" size={18} color={colors.foreground} />
-        </TouchableOpacity>
-      </View>
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + 120 },
+          { paddingTop: topPad + 14, paddingBottom: bottomPad + 110 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroWrap}>
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              StudyMate AI
+            </Text>
+            <Text
+              style={[styles.subtitle, { color: colors.mutedForeground }]}
+            >
+              Your AI study buddy
+            </Text>
+          </View>
+          <TouchableOpacity
+            accessibilityLabel="Open settings"
+            onPress={() => router.push("/(tabs)/settings")}
+            style={[
+              styles.gearBtn,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="settings" size={18} color={colors.foreground} />
+          </TouchableOpacity>
+        </View>
+
+        <View
+          style={[
+            styles.heroCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <LinearGradient
             colors={[colors.primary, "#7C3AED"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroIcon}
           >
-            <Feather name="message-circle" size={40} color="#FFFFFF" />
+            <Feather name="message-circle" size={28} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.heroTitle, { color: colors.foreground }]}>
-            Your AI study buddy
-          </Text>
-          <Text
-            style={[styles.heroSubtitle, { color: colors.mutedForeground }]}
-          >
+          <Text style={[styles.heroText, { color: colors.foreground }]}>
             Stuck on a concept? Need a quick explanation? StudyMate AI is here
             to help — anytime, anywhere.
           </Text>
@@ -106,8 +108,8 @@ export default function StudyMateScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-            What you can do
+          <Text style={[styles.cardTitle, { color: colors.mutedForeground }]}>
+            WHAT YOU CAN DO
           </Text>
           {FEATURES.map((f, idx) => (
             <View
@@ -126,7 +128,7 @@ export default function StudyMateScreen() {
                   { backgroundColor: colors.primary + "1A" },
                 ]}
               >
-                <Feather name={f.icon} size={16} color={colors.primary} />
+                <Feather name={f.icon} size={15} color={colors.primary} />
               </View>
               <Text
                 style={[styles.featureText, { color: colors.foreground }]}
@@ -156,9 +158,9 @@ export default function StudyMateScreen() {
         <View style={styles.footerNote}>
           <Feather
             name="info"
-            size={13}
+            size={12}
             color={colors.mutedForeground}
-            style={{ marginTop: 1 }}
+            style={{ marginTop: 2 }}
           />
           <Text
             style={[styles.footerText, { color: colors.mutedForeground }]}
@@ -173,65 +175,62 @@ export default function StudyMateScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  container: { flex: 1 },
+  scroll: { flex: 1 },
+  content: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    gap: 18,
   },
-  topTitle: {
-    fontSize: 22,
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  title: {
+    fontSize: 24,
     fontWeight: "700",
   },
-  iconBtn: {
+  subtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  gearBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 4,
   },
-  scroll: { flex: 1 },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    gap: 24,
-  },
-  heroWrap: {
+  heroCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 8,
+    gap: 14,
   },
   heroIcon: {
-    width: 84,
-    height: 84,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     ...Platform.select({
       ios: {
         shadowColor: "#7C3AED",
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
-        shadowRadius: 16,
+        shadowRadius: 10,
       },
-      android: { elevation: 6 },
+      android: { elevation: 4 },
     }),
   },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 4,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
-    paddingHorizontal: 8,
+  heroText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
   },
   card: {
     borderRadius: 16,
@@ -239,35 +238,34 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cardTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "700",
-    textTransform: "uppercase",
     letterSpacing: 0.6,
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   featureRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   featureIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
   },
   featureText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13.5,
     lineHeight: 19,
   },
   primaryBtnWrap: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: "hidden",
     ...Platform.select({
       ios: {
@@ -284,11 +282,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    paddingVertical: 16,
+    paddingVertical: 15,
   },
   primaryBtnText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
   },
   footerNote: {
@@ -299,7 +297,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
 });
