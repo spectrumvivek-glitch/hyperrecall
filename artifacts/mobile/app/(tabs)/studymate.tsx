@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
 import React from "react";
 import {
   Alert,
@@ -42,7 +41,6 @@ const FEATURES: Array<{ icon: keyof typeof Feather.glyphMap; text: string }> = [
 export default function StudyMateScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -58,28 +56,12 @@ export default function StudyMateScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              StudyMate AI
-            </Text>
-            <Text
-              style={[styles.subtitle, { color: colors.mutedForeground }]}
-            >
-              Your AI study buddy
-            </Text>
-          </View>
-          <TouchableOpacity
-            accessibilityLabel="Open settings"
-            onPress={() => router.push("/(tabs)/settings")}
-            style={[
-              styles.gearBtn,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="settings" size={18} color={colors.foreground} />
-          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            StudyMate AI
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            Your AI study buddy
+          </Text>
         </View>
 
         <View

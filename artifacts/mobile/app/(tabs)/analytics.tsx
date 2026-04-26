@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
@@ -163,6 +164,7 @@ function LeaderboardRow({
 export default function AnalyticsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { userStats, notes, categories, rankInfo } = useApp();
   const [revisionLogs, setRevisionLogs] = useState<RevisionLog[]>([]);
   const [lbExpanded, setLbExpanded] = useState(false);
@@ -268,11 +270,25 @@ export default function AnalyticsScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={styles.headerBlock}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Analytics</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Your learning at a glance
-        </Text>
+      <View style={styles.headerRow}>
+        <View style={styles.headerBlock}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Analytics</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            Your learning at a glance
+          </Text>
+        </View>
+        <TouchableOpacity
+          accessibilityLabel="Open settings"
+          onPress={() => router.push("/(tabs)/settings")}
+          style={[
+            styles.gearBtn,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Feather name="settings" size={18} color={colors.foreground} />
+        </TouchableOpacity>
       </View>
 
       {/* Overview cards */}
@@ -481,7 +497,21 @@ export default function AnalyticsScreen() {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 14 },
-  headerBlock: { gap: 2 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  headerBlock: { flex: 1, gap: 2 },
+  gearBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
   title: { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
   subtitle: { fontSize: 12, fontWeight: "500" },
   overviewRow: { flexDirection: "row", gap: 8 },
