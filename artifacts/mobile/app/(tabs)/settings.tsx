@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -38,22 +37,6 @@ const CATEGORY_COLORS = [
   "#4f46e5", "#10b981", "#f59e0b", "#ec4899",
   "#3b82f6", "#ef4444", "#8b5cf6", "#06b6d4",
 ];
-
-const STUDYMATE_AI_URL =
-  "https://chatgpt.com/g/g-69ee1c9314988191b54a52b0a1bc5a00-studymate-ai";
-
-async function openStudyMateAI() {
-  try {
-    const supported = await Linking.canOpenURL(STUDYMATE_AI_URL);
-    if (supported) {
-      await Linking.openURL(STUDYMATE_AI_URL);
-    } else {
-      Alert.alert("StudyMate AI", "Couldn't open the link. Please try again.");
-    }
-  } catch {
-    Alert.alert("StudyMate AI", "Couldn't open the link. Please try again.");
-  }
-}
 
 function SectionCard({ children, style }: { children: React.ReactNode; style?: object }) {
   const colors = useColors();
@@ -650,44 +633,6 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
       )}
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>AI Helper</Text>
-        <SectionCard>
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={openStudyMateAI}
-            activeOpacity={0.7}
-          >
-            <View
-              style={[
-                styles.settingIcon,
-                { backgroundColor: colors.primary + "1A" },
-              ]}
-            >
-              <Feather name="message-circle" size={18} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>
-                StudyMate AI
-              </Text>
-              <Text
-                style={[
-                  styles.settingSubtitle,
-                  { color: colors.mutedForeground },
-                ]}
-              >
-                Ask doubts, get explanations & study tips
-              </Text>
-            </View>
-            <Feather
-              name="external-link"
-              size={18}
-              color={colors.mutedForeground}
-            />
-          </TouchableOpacity>
-        </SectionCard>
-      </View>
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>

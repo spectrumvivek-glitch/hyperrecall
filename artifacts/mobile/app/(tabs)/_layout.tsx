@@ -157,15 +157,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="studymate"
         options={{
-          title: "Settings",
+          title: "StudyMate",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="gear" tintColor={color} size={24} />
+              <SymbolView name="sparkles" tintColor={color} size={24} />
             ) : (
-              <Feather name="settings" size={22} color={color} />
+              <Feather name="message-circle" size={22} color={color} />
             ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+          title: "Settings",
         }}
       />
     </Tabs>
