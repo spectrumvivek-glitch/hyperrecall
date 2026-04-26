@@ -1087,7 +1087,7 @@ export default function ExamScreen() {
             ["📝", "Choose notes to include"],
             ["🧠", "Get 14 auto-scheduled reviews per note"],
             ["📈", "Front-loaded schedule for maximum retention"],
-            ["⏰", "Best started 15–20 days before your exam"],
+            ["⏰", "Best started 25–30 days before your exam"],
           ].map(([icon, text]) => (
             <View key={text as string} style={scStyles.infoBannerRow}>
               <Text style={{ fontSize: 15 }}>{icon}</Text>
