@@ -63,6 +63,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
+        animation: "shift",
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: "600",
