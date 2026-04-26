@@ -68,6 +68,10 @@ export default function TabLayout() {
           fontSize: 10,
           fontWeight: "600",
           marginTop: 2,
+          marginBottom: 2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
         tabBarStyle: {
           position: "absolute",
@@ -78,9 +82,9 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
-          paddingBottom: safeAreaInsets.bottom || 8,
-          paddingTop: 8,
-          height: (safeAreaInsets.bottom || 8) + 57,
+          paddingBottom: safeAreaInsets.bottom || 10,
+          paddingTop: 10,
+          height: (safeAreaInsets.bottom || 10) + 65,
         },
         tabBarBackground: () =>
           isIOS ? (
