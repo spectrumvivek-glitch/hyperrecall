@@ -548,6 +548,32 @@ export async function deleteExamSession(id: string): Promise<void> {
   await saveExamSessions(sessions.filter((s) => s.id !== id));
 }
 
+export async function updateExamSession(
+  id: string,
+  name: string,
+  examDate: number,
+  noteIds: string[]
+): Promise<void> {
+  const sessions = await getExamSessions();
+  const si = sessions.findIndex((s) => s.id === id);
+  if (si === -1) return;
+  const session = sessions[si];
+
+  // Regenerate full schedule with new date/notes
+  const allNewItems = generateExamScheduleItems(noteIds, examDate);
+
+  // Preserve completed status for items that existed before
+  const mergedItems = allNewItems.map((item) => {
+    const existing = session.schedule.find(
+      (ci) => ci.noteId === item.noteId && ci.sessionIndex === item.sessionIndex && ci.completed
+    );
+    return existing ?? item;
+  });
+
+  sessions[si] = { ...session, name, examDate, noteIds, schedule: mergedItems };
+  await saveExamSessions(sessions);
+}
+
 export async function completeExamReviewItem(
   sessionId: string,
   noteId: string,

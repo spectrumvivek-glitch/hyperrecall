@@ -34,6 +34,7 @@ import {
   getRevisionPlans,
   skipExamReviewItem,
   startOfDay,
+  updateExamSession,
 } from "@/lib/storage";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -430,6 +431,7 @@ function ExamCard({
   onComplete,
   onSkip,
   onDelete,
+  onEdit,
 }: {
   session: ExamSession;
   notes: Note[];
@@ -437,6 +439,7 @@ function ExamCard({
   onComplete: (noteId: string, idx: number) => Promise<void>;
   onSkip: (noteId: string, idx: number) => Promise<void>;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const colors = useColors();
   const [expanded, setExpanded] = useState(false);
@@ -505,9 +508,14 @@ function ExamCard({
               : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left · ${examDateStr}`}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => setConfirmDelete(true)} style={ecStyles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
-          <Feather name="trash-2" size={15} color="#ffffff70" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity onPress={onEdit} style={ecStyles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
+            <Feather name="edit-2" size={15} color="#ffffffcc" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setConfirmDelete(true)} style={ecStyles.deleteBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
+            <Feather name="trash-2" size={15} color="#ffffff70" />
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       {/* Progress */}
@@ -609,13 +617,18 @@ function CreateExamModal({
   notes,
   categories,
   onCreate,
+  editSession,
+  onEdit,
 }: {
   visible: boolean;
   onClose: () => void;
   notes: Note[];
   categories: { id: string; name: string; color: string }[];
   onCreate: (name: string, date: Date, noteIds: string[]) => Promise<void>;
+  editSession?: ExamSession;
+  onEdit?: (name: string, date: Date, noteIds: string[]) => Promise<void>;
 }) {
+  const isEditMode = !!editSession;
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<"details" | "notes" | "preview">("details");
@@ -624,6 +637,18 @@ function CreateExamModal({
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
   const [noteSearch, setNoteSearch] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Pre-fill when opening in edit mode
+  useEffect(() => {
+    if (visible && editSession) {
+      setExamName(editSession.name);
+      setSelectedDate(new Date(editSession.examDate));
+      setSelectedNoteIds(editSession.noteIds);
+      setStep("details");
+      setNoteSearch("");
+      setCreating(false);
+    }
+  }, [visible, editSession]);
 
   const reset = () => {
     setStep("details");
@@ -634,7 +659,7 @@ function CreateExamModal({
     setCreating(false);
   };
 
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => { if (!isEditMode) reset(); onClose(); };
 
   const filteredNotes = notes.filter((n) =>
     n.title.toLowerCase().includes(noteSearch.toLowerCase()) ||
@@ -651,8 +676,13 @@ function CreateExamModal({
     if (!selectedDate) return;
     setCreating(true);
     try {
-      await onCreate(examName.trim(), selectedDate, selectedNoteIds);
-      handleClose();
+      if (isEditMode && onEdit) {
+        await onEdit(examName.trim(), selectedDate, selectedNoteIds);
+      } else {
+        await onCreate(examName.trim(), selectedDate, selectedNoteIds);
+      }
+      if (!isEditMode) reset();
+      onClose();
     } finally {
       setCreating(false);
     }
@@ -683,7 +713,7 @@ function CreateExamModal({
               <Feather name={step === "details" ? "x" : "arrow-left"} size={22} color={colors.foreground} />
             </TouchableOpacity>
             <Text style={[mStyles.sheetTitle, { color: colors.foreground }]}>
-              {step === "details" ? "New Exam" : step === "notes" ? "Select Notes" : "Review Schedule"}
+              {step === "details" ? (isEditMode ? "Edit Exam" : "New Exam") : step === "notes" ? "Select Notes" : "Review Schedule"}
             </Text>
             <View style={mStyles.stepDots}>
               {(["details", "notes", "preview"] as const).map((s) => (
@@ -864,7 +894,7 @@ function CreateExamModal({
               >
                 <LinearGradient colors={["#22C55E", "#16A34A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={mStyles.actionBtnGrad}>
                   <Feather name="check-circle" size={16} color="#fff" />
-                  <Text style={mStyles.actionBtnText}>{creating ? "Creating..." : "Create Exam Schedule"}</Text>
+                  <Text style={mStyles.actionBtnText}>{creating ? (isEditMode ? "Saving..." : "Creating...") : (isEditMode ? "Save Changes" : "Create Exam Schedule")}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </ScrollView>
@@ -913,6 +943,7 @@ export default function ExamScreen() {
 
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingSession, setEditingSession] = useState<ExamSession | null>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -926,6 +957,13 @@ export default function ExamScreen() {
 
   const handleCreate = async (name: string, date: Date, noteIds: string[]) => {
     await createExamSession(name, date.getTime(), noteIds);
+    await loadExams();
+  };
+
+  const handleEdit = async (name: string, date: Date, noteIds: string[]) => {
+    if (!editingSession) return;
+    await updateExamSession(editingSession.id, name, date.getTime(), noteIds);
+    setEditingSession(null);
     await loadExams();
   };
 
@@ -1061,11 +1099,13 @@ export default function ExamScreen() {
   return (
     <>
       <CreateExamModal
-        visible={showCreate}
-        onClose={() => setShowCreate(false)}
+        visible={showCreate || editingSession !== null}
+        onClose={() => { setShowCreate(false); setEditingSession(null); }}
         notes={notes}
         categories={categories}
         onCreate={handleCreate}
+        editSession={editingSession ?? undefined}
+        onEdit={handleEdit}
       />
 
       <ScrollView
@@ -1124,6 +1164,7 @@ export default function ExamScreen() {
               onComplete={(noteId, idx) => handleComplete(session.id, noteId, idx)}
               onSkip={(noteId, idx) => handleSkip(session.id, noteId, idx)}
               onDelete={() => handleDelete(session.id)}
+              onEdit={() => setEditingSession(session)}
             />
           ))
         ) : (
