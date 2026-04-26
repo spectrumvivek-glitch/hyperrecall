@@ -200,7 +200,7 @@ export default function AddNoteScreen() {
           <TextInput
             value={content}
             onChangeText={setContent}
-            placeholder="Add Page number, formulas, explanations..."
+            placeholder="Add questions, summary (from Studymate AI), page number, formulas, explanations..."
             placeholderTextColor={colors.mutedForeground}
             multiline
             textAlignVertical="top"
