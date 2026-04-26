@@ -14,10 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CelebrationPopup } from "@/components/CelebrationPopup";
 import { EmptyState } from "@/components/EmptyState";
-import { FloatingXP } from "@/components/FloatingXP";
-import { LevelUpModal } from "@/components/LevelUpModal";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -29,37 +26,16 @@ export default function ReviewTab() {
     dueNotes,
     isLoading,
     refresh,
-    markCompleted,
     markSkipped,
-    pendingLevelUp,
-    dismissLevelUp,
   } = useApp();
 
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [showXp, setShowXp] = useState(false);
-  const [xpAmount, setXpAmount] = useState(0);
-  const [celebPopup, setCelebPopup] = useState<{ xp: number; title: string; total: number } | null>(null);
-  const [sessionXp, setSessionXp] = useState(0);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const handleComplete = async (noteId: string, title: string) => {
-    if (busyId) return;
-    setBusyId(noteId);
-    try {
-      const earned = (await markCompleted(noteId)) ?? 0;
-      const newTotal = sessionXp + earned;
-      setSessionXp(newTotal);
-      setXpAmount(earned);
-      setShowXp(true);
-      setCelebPopup({ xp: earned, title, total: newTotal });
-    } catch (err: any) {
-      console.warn("[review] markCompleted failed:", err);
-      Alert.alert("Couldn't save", err?.message ?? "Please try again.");
-    } finally {
-      setBusyId(null);
-    }
+  const handleStart = (noteId: string) => {
+    router.push({ pathname: "/revision", params: { noteId } });
   };
 
   const handleSkip = async (noteId: string) => {
@@ -76,23 +52,6 @@ export default function ReviewTab() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <LevelUpModal
-        visible={!!pendingLevelUp}
-        newLevel={pendingLevelUp?.newLevel ?? 1}
-        levelName={pendingLevelUp?.levelName ?? ""}
-        xpGained={pendingLevelUp?.xpGained ?? 0}
-        onDismiss={dismissLevelUp}
-      />
-      <CelebrationPopup
-        visible={!!celebPopup}
-        xpEarned={celebPopup?.xp ?? 0}
-        noteTitle={celebPopup?.title ?? ""}
-        totalSessionXp={celebPopup?.total ?? 0}
-        onDismiss={() => setCelebPopup(null)}
-        autoDismissMs={1400}
-      />
-      <FloatingXP amount={xpAmount} visible={showXp} onHide={() => setShowXp(false)} />
-
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -113,12 +72,6 @@ export default function ReviewTab() {
                 : `${dueNotes.length} note${dueNotes.length !== 1 ? "s" : ""} due today`}
             </Text>
           </View>
-          {sessionXp > 0 && (
-            <View style={[styles.xpPill, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
-              <Feather name="zap" size={13} color={colors.primary} />
-              <Text style={[styles.xpPillText, { color: colors.primary }]}>+{sessionXp} XP</Text>
-            </View>
-          )}
         </View>
 
         {/* Start full session button */}
@@ -187,7 +140,7 @@ export default function ReviewTab() {
                         <View style={[styles.metaPill, { backgroundColor: colors.muted }]}>
                           <Feather name="repeat" size={10} color={colors.mutedForeground} />
                           <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                            Step {plan.completedSteps?.length ?? 0} / {plan.intervals?.length ?? 0}
+                            Step {(plan.currentStep ?? 0) + 1} / {plan.intervals?.length ?? 0}
                           </Text>
                         </View>
                         {note.images && note.images.length > 0 && (
@@ -214,18 +167,16 @@ export default function ReviewTab() {
                       <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => handleComplete(note.id, note.title)}
+                      onPress={() => handleStart(note.id)}
                       disabled={isBusy}
                       style={[
-                        styles.doneBtn,
-                        { backgroundColor: isBusy ? colors.muted : colors.success },
+                        styles.startBtn,
+                        { backgroundColor: isBusy ? colors.muted : colors.primary },
                       ]}
-                      activeOpacity={0.8}
+                      activeOpacity={0.85}
                     >
-                      <Feather name="check" size={16} color="#fff" />
-                      <Text style={styles.doneText}>
-                        {isBusy ? "Saving…" : "Mark Complete"}
-                      </Text>
+                      <Feather name="play" size={16} color="#fff" />
+                      <Text style={styles.startBtnText}>Start</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -254,16 +205,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
   headerTitle: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
   headerSub: { fontSize: 13, marginTop: 2 },
-  xpPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  xpPillText: { fontSize: 13, fontWeight: "700" },
   sessionBtn: {
     borderRadius: 16,
     overflow: "hidden",
@@ -331,7 +272,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   skipText: { fontSize: 13, fontWeight: "600" },
-  doneBtn: {
+  startBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -341,5 +282,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
   },
-  doneText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  startBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
 });

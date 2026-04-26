@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Alert,
@@ -25,9 +25,20 @@ export default function RevisionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { dueNotes, markCompleted, markSkipped, pendingLevelUp, dismissLevelUp } = useApp();
+  const params = useLocalSearchParams<{ noteId?: string | string[] }>();
+  const noteId = Array.isArray(params.noteId) ? params.noteId[0] : params.noteId;
+  const isSingle = !!noteId;
 
-  // Snapshot due notes at session start so context refreshes don't shift the index
-  const [sessionNotes] = useState(() => [...dueNotes]);
+  // Snapshot due notes at session start so context refreshes don't shift the index.
+  // If a `noteId` was passed, scope the session to just that one note.
+  // `singleMissing` distinguishes "user finished the note" from "noteId no longer matches a due note".
+  const [{ sessionNotes, singleMissing }] = useState(() => {
+    if (noteId) {
+      const single = dueNotes.find((d) => d.note.id === noteId);
+      return { sessionNotes: single ? [single] : [], singleMissing: !single };
+    }
+    return { sessionNotes: [...dueNotes], singleMissing: false };
+  });
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionCompleted, setSessionCompleted] = useState(0);
@@ -96,30 +107,55 @@ export default function RevisionScreen() {
         </TouchableOpacity>
 
         <View style={styles.doneContent}>
-          <View style={[styles.doneIconWrap, { backgroundColor: colors.success + "15" }]}>
-            <Feather name="check-circle" size={52} color={colors.success} />
+          <View
+            style={[
+              styles.doneIconWrap,
+              {
+                backgroundColor: singleMissing
+                  ? colors.muted
+                  : colors.success + "15",
+              },
+            ]}
+          >
+            <Feather
+              name={singleMissing ? "alert-circle" : "check-circle"}
+              size={52}
+              color={singleMissing ? colors.mutedForeground : colors.success}
+            />
           </View>
-          <Text style={[styles.doneTitle, { color: colors.foreground }]}>Session Complete!</Text>
+          <Text style={[styles.doneTitle, { color: colors.foreground }]}>
+            {singleMissing
+              ? "Not Available"
+              : isSingle
+              ? "Note Reviewed!"
+              : "Session Complete!"}
+          </Text>
           <Text style={[styles.doneSub, { color: colors.mutedForeground }]}>
-            You've reviewed all due notes for today.
+            {singleMissing
+              ? "This note isn't due right now. Pull to refresh on the Review tab."
+              : isSingle
+              ? "Nice work — your next revision has been scheduled."
+              : "You've reviewed all due notes for today."}
           </Text>
 
-          <View style={[styles.doneStats, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
-            <View style={styles.doneStat}>
-              <Text style={[styles.doneStatValue, { color: colors.success }]}>{sessionCompleted}</Text>
-              <Text style={[styles.doneStatLabel, { color: colors.mutedForeground }]}>Completed</Text>
+          {!singleMissing && (
+            <View style={[styles.doneStats, { backgroundColor: colors.card, borderRadius: colors.radius, borderColor: colors.border, borderWidth: 1 }]}>
+              <View style={styles.doneStat}>
+                <Text style={[styles.doneStatValue, { color: colors.success }]}>{sessionCompleted}</Text>
+                <Text style={[styles.doneStatLabel, { color: colors.mutedForeground }]}>Completed</Text>
+              </View>
+              <View style={[styles.doneStatDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.doneStat}>
+                <Text style={[styles.doneStatValue, { color: colors.warning }]}>{sessionSkipped}</Text>
+                <Text style={[styles.doneStatLabel, { color: colors.mutedForeground }]}>Skipped</Text>
+              </View>
+              <View style={[styles.doneStatDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.doneStat}>
+                <Text style={[styles.doneStatValue, { color: colors.primary }]}>+{sessionXp}</Text>
+                <Text style={[styles.doneStatLabel, { color: colors.mutedForeground }]}>XP Earned</Text>
+              </View>
             </View>
-            <View style={[styles.doneStatDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.doneStat}>
-              <Text style={[styles.doneStatValue, { color: colors.warning }]}>{sessionSkipped}</Text>
-              <Text style={[styles.doneStatLabel, { color: colors.mutedForeground }]}>Skipped</Text>
-            </View>
-            <View style={[styles.doneStatDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.doneStat}>
-              <Text style={[styles.doneStatValue, { color: colors.primary }]}>+{sessionXp}</Text>
-              <Text style={[styles.doneStatLabel, { color: colors.mutedForeground }]}>XP Earned</Text>
-            </View>
-          </View>
+          )}
 
           <TouchableOpacity
             onPress={() => router.back()}
