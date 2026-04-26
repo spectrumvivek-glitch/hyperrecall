@@ -3,7 +3,12 @@ import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
@@ -64,42 +69,52 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         animation: "shift",
+        tabBarHideOnKeyboard: true,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
+          fontSize: 10.5,
+          fontWeight: "700",
           marginTop: 2,
-          marginBottom: 4,
+          marginBottom: 2,
         },
         tabBarIconStyle: {
-          marginTop: 4,
+          marginTop: 3,
         },
         tabBarItemStyle: {
-          paddingHorizontal: 8,
+          paddingHorizontal: 6,
+          paddingTop: 4,
         },
         tabBarStyle: {
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: isIOS ? "transparent" : "#F8FAFC",
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
+          bottom: 12,
+          left: 14,
+          right: 14,
+          backgroundColor: isIOS ? "transparent" : "rgba(248, 250, 252, 0.96)",
+          borderTopWidth: 0,
           elevation: 0,
-          paddingBottom: safeAreaInsets.bottom + 12,
-          paddingTop: 8,
-          height: safeAreaInsets.bottom + 80,
+          shadowColor: "#0F172A",
+          shadowOpacity: 0.08,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 8 },
+          paddingBottom: safeAreaInsets.bottom + 10,
+          paddingTop: 10,
+          height: safeAreaInsets.bottom + 84,
+          borderRadius: 24,
+          overflow: "hidden",
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={95}
+              intensity={92}
               tint="light"
               style={StyleSheet.absoluteFill}
             />
           ) : (
             <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: "#F8FAFC" }]}
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: "rgba(248, 250, 252, 0.96)" },
+              ]}
             />
           ),
       }}
