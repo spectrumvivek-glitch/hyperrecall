@@ -64,14 +64,15 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         animation: "shift",
+        tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: "600",
           marginTop: 2,
-          marginBottom: 2,
+          marginBottom: 4,
         },
-        tabBarItemStyle: {
-          paddingVertical: 4,
+        tabBarIconStyle: {
+          marginTop: 4,
         },
         tabBarStyle: {
           position: "absolute",
@@ -82,9 +83,9 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
-          paddingBottom: safeAreaInsets.bottom || 10,
-          paddingTop: 10,
-          height: (safeAreaInsets.bottom || 10) + 65,
+          paddingBottom: safeAreaInsets.bottom,
+          paddingTop: 6,
+          height: safeAreaInsets.bottom + 64,
         },
         tabBarBackground: () =>
           isIOS ? (
