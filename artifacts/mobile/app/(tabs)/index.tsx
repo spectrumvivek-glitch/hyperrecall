@@ -424,7 +424,7 @@ export default function DashboardScreen() {
         {/* Start Revision Button */}
         {dueNotes.length > 0 && (
           <TouchableOpacity
-            onPress={() => router.push("/revision")}
+            onPress={() => router.push("/(tabs)/review")}
             activeOpacity={0.85}
             style={[styles.revisionBtn, { shadowColor: colors.primary }]}
           >
