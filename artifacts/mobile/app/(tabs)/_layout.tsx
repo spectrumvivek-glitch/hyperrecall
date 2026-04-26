@@ -69,52 +69,42 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         animation: "shift",
-        tabBarHideOnKeyboard: true,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontSize: 10.5,
-          fontWeight: "700",
+          fontSize: 11,
+          fontWeight: "600",
           marginTop: 2,
-          marginBottom: 2,
+          marginBottom: 4,
         },
         tabBarIconStyle: {
-          marginTop: 3,
+          marginTop: 4,
         },
         tabBarItemStyle: {
-          paddingHorizontal: 6,
-          paddingTop: 4,
+          paddingHorizontal: 8,
         },
         tabBarStyle: {
           position: "absolute",
-          bottom: 12,
-          left: 14,
-          right: 14,
-          backgroundColor: isIOS ? "transparent" : "rgba(248, 250, 252, 0.96)",
-          borderTopWidth: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: isIOS ? "transparent" : "#F8FAFC",
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
           elevation: 0,
-          shadowColor: "#0F172A",
-          shadowOpacity: 0.08,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 8 },
-          paddingBottom: safeAreaInsets.bottom + 10,
-          paddingTop: 10,
-          height: safeAreaInsets.bottom + 84,
-          borderRadius: 24,
-          overflow: "hidden",
+          paddingBottom: safeAreaInsets.bottom + 12,
+          paddingTop: 8,
+          height: safeAreaInsets.bottom + 80,
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={92}
+              intensity={95}
               tint="light"
               style={StyleSheet.absoluteFill}
             />
           ) : (
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: "rgba(248, 250, 252, 0.96)" },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: "#F8FAFC" }]}
             />
           ),
       }}
