@@ -137,20 +137,6 @@ export default function StudyMateScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <View style={styles.footerNote}>
-          <Feather
-            name="info"
-            size={12}
-            color={colors.mutedForeground}
-            style={{ marginTop: 2 }}
-          />
-          <Text
-            style={[styles.footerText, { color: colors.mutedForeground }]}
-          >
-            Powered by ChatGPT. Opens in your browser. A ChatGPT account may
-            be required to chat with custom GPTs.
-          </Text>
-        </View>
       </ScrollView>
     </View>
   );
@@ -270,16 +256,5 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
-  },
-  footerNote: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    paddingHorizontal: 4,
-  },
-  footerText: {
-    flex: 1,
-    fontSize: 11.5,
-    lineHeight: 16,
   },
 });
