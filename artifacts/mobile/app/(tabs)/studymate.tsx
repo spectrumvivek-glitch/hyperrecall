@@ -79,9 +79,10 @@ export default function StudyMateScreen() {
             <Feather name="message-circle" size={28} color="#FFFFFF" />
           </LinearGradient>
           <Text style={[styles.heroText, { color: colors.foreground }]}>
-            📚 Ask doubts, get instant explanations, summarize notes
-            (images/PDFs), generate practice questions, and predict exam topics
-            — all in one place
+            📚 Ask doubts, get instant explanations.
+            {"\n"}*Summarize notes (images/PDFs).
+            {"\n"}*Generate practice questions.
+            {"\n"}*Predict exam topics — all in one place.
           </Text>
         </View>
 
