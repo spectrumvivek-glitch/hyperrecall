@@ -83,9 +83,9 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
-          paddingBottom: safeAreaInsets.bottom,
-          paddingTop: 6,
-          height: safeAreaInsets.bottom + 64,
+          paddingBottom: safeAreaInsets.bottom + 12,
+          paddingTop: 8,
+          height: safeAreaInsets.bottom + 80,
         },
         tabBarBackground: () =>
           isIOS ? (
