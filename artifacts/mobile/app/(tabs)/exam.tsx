@@ -909,7 +909,7 @@ export default function ExamScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { notes, categories } = useApp();
-  const { isPro, isLoading: subLoading } = useSubscription();
+  const { isPro, isLoading: subLoading, trialReady, trial } = useSubscription();
 
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -947,63 +947,113 @@ export default function ExamScreen() {
   const totalDueToday = examSessions.reduce((acc, s) => acc + getTodayDue(s).length, 0);
   const hasExams = examSessions.length > 0;
 
-  if (subLoading) {
-    return (
-      <View style={[scStyles.scroll, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
-        <Feather name="loader" size={28} color={colors.mutedForeground} />
+  // Persistent header — rendered in every state so the user always knows
+  // they're on the Exam tab (loading, paywall, empty, or populated).
+  const renderHeader = (subtitle: string) => (
+    <View style={scStyles.header}>
+      <View style={{ flex: 1 }}>
+        <Text style={[scStyles.title, { color: colors.foreground }]}>Exam Mode</Text>
+        <Text style={[scStyles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
       </View>
-    );
-  }
+      {totalDueToday > 0 && (
+        <LinearGradient colors={["#EF4444", "#DC2626"]} style={scStyles.dueBadge} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <Text style={scStyles.dueBadgeText}>{totalDueToday}</Text>
+        </LinearGradient>
+      )}
+    </View>
+  );
 
-  if (!isPro) {
+  // Wait until both the trial state and (on native) RevenueCat have settled
+  // before deciding to show the paywall. Without this guard the paywall flashes
+  // on first launch even for trial-active users, which previously made the tab
+  // look "blank" while the silvery white screen briefly held only a tiny spinner.
+  const isReady = trialReady && !subLoading;
+
+  if (!isReady) {
     return (
       <ScrollView
         style={[scStyles.scroll, { backgroundColor: colors.background }]}
-        contentContainerStyle={{ paddingTop: topPad + 20, paddingHorizontal: 22, paddingBottom: bottomPad + 110 }}
+        contentContainerStyle={[scStyles.content, { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ alignItems: "center", paddingTop: 40, gap: 16 }}>
+        {renderHeader("Loading your exams…")}
+        <View style={[scStyles.infoBanner, { backgroundColor: colors.primary + "0e", borderColor: colors.primary + "30", alignItems: "center", paddingVertical: 28, gap: 12 }]}>
           <LinearGradient
             colors={["#6366F1", "#8B5CF6"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={{ width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center" }}
+            style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" }}
           >
-            <Feather name="award" size={42} color="#fff" />
+            <Feather name="loader" size={26} color="#fff" />
           </LinearGradient>
-          <Text style={{ fontSize: 26, fontWeight: "800", color: colors.foreground, textAlign: "center", letterSpacing: -0.5 }}>
-            Exam Mode is Pro
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>Setting things up</Text>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 8 }}>
+            Just a moment while we fetch your exam schedules.
           </Text>
-          <Text style={{ fontSize: 15, lineHeight: 22, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 8 }}>
-            Get 14 auto-scheduled, front-loaded reviews per note before any exam — designed for maximum retention.
-          </Text>
-          <View style={{ width: "100%", gap: 10, marginTop: 8 }}>
-            {([
-              ["calendar", "Set your exam date"],
-              ["edit-3", "Pick the notes to master"],
-              ["trending-up", "14 spaced reviews per note"],
-              ["zap", "Front-loaded for the exam"],
-            ] as const).map(([icon, text]) => (
-              <View
-                key={text}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 14 }}
-              >
-                <Feather name={icon as any} size={18} color={colors.primary} />
-                <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{text}</Text>
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push("/paywall")}
-            activeOpacity={0.85}
-            style={{ borderRadius: 16, overflow: "hidden", marginTop: 18, width: "100%" }}
-          >
-            <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 }}>
-              <Feather name="zap" size={18} color="#fff" />
-              <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Upgrade to HyperRecall Pro</Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
+      </ScrollView>
+    );
+  }
+
+  // Pro/trial gate — only blocks if both the paid entitlement is inactive
+  // AND the trial is over. Now rendered with the persistent header so the
+  // tab clearly reads as Exam Mode rather than an empty silvery panel.
+  if (!isPro) {
+    const trialExpired = trial.hasEverStarted && !trial.isActive;
+    return (
+      <ScrollView
+        style={[scStyles.scroll, { backgroundColor: colors.background }]}
+        contentContainerStyle={[scStyles.content, { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderHeader(trialExpired ? "Your free trial has ended" : "Available with HyperRecall Pro")}
+
+        <View style={{ alignItems: "center", gap: 14, marginTop: 6 }}>
+          <LinearGradient
+            colors={["#6366F1", "#8B5CF6"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center", shadowColor: "#6366F1", shadowOpacity: 0.35, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 }}
+          >
+            <Feather name="award" size={44} color="#fff" />
+          </LinearGradient>
+          <Text style={{ fontSize: 24, fontWeight: "800", color: colors.foreground, textAlign: "center", letterSpacing: -0.5 }}>
+            Unlock Exam Mode
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 21, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 12 }}>
+            Get 14 auto-scheduled, front-loaded reviews per note before any exam — designed for maximum retention right when you need it most.
+          </Text>
+        </View>
+
+        <View style={{ gap: 10 }}>
+          {([
+            ["calendar", "Set your exam date"],
+            ["edit-3", "Pick the notes to master"],
+            ["trending-up", "14 spaced reviews per note"],
+            ["zap", "Front-loaded for the exam"],
+          ] as const).map(([icon, text]) => (
+            <View
+              key={text}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 14 }}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary + "18", alignItems: "center", justifyContent: "center" }}>
+                <Feather name={icon as any} size={16} color={colors.primary} />
+              </View>
+              <Text style={{ flex: 1, fontSize: 14, color: colors.foreground, fontWeight: "500" }}>{text}</Text>
+            </View>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          onPress={() => router.push("/paywall")}
+          activeOpacity={0.85}
+          style={{ borderRadius: 16, overflow: "hidden", shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 8 }}
+        >
+          <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16 }}>
+            <Feather name="zap" size={18} color="#fff" />
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Upgrade to HyperRecall Pro</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
     );
   }
@@ -1023,22 +1073,11 @@ export default function ExamScreen() {
         contentContainerStyle={[scStyles.content, { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={scStyles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={[scStyles.title, { color: colors.foreground }]}>Exam Mode</Text>
-            <Text style={[scStyles.subtitle, { color: colors.mutedForeground }]}>
-              {!hasExams
-                ? "14 focused reviews per note before your exam"
-                : `${examSessions.length} active exam${examSessions.length !== 1 ? "s" : ""}${totalDueToday > 0 ? ` · ${totalDueToday} due today` : ""}`}
-            </Text>
-          </View>
-          {totalDueToday > 0 && (
-            <LinearGradient colors={["#EF4444", "#DC2626"]} style={scStyles.dueBadge} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={scStyles.dueBadgeText}>{totalDueToday}</Text>
-            </LinearGradient>
-          )}
-        </View>
+        {renderHeader(
+          !hasExams
+            ? "14 focused reviews per note before your exam"
+            : `${examSessions.length} active exam${examSessions.length !== 1 ? "s" : ""}${totalDueToday > 0 ? ` · ${totalDueToday} due today` : ""}`,
+        )}
 
         {/* How Exam Mode works — always visible */}
         <View style={[scStyles.infoBanner, { backgroundColor: colors.primary + "0e", borderColor: colors.primary + "30" }]}>
@@ -1060,21 +1099,21 @@ export default function ExamScreen() {
         {/* Exam section header + create */}
         <View style={scStyles.sectionHeaderRow}>
           <Text style={[scStyles.sectionTitle, { color: colors.foreground }]}>
-            {hasExams
-              ? `Active Exams (${examSessions.length})`
-              : "Your Exams"}
+            {hasExams ? `Active Exams (${examSessions.length})` : "Your Exams"}
           </Text>
-          <TouchableOpacity
-            onPress={() => setShowCreate(true)}
-            activeOpacity={0.85}
-            style={[scStyles.addExamBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
-          >
-            <Feather name="plus" size={14} color={colors.primary} />
-            <Text style={[scStyles.addExamBtnText, { color: colors.primary }]}>New Exam</Text>
-          </TouchableOpacity>
+          {hasExams && (
+            <TouchableOpacity
+              onPress={() => setShowCreate(true)}
+              activeOpacity={0.85}
+              style={[scStyles.addExamBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
+            >
+              <Feather name="plus" size={14} color={colors.primary} />
+              <Text style={[scStyles.addExamBtnText, { color: colors.primary }]}>New Exam</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Exam cards */}
+        {/* Exam cards or richer empty state */}
         {hasExams ? (
           examSessions.map((session) => (
             <ExamCard
@@ -1088,12 +1127,37 @@ export default function ExamScreen() {
             />
           ))
         ) : (
-          <TouchableOpacity onPress={() => setShowCreate(true)} activeOpacity={0.85} style={[scStyles.createBtn, { shadowColor: colors.primary }]}>
-            <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={scStyles.createBtnGrad}>
-              <Feather name="plus-circle" size={20} color="#fff" />
-              <Text style={scStyles.createBtnText}>Create New Exam</Text>
+          <View style={[scStyles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <LinearGradient
+              colors={["#6366F1", "#8B5CF6"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={scStyles.emptyIcon}
+            >
+              <Feather name="calendar" size={32} color="#fff" />
             </LinearGradient>
-          </TouchableOpacity>
+            <Text style={[scStyles.emptyTitle, { color: colors.foreground }]}>No exams yet</Text>
+            <Text style={[scStyles.emptyBody, { color: colors.mutedForeground }]}>
+              {notes.length === 0
+                ? "Create a few notes first, then come back to schedule your first exam."
+                : "Pick an exam date and the notes you need to master — we'll auto-schedule 14 spaced reviews per note."}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (notes.length === 0) router.push("/(tabs)/notes");
+                else setShowCreate(true);
+              }}
+              activeOpacity={0.85}
+              style={[scStyles.createBtn, { shadowColor: colors.primary, marginTop: 4, alignSelf: "stretch" }]}
+            >
+              <LinearGradient colors={["#6366F1", "#8B5CF6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={scStyles.createBtnGrad}>
+                <Feather name={notes.length === 0 ? "edit-3" : "plus-circle"} size={18} color="#fff" />
+                <Text style={scStyles.createBtnText}>
+                  {notes.length === 0 ? "Add Your First Note" : "Create Your First Exam"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         )}
 
       </ScrollView>
@@ -1122,4 +1186,21 @@ const scStyles = StyleSheet.create({
   createBtn: { borderRadius: 16, overflow: "hidden", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 8 },
   createBtnGrad: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 17 },
   createBtnText: { fontSize: 17, fontWeight: "700", color: "#fff" },
+  emptyCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: "center",
+    gap: 12,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.3 },
+  emptyBody: { fontSize: 14, lineHeight: 20, textAlign: "center", paddingHorizontal: 4 },
 });

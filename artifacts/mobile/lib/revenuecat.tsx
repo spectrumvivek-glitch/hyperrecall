@@ -54,6 +54,7 @@ interface SubscriptionContextValue {
   isPro: boolean;
   isPaidPro: boolean;
   trial: TrialState;
+  trialReady: boolean;
   trialDurationDays: number;
   isLoading: boolean;
   isAvailable: boolean;
@@ -72,6 +73,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const [isPaidPro, setIsPaidPro] = useState(false);
   const [trial, setTrial] = useState<TrialState>(() => computeTrialState(null));
+  const [trialReady, setTrialReady] = useState(false);
   const [isLoading, setIsLoading] = useState(isNativeRuntime);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -94,6 +96,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         if (!cancelled) setTrial(computeTrialState(startedAt));
       } catch (err) {
         console.warn("[trial] init error:", err);
+      } finally {
+        if (!cancelled) setTrialReady(true);
       }
     })();
     // Recompute every minute so the active->expired flip is timely without app restart
@@ -227,6 +231,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       isPro,
       isPaidPro,
       trial,
+      trialReady,
       trialDurationDays: TRIAL_DURATION_DAYS,
       isLoading,
       isAvailable: isNativeRuntime,
@@ -238,7 +243,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       purchasePackage,
       restorePurchases,
     }),
-    [isPro, isPaidPro, trial, isLoading, offering, customerInfo, error, refresh, purchasePackage, restorePurchases],
+    [isPro, isPaidPro, trial, trialReady, isLoading, offering, customerInfo, error, refresh, purchasePackage, restorePurchases],
   );
 
   return (
