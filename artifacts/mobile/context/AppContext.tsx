@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -82,10 +83,21 @@ interface AppContextValue {
   streakMilestone: number | null;
   newBadges: string[];
   rankInfo: RankInfo;
+  /** Running total of XP earned across consecutive review completions.
+   *  Auto-resets when the user is idle from reviews for a while
+   *  (see REVIEW_SESSION_RESET_MS). */
+  reviewSessionXp: number;
+  /** Counter that increments on every successful review completion.
+   *  The Review tab compares this against its own "last seen" ref to know
+   *  when to fire its on-return XP toast. */
+  reviewCompletionTick: number;
+  /** XP earned in the most recent completion (used by the Review tab toast). */
+  reviewLastXp: number;
   dismissLevelUp: () => void;
   dismissRankUp: () => void;
   dismissStreakMilestone: () => void;
   dismissNewBadges: () => void;
+  clearReviewSessionXp: () => void;
 
   addCategory: (name: string, color: string) => Promise<Category>;
   removeCategory: (id: string) => Promise<void>;
@@ -110,6 +122,10 @@ interface AppContextValue {
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
+
+/** If the user goes this long without completing a review, the next one
+ *  starts a fresh session XP tally instead of adding to the previous one. */
+const REVIEW_SESSION_RESET_MS = 10 * 60 * 1000;
 
 function buildXpInfo(stats: UserStats): XpInfo {
   const info = getXpProgress(stats.totalXp);
@@ -141,6 +157,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [pendingXp, setPendingXp] = useState(0);
   const [streakMilestone, setStreakMilestone] = useState<number | null>(null);
   const [newBadges, setNewBadges] = useState<string[]>([]);
+  const [reviewSessionXp, setReviewSessionXp] = useState(0);
+  const [reviewCompletionTick, setReviewCompletionTick] = useState(0);
+  const [reviewLastXp, setReviewLastXp] = useState(0);
+  // Tracks the wall-clock time of the last review completion so we can decide
+  // whether the next one extends the running session tally or starts a new one.
+  const lastReviewCompletionAtRef = useRef(0);
 
   const xpInfo = buildXpInfo(userStats);
   const rankInfo = getRankInfo(userStats.totalCompleted);
@@ -192,6 +214,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // and refresh local state. On logout, clear session tracking so the next login
   // re-syncs.
   useEffect(() => {
+    // Auth changed (login, logout, or account switch). Drop any in-memory
+    // review-session XP from the previous user so they can't bleed across
+    // accounts on the next render.
+    setReviewSessionXp(0);
+    setReviewCompletionTick(0);
+    setReviewLastXp(0);
+    lastReviewCompletionAtRef.current = 0;
+
     if (!uid) {
       clearSyncSession();
       return;
@@ -296,6 +326,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refresh();
     pushMetaAsync(uid); // plans + stats changed
     setPendingXp(result.xpGained);
+
+    // Update review session totals so the Review tab can show a brief XP
+    // toast on return + a running session badge across consecutive reviews.
+    // If it's been a long time since the last completion, treat this as a
+    // brand-new session and reset the running tally.
+    const now = Date.now();
+    const isNewSession =
+      now - lastReviewCompletionAtRef.current > REVIEW_SESSION_RESET_MS;
+    lastReviewCompletionAtRef.current = now;
+    setReviewSessionXp((prev) => (isNewSession ? result.xpGained : prev + result.xpGained));
+    setReviewLastXp(result.xpGained);
+    setReviewCompletionTick((t) => t + 1);
+
     if (result.newBadges && result.newBadges.length > 0) {
       setNewBadges(result.newBadges);
     }
@@ -339,6 +382,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const dismissRankUp = useCallback(() => setPendingRankUp(null), []);
   const dismissStreakMilestone = useCallback(() => setStreakMilestone(null), []);
   const dismissNewBadges = useCallback(() => setNewBadges([]), []);
+  const clearReviewSessionXp = useCallback(() => setReviewSessionXp(0), []);
 
   return (
     <AppContext.Provider
@@ -357,10 +401,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pendingXp,
         streakMilestone,
         newBadges,
+        reviewSessionXp,
+        reviewCompletionTick,
+        reviewLastXp,
         dismissLevelUp,
         dismissRankUp,
         dismissStreakMilestone,
         dismissNewBadges,
+        clearReviewSessionXp,
         addCategory,
         removeCategory,
         renameCategory: renameCategoryFn,

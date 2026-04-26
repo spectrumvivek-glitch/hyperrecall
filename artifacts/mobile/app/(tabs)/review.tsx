@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/EmptyState";
+import { FloatingXP } from "@/components/FloatingXP";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -27,9 +28,29 @@ export default function ReviewTab() {
     isLoading,
     refresh,
     markSkipped,
+    reviewSessionXp,
+    reviewCompletionTick,
+    reviewLastXp,
+    clearReviewSessionXp,
   } = useApp();
 
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Brief XP toast that fires when the user returns to this tab after
+  // finishing a focused review. We track the last completion tick we've
+  // already shown so navigating away and back without a new completion
+  // doesn't re-trigger the animation.
+  const [showXpToast, setShowXpToast] = useState(false);
+  const lastSeenTickRef = useRef(reviewCompletionTick);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (reviewCompletionTick > lastSeenTickRef.current) {
+        lastSeenTickRef.current = reviewCompletionTick;
+        setShowXpToast(true);
+      }
+    }, [reviewCompletionTick])
+  );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -52,6 +73,14 @@ export default function ReviewTab() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* `key` forces a remount on each new completion so the animation
+          restarts even when consecutive completions earn the same XP. */}
+      <FloatingXP
+        key={reviewCompletionTick}
+        amount={reviewLastXp}
+        visible={showXpToast}
+        onHide={() => setShowXpToast(false)}
+      />
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -72,6 +101,27 @@ export default function ReviewTab() {
                 : `${dueNotes.length} note${dueNotes.length !== 1 ? "s" : ""} due today`}
             </Text>
           </View>
+          {reviewSessionXp > 0 && (
+            <View
+              style={[
+                styles.sessionBadge,
+                { backgroundColor: colors.primary + "18", borderColor: colors.primary + "35" },
+              ]}
+            >
+              <Feather name="zap" size={12} color={colors.primary} />
+              <Text style={[styles.sessionBadgeText, { color: colors.primary }]}>
+                +{reviewSessionXp} XP
+              </Text>
+              <TouchableOpacity
+                onPress={clearReviewSessionXp}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.sessionBadgeClose}
+                activeOpacity={0.6}
+              >
+                <Feather name="x" size={12} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Start full session button */}
@@ -205,6 +255,24 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 12 },
   headerTitle: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
   headerSub: { fontSize: 13, marginTop: 2 },
+  sessionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingLeft: 10,
+    paddingRight: 6,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  sessionBadgeText: { fontSize: 12, fontWeight: "700" },
+  sessionBadgeClose: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sessionBtn: {
     borderRadius: 16,
     overflow: "hidden",
