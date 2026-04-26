@@ -152,7 +152,7 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
       {note.attachments && note.attachments.length > 0 && (
         <View style={styles.attachmentsSection}>
           {note.attachments.map((att) => (
-            <PdfAttachmentCard key={att.id} attachment={att} />
+            <PdfAttachmentCard key={att.id} attachment={att} compact />
           ))}
         </View>
       )}
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   content: { fontSize: 14, lineHeight: 22 },
   expandRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   expandText: { fontSize: 13 },
-  attachmentsSection: { gap: 8 },
+  attachmentsSection: { gap: 6, marginTop: -4 },
   nextRevision: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10 },
   nextRevisionText: { fontSize: 12, flex: 1 },
   actions: { flexDirection: "row", gap: 10, marginTop: 4 },
