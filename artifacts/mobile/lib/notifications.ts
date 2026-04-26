@@ -280,22 +280,19 @@ async function performReschedule(): Promise<void> {
   const hasReviewedToday = logs.some(
     (l) => l.status === "completed" && l.date >= todayStart
   );
-  await scheduleRevisionReminderWindow(
-    settings.hour,
-    settings.minute,
-    plans,
-    notes
-  );
-  if (settings.streakEnabled) {
-    await scheduleStreakSaverWindow(
-      settings.streakHour,
-      settings.streakMinute,
-      stats.currentStreak,
-      hasReviewedToday
-    );
-  } else {
-    await cancelByPrefix(STREAK_PREFIX);
-  }
+  // Schedule both windows in parallel — they touch independent identifier
+  // namespaces (hr-due-* vs hr-streak-*) so there's no contention.
+  await Promise.all([
+    scheduleRevisionReminderWindow(settings.hour, settings.minute, plans, notes),
+    settings.streakEnabled
+      ? scheduleStreakSaverWindow(
+          settings.streakHour,
+          settings.streakMinute,
+          stats.currentStreak,
+          hasReviewedToday
+        )
+      : cancelByPrefix(STREAK_PREFIX),
+  ]);
 }
 
 let rescheduleTimer: ReturnType<typeof setTimeout> | null = null;

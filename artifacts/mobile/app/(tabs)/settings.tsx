@@ -50,7 +50,7 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: o
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { categories, addCategory, removeCategory, renameCategory, notes, dueNotes } = useApp();
+  const { categories, addCategory, removeCategory, renameCategory, notes } = useApp();
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
   const { user, signOut, isAuthenticating } = useAuth();
