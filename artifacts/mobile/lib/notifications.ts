@@ -346,10 +346,11 @@ export interface ReschedulePayload {
 // and so we don't re-handle a stale "last response" on a subsequent launch.
 const handledResponseIds = new Set<string>();
 
-function processTap(
-  response: { notification?: { request?: { identifier?: string } } } | null,
-  onTap: () => void
-): void {
+type NotifResponse = Awaited<
+  ReturnType<typeof import("expo-notifications").getLastNotificationResponseAsync>
+>;
+
+function processTap(response: NotifResponse, onTap: () => void): void {
   if (!response) return;
   const id = response.notification?.request?.identifier;
   // If the platform doesn't surface an id, fall back to firing once per app
@@ -364,6 +365,12 @@ function processTap(
   }
 }
 
+// Some expo-notifications SDK versions expose a clear API and some don't.
+// Type it as an optional method so we can feature-detect without `any`.
+type NotifMaybeClearable = typeof import("expo-notifications") & {
+  clearLastNotificationResponseAsync?: () => Promise<void>;
+};
+
 /**
  * Subscribe to notification taps. Returns an unsubscribe function. Safe to
  * call when notifications are unavailable — returns a no-op cleaner.
@@ -375,20 +382,18 @@ function processTap(
  */
 export function addNotificationTapListener(onTap: () => void): () => void {
   if (Platform.OS === "web" || !notifAvailable || !Notif) return () => {};
+  const notif = Notif;
   // Cold-start handling.
   try {
-    Notif.getLastNotificationResponseAsync()
+    notif
+      .getLastNotificationResponseAsync()
       .then((resp) => {
-        processTap(resp as any, onTap);
+        processTap(resp, onTap);
         // Best-effort clear so a future launch without a fresh tap doesn't
         // replay this same response. Not all SDK versions expose this — guard.
-        try {
-          const clear = (Notif as any)?.clearLastNotificationResponseAsync;
-          if (typeof clear === "function") {
-            clear().catch(() => {});
-          }
-        } catch {
-          // ignore
+        const clear = (notif as NotifMaybeClearable).clearLastNotificationResponseAsync;
+        if (typeof clear === "function") {
+          clear().catch(() => {});
         }
       })
       .catch(() => {});
@@ -396,8 +401,8 @@ export function addNotificationTapListener(onTap: () => void): () => void {
     // ignore
   }
   try {
-    const sub = Notif.addNotificationResponseReceivedListener((resp) => {
-      processTap(resp as any, onTap);
+    const sub = notif.addNotificationResponseReceivedListener((resp) => {
+      processTap(resp, onTap);
     });
     return () => {
       try {
