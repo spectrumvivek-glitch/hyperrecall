@@ -73,7 +73,8 @@ export default function RevisionScreen() {
 
       if (isSingle) {
         // Keep the active card mounted so CelebrationPopup/FloatingXP render,
-        // then navigate back to the Review tab.
+        // then navigate back to the Review tab. `submitting` stays true on
+        // purpose so the user can't double-tap during the return delay.
         setTimeout(() => router.back(), SINGLE_RETURN_DELAY_MS);
         return;
       }
@@ -81,8 +82,12 @@ export default function RevisionScreen() {
     } catch (err: any) {
       console.warn("[revision] markCompleted failed:", err);
       Alert.alert("Couldn't save", err?.message ?? "Please try again.");
-      setSubmitting(false);
       if (!isSingle) advance();
+    } finally {
+      // Always release the submit lock for the multi-note flow so the next
+      // card's Complete/Skip taps are honored. Single-note flow keeps it
+      // locked until router.back() unmounts the screen.
+      if (!isSingle) setSubmitting(false);
     }
   };
 
@@ -101,8 +106,9 @@ export default function RevisionScreen() {
       advance();
     } catch (err: any) {
       console.warn("[revision] markSkipped failed:", err);
-      setSubmitting(false);
       if (!isSingle) advance();
+    } finally {
+      if (!isSingle) setSubmitting(false);
     }
   };
 
