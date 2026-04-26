@@ -79,8 +79,9 @@ export default function StudyMateScreen() {
             <Feather name="message-circle" size={28} color="#FFFFFF" />
           </LinearGradient>
           <Text style={[styles.heroText, { color: colors.foreground }]}>
-            Stuck on a concept? Need a quick explanation? StudyMate AI is here
-            to help — anytime, anywhere.
+            📚 Ask doubts, get instant explanations, summarize notes
+            (images/PDFs), generate practice questions, and predict exam topics
+            — all in one place
           </Text>
         </View>
 
