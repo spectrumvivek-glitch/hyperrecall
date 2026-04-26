@@ -1,10 +1,12 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -66,9 +68,7 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 function buildRotatingPool(tick: number) {
   const shuffled = seededShuffle(ALL_MOCK_USERS, tick * 0xdeadbeef);
   return shuffled.slice(0, 9).map((u) => {
-    // Reviews drift ±5% each rotation so scores feel live
     const reviewVariance = ((tick * 7 + u.baseReviews) % 11) - 5;
-    // Streak drifts ±2 days each rotation so ranking shifts
     const streakVariance = ((tick * 3 + u.baseStreak) % 5) - 2;
     return {
       name: u.name,
@@ -105,11 +105,11 @@ function LeaderboardRow({
         lbStyles.row,
         {
           backgroundColor: isYou ? colors.primary + "12" : colors.card,
-          borderColor: isYou ? colors.primary + "50" : colors.border,
+          borderColor: isYou ? colors.primary + "55" : colors.border,
         },
       ]}
     >
-      <View style={[lbStyles.rankWrap, { width: 28 }]}>
+      <View style={lbStyles.rankWrap}>
         {rank <= 3 ? (
           <Text style={[lbStyles.rankMedal, { color: rankColor }]}>
             {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
@@ -134,8 +134,8 @@ function LeaderboardRow({
         </Text>
       </View>
       <View style={{ flex: 1, gap: 1 }}>
-        <View style={styles.nameRow}>
-          <Text style={[lbStyles.name, { color: colors.foreground }]}>
+        <View style={lbStyles.nameRow}>
+          <Text style={[lbStyles.name, { color: colors.foreground }]} numberOfLines={1}>
             {name}
           </Text>
           {isYou && (
@@ -145,14 +145,17 @@ function LeaderboardRow({
           )}
         </View>
         <Text style={[lbStyles.streak, { color: colors.mutedForeground }]}>
-          🔥 {streak}-day streak
+          🔥 {streak}d
         </Text>
       </View>
-      <Text style={[lbStyles.reviews, { color: isYou ? colors.primary : colors.foreground }]}>
-        {reviews}
-        {"\n"}
-        <Text style={[lbStyles.reviewsLabel, { color: colors.mutedForeground }]}>reviews</Text>
-      </Text>
+      <View style={lbStyles.reviewsCol}>
+        <Text style={[lbStyles.reviewsValue, { color: isYou ? colors.primary : colors.foreground }]}>
+          {reviews}
+        </Text>
+        <Text style={[lbStyles.reviewsLabel, { color: colors.mutedForeground }]}>
+          reviews
+        </Text>
+      </View>
     </View>
   );
 }
@@ -162,8 +165,8 @@ export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const { userStats, notes, categories, rankInfo } = useApp();
   const [revisionLogs, setRevisionLogs] = useState<RevisionLog[]>([]);
+  const [lbExpanded, setLbExpanded] = useState(false);
 
-  // Rotate leaderboard every 30 seconds
   const [lbTick, setLbTick] = useState(() => Math.floor(Date.now() / 30_000));
   useEffect(() => {
     const id = setInterval(() => setLbTick(Math.floor(Date.now() / 30_000)), 30_000);
@@ -177,7 +180,6 @@ export default function AnalyticsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  // Last 14 days data
   const last14Days = useMemo(() => {
     const days: { label: string; date: number; completed: number; skipped: number }[] = [];
     for (let i = 13; i >= 0; i--) {
@@ -198,7 +200,6 @@ export default function AnalyticsScreen() {
 
   const maxVal = Math.max(...last14Days.map((d) => d.completed + d.skipped), 1);
 
-  // Category breakdown
   const categoryBreakdown = useMemo(() => {
     return categories.map((cat) => {
       const catNotes = notes.filter((n) => n.categoryId === cat.id);
@@ -221,12 +222,8 @@ export default function AnalyticsScreen() {
       ? Math.round((totalCompleted / (totalCompleted + totalSkipped)) * 100)
       : 0;
 
-  // Build leaderboard with real user mixed in — rotates every 30 s via lbTick
   const leaderboard = useMemo(() => {
     const pool = buildRotatingPool(lbTick);
-
-    // Rank everyone by streak days — higher streak = better rank.
-    // Mock users' streaks also drift slightly each tick to stay dynamic.
     const realUser = {
       name: "You",
       avatar: "★",
@@ -239,9 +236,7 @@ export default function AnalyticsScreen() {
       realUser,
     ]
       .sort((a, b) => {
-        // Primary: streak days descending
         if (b.streak !== a.streak) return b.streak - a.streak;
-        // Tie-break: review count descending
         return b.reviews - a.reviews;
       })
       .slice(0, 10)
@@ -251,23 +246,40 @@ export default function AnalyticsScreen() {
 
   const yourRank = leaderboard.find((u) => u.isYou)?.rank ?? "-";
 
+  // Visible leaderboard rows: top 5 + your row pinned underneath if not in top 5
+  const visibleLeaderboard = useMemo(() => {
+    if (lbExpanded) return leaderboard;
+    const top5 = leaderboard.slice(0, 5);
+    const youRow = leaderboard.find((u) => u.isYou);
+    if (youRow && !top5.find((u) => u.isYou)) {
+      return [...top5, youRow];
+    }
+    return top5;
+  }, [leaderboard, lbExpanded]);
+  const youInTop5 = leaderboard.slice(0, 5).some((u) => u.isYou);
+
   return (
     <ScrollView
       style={[styles.scroll, { backgroundColor: colors.background }]}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 },
+        { paddingTop: topPad + 16, paddingBottom: bottomPad + 110 },
       ]}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <Text style={[styles.title, { color: colors.foreground }]}>Analytics</Text>
+      <View style={styles.headerBlock}>
+        <Text style={[styles.title, { color: colors.foreground }]}>Analytics</Text>
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          Your learning at a glance
+        </Text>
+      </View>
 
       {/* Overview cards */}
       <View style={styles.overviewRow}>
         <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: "#FF6B00" }]}>
-          <StreakBadge streak={userStats.currentStreak} size="lg" />
-          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Day Streak</Text>
+          <StreakBadge streak={userStats.currentStreak} size="md" />
+          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Streak</Text>
         </View>
         <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.success }]}>
           <Text style={[styles.overviewValue, { color: colors.success }]}>{completionRate}%</Text>
@@ -279,14 +291,14 @@ export default function AnalyticsScreen() {
         </View>
       </View>
 
-      {/* Rank Ladder */}
+      {/* Rank Ladder (windowed by default) */}
       <RankLadder rank={rankInfo} totalCompleted={userStats.totalCompleted} />
 
       {/* Leaderboard */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.primary }]}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
-            <Feather name="award" size={18} color={colors.primary} />
+            <Feather name="award" size={16} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Leaderboard</Text>
           </View>
           <View style={[styles.rankChip, { backgroundColor: colors.primary + "15" }]}>
@@ -296,17 +308,61 @@ export default function AnalyticsScreen() {
           </View>
         </View>
         <View style={styles.leaderboardList}>
-          {leaderboard.map((user) => (
-            <LeaderboardRow key={user.name} {...user} colors={colors} />
-          ))}
+          {visibleLeaderboard.map((user, idx) => {
+            const showSeparator =
+              !lbExpanded && !youInTop5 && idx === visibleLeaderboard.length - 1;
+            return (
+              <React.Fragment key={`${user.name}-${user.rank}`}>
+                {showSeparator && (
+                  <View style={lbStyles.gapRow}>
+                    <View style={[lbStyles.gapLine, { backgroundColor: colors.border }]} />
+                    <Text style={[lbStyles.gapText, { color: colors.mutedForeground }]}>•••</Text>
+                    <View style={[lbStyles.gapLine, { backgroundColor: colors.border }]} />
+                  </View>
+                )}
+                <LeaderboardRow {...user} colors={colors} />
+              </React.Fragment>
+            );
+          })}
         </View>
+        {leaderboard.length > 5 && (
+          <TouchableOpacity
+            onPress={() => setLbExpanded((v) => !v)}
+            activeOpacity={0.7}
+            style={[styles.toggleBtn, { borderColor: colors.border }]}
+          >
+            <Text style={[styles.toggleText, { color: colors.primary }]}>
+              {lbExpanded ? "Show fewer" : `Show all ${leaderboard.length}`}
+            </Text>
+            <Feather
+              name={lbExpanded ? "chevron-up" : "chevron-down"}
+              size={14}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Chart */}
       <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.primary }]}>
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          14-Day Activity
-        </Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleRow}>
+            <Feather name="bar-chart-2" size={16} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Last 14 Days
+            </Text>
+          </View>
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Done</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+              <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Skip</Text>
+            </View>
+          </View>
+        </View>
         <View style={styles.chart}>
           {last14Days.map((day, i) => {
             const completedHeight = ((day.completed / maxVal) * 100);
@@ -316,15 +372,29 @@ export default function AnalyticsScreen() {
             return (
               <View key={i} style={styles.barColumn}>
                 <View style={styles.barContainer}>
-                  <View style={[styles.barBackground, { backgroundColor: colors.muted, borderRadius: 6 }]}>
+                  <View style={[styles.barBackground, { backgroundColor: colors.muted, borderRadius: 4 }]}>
                     {totalHeight > 0 && (
                       <View style={[styles.barFill, {
                         height: `${totalHeight}%`,
-                        borderRadius: 6,
+                        borderRadius: 4,
                         overflow: "hidden",
                       }]}>
-                        <View style={{ flex: completedHeight / (totalHeight || 1), backgroundColor: colors.primary }} />
-                        <View style={{ flex: skippedHeight / (totalHeight || 1), backgroundColor: colors.warning + "80" }} />
+                        {completedHeight > 0 && (
+                          <LinearGradient
+                            colors={[colors.primary, colors.primary + "B3"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
+                            style={{ flex: completedHeight / (totalHeight || 1) }}
+                          />
+                        )}
+                        {skippedHeight > 0 && (
+                          <LinearGradient
+                            colors={[colors.warning + "B3", colors.warning + "70"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
+                            style={{ flex: skippedHeight / (totalHeight || 1) }}
+                          />
+                        )}
                       </View>
                     )}
                   </View>
@@ -336,23 +406,13 @@ export default function AnalyticsScreen() {
             );
           })}
         </View>
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Completed</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
-            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Skipped</Text>
-          </View>
-        </View>
       </View>
 
       {/* Badges Section */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.warning }]}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
-            <Feather name="star" size={18} color={colors.warning} />
+            <Feather name="star" size={16} color={colors.warning} />
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Badges</Text>
           </View>
           <Text style={[styles.badgeCount, { color: colors.mutedForeground }]}>
@@ -365,9 +425,12 @@ export default function AnalyticsScreen() {
       {/* Category breakdown */}
       {categoryBreakdown.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            By Category
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Feather name="folder" size={16} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              By Category
+            </Text>
+          </View>
           <View style={styles.categoryList}>
             {categoryBreakdown.map((cat) => {
               const pct = cat.reviewCount > 0
@@ -385,7 +448,9 @@ export default function AnalyticsScreen() {
                   <View style={styles.catContent}>
                     <View style={styles.catTop}>
                       <View style={styles.catLeft}>
-                        <Text style={[styles.catName, { color: colors.foreground }]}>{cat.name}</Text>
+                        <Text style={[styles.catName, { color: colors.foreground }]} numberOfLines={1}>
+                          {cat.name}
+                        </Text>
                         <Text style={[styles.catSub, { color: colors.mutedForeground }]}>
                           {cat.noteCount} note{cat.noteCount !== 1 ? "s" : ""}
                         </Text>
@@ -415,28 +480,35 @@ export default function AnalyticsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 18, gap: 20 },
-  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
-  overviewRow: { flexDirection: "row", gap: 10 },
+  content: { paddingHorizontal: 16, gap: 14 },
+  headerBlock: { gap: 2 },
+  title: { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
+  subtitle: { fontSize: 12, fontWeight: "500" },
+  overviewRow: { flexDirection: "row", gap: 8 },
   overviewCard: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     alignItems: "center",
-    gap: 8,
-    borderRadius: 16,
+    gap: 6,
+    borderRadius: 14,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  overviewValue: { fontSize: 28, fontWeight: "800" },
-  overviewLabel: { fontSize: 11, fontWeight: "600", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.5 },
+  overviewValue: { fontSize: 22, fontWeight: "800", lineHeight: 26 },
+  overviewLabel: { fontSize: 10, fontWeight: "600", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.5 },
   card: {
     borderRadius: 16,
     borderWidth: 1,
-    padding: 16,
-    gap: 14,
+    padding: 14,
+    gap: 12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
@@ -446,44 +518,49 @@ const styles = StyleSheet.create({
   cardTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 7,
   },
   rankChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     borderRadius: 20,
   },
   rankChipText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
   badgeCount: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
   },
-  leaderboardList: { gap: 8 },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  leaderboardList: { gap: 6 },
   chartCard: {
-    padding: 18,
-    gap: 16,
+    padding: 14,
+    gap: 12,
     borderRadius: 16,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sectionTitle: { fontSize: 17, fontWeight: "700" },
+  sectionTitle: { fontSize: 15, fontWeight: "700" },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 2,
+  },
   chart: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 4,
-    height: 130,
+    height: 100,
   },
   barColumn: {
     flex: 1,
     alignItems: "center",
-    gap: 5,
+    gap: 4,
   },
   barContainer: {
     flex: 1,
@@ -491,7 +568,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   barBackground: {
-    height: 110,
+    height: 88,
     width: "100%",
     justifyContent: "flex-end",
   },
@@ -505,55 +582,56 @@ const styles = StyleSheet.create({
   },
   legend: {
     flexDirection: "row",
-    gap: 18,
+    gap: 10,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 5,
   },
   legendDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "500",
   },
-  section: { gap: 14 },
-  categoryList: { gap: 10 },
+  section: { gap: 10 },
+  categoryList: { gap: 8 },
   categoryRow: {
     flexDirection: "row",
     alignItems: "stretch",
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   catColorBar: {
     width: 4,
   },
   catContent: {
     flex: 1,
-    padding: 14,
-    gap: 10,
+    padding: 12,
+    gap: 8,
   },
   catTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 8,
   },
-  catLeft: { gap: 2 },
+  catLeft: { gap: 1, flex: 1 },
   catName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   catSub: {
-    fontSize: 12,
+    fontSize: 11,
   },
   catRight: {
     flexDirection: "row",
@@ -561,11 +639,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   catCompleted: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
   },
   catTotal: {
-    fontSize: 13,
+    fontSize: 12,
   },
   catProgressTrack: {
     height: 4,
@@ -576,64 +654,100 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
   },
+  toggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: -2,
+  },
+  toggleText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
 });
 
 const lbStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
+    gap: 9,
+    padding: 9,
+    borderRadius: 11,
     borderWidth: 1,
   },
   rankWrap: {
+    width: 24,
     alignItems: "center",
     justifyContent: "center",
   },
   rankMedal: {
-    fontSize: 18,
+    fontSize: 16,
   },
   rankNum: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "800",
   },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   name: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
+    flexShrink: 1,
   },
   youChip: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 7,
   },
   youText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
   },
   streak: {
-    fontSize: 11,
+    fontSize: 10,
   },
-  reviews: {
-    fontSize: 16,
+  reviewsCol: {
+    alignItems: "flex-end",
+    gap: 0,
+  },
+  reviewsValue: {
+    fontSize: 15,
     fontWeight: "800",
-    textAlign: "right",
-    lineHeight: 18,
+    lineHeight: 17,
   },
   reviewsLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  gapRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 2,
+  },
+  gapLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  gapText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
 });
