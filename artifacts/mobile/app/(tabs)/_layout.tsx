@@ -71,13 +71,16 @@ export default function TabLayout() {
         },
         tabBarStyle: {
           position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
           backgroundColor: isIOS ? "transparent" : "#F8FAFC",
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
-          paddingBottom: safeAreaInsets.bottom,
+          paddingBottom: safeAreaInsets.bottom || 8,
           paddingTop: 8,
-          ...(isWeb ? { height: 88 } : {}),
+          height: (safeAreaInsets.bottom || 8) + 57,
         },
         tabBarBackground: () =>
           isIOS ? (
