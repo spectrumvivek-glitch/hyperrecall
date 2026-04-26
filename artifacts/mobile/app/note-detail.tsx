@@ -38,6 +38,7 @@ export default function NoteDetailScreen() {
   const category = categories.find((c) => c.id === note?.categoryId);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
   const [selectedCategory, setSelectedCategory] = useState(note?.categoryId || "");
@@ -65,6 +66,16 @@ export default function NoteDetailScreen() {
       initialIntervals.current = plan.intervals;
     }
   }, [note, plan]);
+
+  useEffect(() => {
+    setRevealed(false);
+  }, [id]);
+
+  const hasHiddenContent =
+    note != null &&
+    (note.content.length > 0 ||
+      note.images.length > 0 ||
+      (note.attachments?.length ?? 0) > 0);
 
   if (!note) {
     return (
@@ -302,7 +313,7 @@ export default function NoteDetailScreen() {
             )}
           </View>
         ) : (
-          note.images.length > 0 && (
+          revealed && note.images.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
               <View style={styles.imageRow}>
                 {note.images.map((img) => (
@@ -349,7 +360,7 @@ export default function NoteDetailScreen() {
             )}
           </View>
         ) : (
-          (note.attachments?.length ?? 0) > 0 && (
+          revealed && (note.attachments?.length ?? 0) > 0 && (
             <View style={{ gap: 8 }}>
               {note.attachments!.map((att) => (
                 <PdfAttachmentCard key={att.id} attachment={att} />
@@ -380,9 +391,52 @@ export default function NoteDetailScreen() {
             />
           </View>
         ) : (
-          note.content.length > 0 && (
+          revealed && note.content.length > 0 && (
             <Text style={[styles.noteContent, { color: colors.foreground }]}>{note.content}</Text>
           )
+        )}
+
+        {/* Start button — reveals notes/content (recall-first) */}
+        {!isEditing && !revealed && hasHiddenContent && (
+          <TouchableOpacity
+            onPress={() => setRevealed(true)}
+            activeOpacity={0.85}
+            style={[
+              styles.startBtn,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.primary,
+                borderRadius: colors.radius,
+              },
+            ]}
+          >
+            <View style={[styles.startBullet, { backgroundColor: colors.primary }]}>
+              <Feather name="play" size={12} color={colors.primaryForeground} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.startBtnTitle, { color: colors.foreground }]}>
+                Start — Your Notes/Content
+              </Text>
+              <Text style={[styles.startBtnSub, { color: colors.mutedForeground }]}>
+                Try to recall first, then tap to reveal
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        )}
+
+        {/* Hide again after reveal */}
+        {!isEditing && revealed && hasHiddenContent && (
+          <TouchableOpacity
+            onPress={() => setRevealed(false)}
+            activeOpacity={0.7}
+            style={styles.hideBtn}
+          >
+            <Feather name="eye-off" size={14} color={colors.mutedForeground} />
+            <Text style={[styles.hideBtnText, { color: colors.mutedForeground }]}>
+              Hide content
+            </Text>
+          </TouchableOpacity>
         )}
 
         {/* Revision plan */}
@@ -605,4 +659,30 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     lineHeight: 18,
   },
+  startBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+  },
+  startBullet: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  startBtnTitle: { fontSize: 15, fontWeight: "700" },
+  startBtnSub: { fontSize: 12, marginTop: 2 },
+  hideBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+  },
+  hideBtnText: { fontSize: 12, fontWeight: "600" },
 });
