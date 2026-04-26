@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import React, {
   createContext,
   useCallback,
@@ -15,7 +16,11 @@ import {
   pushNoteAsync,
   syncFromCloud,
 } from "@/lib/cloudSync";
-import { initNotificationsOnFirstLaunch } from "@/lib/notifications";
+import {
+  addNotificationTapListener,
+  initNotificationsOnFirstLaunch,
+  rescheduleAllReminders,
+} from "@/lib/notifications";
 import {
   Category,
   Note,
@@ -184,6 +189,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setRevisionPlans(plans);
     setUserStats(stats);
     setDueNotes(due);
+
+    // Re-schedule the rolling 7-day notification window with fresh content.
+    // Debounced + reads its own state from storage, so rapid successive
+    // calls collapse into one and never use stale snapshots.
+    rescheduleAllReminders();
   }, []);
 
   // Initialise lastSeenRankTier so reopening the app (or syncing from a
@@ -203,11 +213,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await refresh();
       await ensureRankTierBackfilled();
       setIsLoading(false);
-      // Reuse already-fetched dueNotes — do not re-fetch; init notifications async
-      initNotificationsOnFirstLaunch(0).catch(() => {});
+      // Initialise notifications. Reads its own state from storage internally,
+      // so the first schedule reflects actual due notes + streak.
+      initNotificationsOnFirstLaunch().catch(() => {});
     };
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Route to the Review tab whenever the user taps a scheduled reminder.
+  // Handles both warm taps and cold-start taps from a terminated app.
+  // Defers navigation a tick so the router is mounted on cold start.
+  useEffect(() => {
+    const navigateToReview = () => {
+      const tryPush = (attempt: number) => {
+        try {
+          router.push("/(tabs)/review");
+        } catch {
+          if (attempt < 5) {
+            setTimeout(() => tryPush(attempt + 1), 200);
+          }
+        }
+      };
+      // Always defer one tick so cold-start taps don't race the router mount.
+      setTimeout(() => tryPush(0), 0);
+    };
+    const unsub = addNotificationTapListener(navigateToReview);
+    return unsub;
+  }, []);
 
   // ─── Cloud sync on auth change ──────────────────────────────────────────────
   // When the user logs in (or switches accounts), pull their data from the cloud

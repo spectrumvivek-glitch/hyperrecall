@@ -25,9 +25,10 @@ import {
   cancelAllRevisionNotifications,
   formatTime,
   getNotificationSettings,
+  rescheduleAllReminders,
   requestNotificationPermission,
   saveNotificationSettings,
-  scheduleDailyRevisionReminder,
+  saveStreakNotificationSettings,
 } from "@/lib/notifications";
 import { FREE_MAX_CATEGORIES, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
@@ -97,6 +98,9 @@ export default function SettingsScreen() {
   const [notifHour, setNotifHour] = useState(9);
   const [notifMinute, setNotifMinute] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [streakEnabled, setStreakEnabled] = useState(true);
+  const [streakHour, setStreakHour] = useState(21);
+  const [streakMinute, setStreakMinute] = useState(0);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -104,10 +108,13 @@ export default function SettingsScreen() {
   const divider = <View style={[styles.divider, { backgroundColor: colors.border }]} />;
 
   useEffect(() => {
-    getNotificationSettings().then(({ enabled, hour, minute }) => {
-      setNotifEnabled(enabled);
-      setNotifHour(hour);
-      setNotifMinute(minute);
+    getNotificationSettings().then((s) => {
+      setNotifEnabled(s.enabled);
+      setNotifHour(s.hour);
+      setNotifMinute(s.minute);
+      setStreakEnabled(s.streakEnabled);
+      setStreakHour(s.streakHour);
+      setStreakMinute(s.streakMinute);
     });
   }, []);
 
@@ -126,7 +133,7 @@ export default function SettingsScreen() {
           return;
         }
         await saveNotificationSettings(true, notifHour, notifMinute);
-        await scheduleDailyRevisionReminder(notifHour, notifMinute, dueNotes.length);
+        rescheduleAllReminders();
         setNotifEnabled(true);
       } else {
         await saveNotificationSettings(false, notifHour, notifMinute);
@@ -143,7 +150,7 @@ export default function SettingsScreen() {
     setNotifHour(newHour);
     if (notifEnabled) {
       saveNotificationSettings(true, newHour, notifMinute);
-      scheduleDailyRevisionReminder(newHour, notifMinute, dueNotes.length);
+      rescheduleAllReminders();
     }
   };
 
@@ -152,7 +159,32 @@ export default function SettingsScreen() {
     setNotifMinute(newMinute);
     if (notifEnabled) {
       saveNotificationSettings(true, notifHour, newMinute);
-      scheduleDailyRevisionReminder(notifHour, newMinute, dueNotes.length);
+      rescheduleAllReminders();
+    }
+  };
+
+  const handleToggleStreakSaver = async (value: boolean) => {
+    if (Platform.OS === "web") return;
+    setStreakEnabled(value);
+    await saveStreakNotificationSettings(value, streakHour, streakMinute);
+    rescheduleAllReminders();
+  };
+
+  const handleChangeStreakHour = (delta: number) => {
+    const newHour = (streakHour + delta + 24) % 24;
+    setStreakHour(newHour);
+    if (streakEnabled) {
+      saveStreakNotificationSettings(true, newHour, streakMinute);
+      rescheduleAllReminders();
+    }
+  };
+
+  const handleChangeStreakMinute = (delta: number) => {
+    const newMinute = (streakMinute + delta + 60) % 60;
+    setStreakMinute(newMinute);
+    if (streakEnabled) {
+      saveStreakNotificationSettings(true, streakHour, newMinute);
+      rescheduleAllReminders();
     }
   };
 
@@ -460,7 +492,67 @@ export default function SettingsScreen() {
                   </View>
                   <Text style={[styles.ampm, { color: colors.mutedForeground }]}>{notifHour >= 12 ? "PM" : "AM"}</Text>
                 </View>
+                <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
+                  Each morning's reminder lists the actual notes due that day.
+                </Text>
               </View>
+            </>
+          )}
+
+          {/* Streak saver — evening nudge for users with an active streak. */}
+          {Platform.OS !== "web" && (
+            <>
+              {divider}
+              <View style={styles.settingRow}>
+                <View style={[styles.settingIcon, { backgroundColor: "#F59E0B22" }]}>
+                  <Feather name="zap" size={18} color="#F59E0B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingLabel, { color: colors.foreground }]}>Streak Saver</Text>
+                  <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
+                    {streakEnabled
+                      ? `Evening nudge at ${formatTime(streakHour, streakMinute)} if you haven't reviewed`
+                      : "Off — no evening reminder"}
+                  </Text>
+                </View>
+                <Switch
+                  value={streakEnabled}
+                  onValueChange={handleToggleStreakSaver}
+                  trackColor={{ false: colors.muted, true: "#F59E0B80" }}
+                  thumbColor={streakEnabled ? "#F59E0B" : colors.mutedForeground}
+                />
+              </View>
+
+              {streakEnabled && (
+                <View style={{ padding: 14, gap: 10 }}>
+                  <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>Streak saver time</Text>
+                  <View style={styles.timeControls}>
+                    <View style={styles.timeUnit}>
+                      <TouchableOpacity onPress={() => handleChangeStreakHour(1)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                        <Feather name="chevron-up" size={18} color={colors.foreground} />
+                      </TouchableOpacity>
+                      <Text style={[styles.timeValue, { color: colors.foreground }]}>{streakHour.toString().padStart(2, "0")}</Text>
+                      <TouchableOpacity onPress={() => handleChangeStreakHour(-1)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                        <Feather name="chevron-down" size={18} color={colors.foreground} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.timeSep, { color: colors.foreground }]}>:</Text>
+                    <View style={styles.timeUnit}>
+                      <TouchableOpacity onPress={() => handleChangeStreakMinute(5)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                        <Feather name="chevron-up" size={18} color={colors.foreground} />
+                      </TouchableOpacity>
+                      <Text style={[styles.timeValue, { color: colors.foreground }]}>{streakMinute.toString().padStart(2, "0")}</Text>
+                      <TouchableOpacity onPress={() => handleChangeStreakMinute(-5)} style={[styles.timeBtn, { backgroundColor: colors.muted }]} activeOpacity={0.7}>
+                        <Feather name="chevron-down" size={18} color={colors.foreground} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.ampm, { color: colors.mutedForeground }]}>{streakHour >= 12 ? "PM" : "AM"}</Text>
+                  </View>
+                  <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
+                    Only fires on days you have an active streak and haven't reviewed yet.
+                  </Text>
+                </View>
+              )}
             </>
           )}
 
@@ -607,6 +699,7 @@ const styles = StyleSheet.create({
   ampm: { fontSize: 16, marginLeft: 4, marginBottom: 4 },
   hintRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12 },
   hintText: { flex: 1, fontSize: 12, lineHeight: 18 },
+  helperText: { fontSize: 11, lineHeight: 15, marginTop: 2 },
   dateInput: { padding: 12, fontSize: 14, borderRadius: 10, borderWidth: 1 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   infoLabel: { fontSize: 14, flex: 1 },
