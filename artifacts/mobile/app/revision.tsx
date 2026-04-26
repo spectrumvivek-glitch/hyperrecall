@@ -48,13 +48,20 @@ export default function RevisionScreen() {
   const [showXp, setShowXp] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
   const [celebPopup, setCelebPopup] = useState<{ xp: number; title: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
+  // For single-note mode, briefly show the celebration popup then return to the
+  // Review tab so the user doesn't have to tap "Back to Dashboard" themselves.
+  const SINGLE_RETURN_DELAY_MS = 1700;
+
   const handleComplete = async () => {
+    if (submitting) return;
     const item = sessionNotes[currentIndex];
     if (!item) return;
+    setSubmitting(true);
     try {
       const earned = (await markCompleted(item.note.id)) ?? 0;
       const newTotalXp = sessionXp + earned;
@@ -63,24 +70,39 @@ export default function RevisionScreen() {
       setXpAmount(earned);
       setShowXp(true);
       setCelebPopup({ xp: earned, title: item.note.title });
+
+      if (isSingle) {
+        // Keep the active card mounted so CelebrationPopup/FloatingXP render,
+        // then navigate back to the Review tab.
+        setTimeout(() => router.back(), SINGLE_RETURN_DELAY_MS);
+        return;
+      }
+      advance();
     } catch (err: any) {
       console.warn("[revision] markCompleted failed:", err);
       Alert.alert("Couldn't save", err?.message ?? "Please try again.");
-    } finally {
-      advance();
+      setSubmitting(false);
+      if (!isSingle) advance();
     }
   };
 
   const handleSkip = async () => {
+    if (submitting) return;
     const item = sessionNotes[currentIndex];
     if (!item) return;
+    setSubmitting(true);
     try {
       await markSkipped(item.note.id);
       setSessionSkipped((s) => s + 1);
+      if (isSingle) {
+        router.back();
+        return;
+      }
+      advance();
     } catch (err: any) {
       console.warn("[revision] markSkipped failed:", err);
-    } finally {
-      advance();
+      setSubmitting(false);
+      if (!isSingle) advance();
     }
   };
 
