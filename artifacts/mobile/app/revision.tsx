@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -57,11 +57,22 @@ export default function RevisionScreen() {
   // Review tab so the user doesn't have to tap "Back to Dashboard" themselves.
   const SINGLE_RETURN_DELAY_MS = 1700;
 
+  // Track any pending single-note return timer so we can cancel it on unmount
+  // (prevents a stale router.back() firing after the screen is gone).
+  const singleReturnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (singleReturnTimer.current) {
+      clearTimeout(singleReturnTimer.current);
+      singleReturnTimer.current = null;
+    }
+  }, []);
+
   const handleComplete = async () => {
     if (submitting) return;
     const item = sessionNotes[currentIndex];
     if (!item) return;
     setSubmitting(true);
+    let willNavigateAway = false;
     try {
       const earned = (await markCompleted(item.note.id)) ?? 0;
       const newTotalXp = sessionXp + earned;
@@ -73,9 +84,11 @@ export default function RevisionScreen() {
 
       if (isSingle) {
         // Keep the active card mounted so CelebrationPopup/FloatingXP render,
-        // then navigate back to the Review tab. `submitting` stays true on
-        // purpose so the user can't double-tap during the return delay.
-        setTimeout(() => router.back(), SINGLE_RETURN_DELAY_MS);
+        // then navigate back to the Review tab. Lock stays held during the
+        // return delay so the user can't double-tap; the timer is cleared
+        // on unmount via the cleanup effect above.
+        willNavigateAway = true;
+        singleReturnTimer.current = setTimeout(() => router.back(), SINGLE_RETURN_DELAY_MS);
         return;
       }
       advance();
@@ -84,10 +97,11 @@ export default function RevisionScreen() {
       Alert.alert("Couldn't save", err?.message ?? "Please try again.");
       if (!isSingle) advance();
     } finally {
-      // Always release the submit lock for the multi-note flow so the next
-      // card's Complete/Skip taps are honored. Single-note flow keeps it
-      // locked until router.back() unmounts the screen.
-      if (!isSingle) setSubmitting(false);
+      // Release the submit lock on every code path EXCEPT the single-note
+      // success path that scheduled a navigation timer above. That keeps
+      // multi-note flow responsive AND lets single-note error paths recover
+      // instead of locking up forever.
+      if (!willNavigateAway) setSubmitting(false);
     }
   };
 
@@ -96,10 +110,12 @@ export default function RevisionScreen() {
     const item = sessionNotes[currentIndex];
     if (!item) return;
     setSubmitting(true);
+    let willNavigateAway = false;
     try {
       await markSkipped(item.note.id);
       setSessionSkipped((s) => s + 1);
       if (isSingle) {
+        willNavigateAway = true;
         router.back();
         return;
       }
@@ -108,7 +124,7 @@ export default function RevisionScreen() {
       console.warn("[revision] markSkipped failed:", err);
       if (!isSingle) advance();
     } finally {
-      if (!isSingle) setSubmitting(false);
+      if (!willNavigateAway) setSubmitting(false);
     }
   };
 
