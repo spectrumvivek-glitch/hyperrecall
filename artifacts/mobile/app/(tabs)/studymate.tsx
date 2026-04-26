@@ -60,7 +60,7 @@ export default function StudyMateScreen() {
             StudyMate AI
           </Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Your AI study buddy
+            
           </Text>
         </View>
 
