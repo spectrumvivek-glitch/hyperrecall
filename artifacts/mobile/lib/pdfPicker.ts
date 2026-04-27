@@ -2,6 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { Platform } from "react-native";
 
 import { NoteAttachment, generateId } from "@/lib/storage";
+import { deleteIdbRef, isIdbBlobRef } from "@/lib/webBlobStore";
 
 export interface PdfPickResult {
   attachments: NoteAttachment[];
@@ -69,7 +70,16 @@ export async function pickPdfFromDevice(): Promise<PdfPickResult> {
 }
 
 export async function deleteLocalPdf(uri: string): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (Platform.OS === "web") {
+    if (isIdbBlobRef(uri) || uri.startsWith("blob:")) {
+      try {
+        await deleteIdbRef(uri);
+      } catch {
+        // ignore
+      }
+    }
+    return;
+  }
   if (!uri.startsWith("file://")) return;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires

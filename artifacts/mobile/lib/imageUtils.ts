@@ -12,6 +12,8 @@
 
 import { Platform } from "react-native";
 
+import { deleteIdbRef, isIdbBlobRef } from "./webBlobStore";
+
 /** Max dimension (width or height) used when resizing on web before encoding */
 const MAX_DIM = 1024;
 /** JPEG quality used when encoding on web */
@@ -122,7 +124,18 @@ export async function makePersistentUris(uris: string[]): Promise<string[]> {
  * Silently ignores errors — safe to call even if the file has already been removed.
  */
 export async function deleteLocalImage(uri: string): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (Platform.OS === "web") {
+    // On web the bytes live in IndexedDB. Accept either an idb-blob ref or
+    // an object URL that was minted from one.
+    if (isIdbBlobRef(uri) || uri.startsWith("blob:")) {
+      try {
+        await deleteIdbRef(uri);
+      } catch {
+        // ignore
+      }
+    }
+    return;
+  }
   if (!uri.startsWith("file://")) return;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires

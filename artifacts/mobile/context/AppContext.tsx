@@ -43,6 +43,7 @@ import {
   expireStreakIfMissed,
   getUserStats,
   saveUserStats,
+  migrateNotesToIdbBlobsIfNeeded,
   seedDefaultsIfNeeded,
   skipRevision,
   updateNote,
@@ -209,6 +210,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const init = async () => {
+      // On web, migrate any pre-existing inline image bytes out of
+      // localStorage and into IndexedDB before the first read so we don't
+      // hit the localStorage quota on subsequent saves.
+      await migrateNotesToIdbBlobsIfNeeded();
       await seedDefaultsIfNeeded();
       await refresh();
       await ensureRankTierBackfilled();

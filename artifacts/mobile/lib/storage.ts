@@ -1,6 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { calcXpForAction, getLevelFromXp } from "./xp";
 import { checkNewBadges } from "./badges";
+import {
+  findRefForObjectUrl,
+  isIdbBlobRef,
+  putUriInIdb,
+  resolveIdbRefToObjectUrl,
+} from "./webBlobStore";
 
 export interface Category {
   id: string;
@@ -115,14 +122,129 @@ export async function renameCategory(id: string, name: string): Promise<void> {
   );
 }
 
+// ─── Web image/PDF persistence helpers ───────────────────────────────────────
+//
+// On web, AsyncStorage is backed by localStorage (~5–10 MB quota). Inline
+// base64 image bytes inside `sr_notes` quickly blow the quota, producing
+// "Setting the value of 'sr_notes' exceeded the quota". We move the heavy
+// bytes into IndexedDB (huge quota) and store only short `idb-blob:<id>`
+// references in the notes JSON. On read, the references are hydrated to
+// `blob:` object URLs that React Native Web can render.
+
+/** Convert any heavy URI on a note into a small idb-blob ref before persisting. */
+async function dehydrateUriForStorage(uri: string): Promise<string> {
+  if (Platform.OS !== "web" || !uri) return uri;
+  if (isIdbBlobRef(uri)) return uri;
+  // If this is an object URL minted from an existing IDB blob, re-use the ref.
+  const existingRef = findRefForObjectUrl(uri);
+  if (existingRef) return existingRef;
+  if (uri.startsWith("data:") || uri.startsWith("blob:")) {
+    try {
+      return await putUriInIdb(uri);
+    } catch {
+      return uri;
+    }
+  }
+  return uri;
+}
+
+async function dehydrateNote(note: Note): Promise<Note> {
+  if (Platform.OS !== "web") return note;
+  const images = await Promise.all(
+    note.images.map(async (img) => {
+      const newUri = await dehydrateUriForStorage(img.uri);
+      const newThumb = img.thumbnailUri === img.uri
+        ? newUri
+        : await dehydrateUriForStorage(img.thumbnailUri);
+      return { ...img, uri: newUri, thumbnailUri: newThumb };
+    })
+  );
+  const attachments = note.attachments
+    ? await Promise.all(
+        note.attachments.map(async (a) => ({
+          ...a,
+          uri: await dehydrateUriForStorage(a.uri),
+        }))
+      )
+    : note.attachments;
+  return { ...note, images, attachments };
+}
+
+async function hydrateNote(note: Note): Promise<Note> {
+  if (Platform.OS !== "web") return note;
+  const images = await Promise.all(
+    note.images.map(async (img) => {
+      if (!isIdbBlobRef(img.uri) && !isIdbBlobRef(img.thumbnailUri)) return img;
+      const uri = await resolveIdbRefToObjectUrl(img.uri);
+      const thumbnailUri = img.thumbnailUri === img.uri
+        ? uri
+        : await resolveIdbRefToObjectUrl(img.thumbnailUri);
+      return { ...img, uri, thumbnailUri };
+    })
+  );
+  const attachments = note.attachments
+    ? await Promise.all(
+        note.attachments.map(async (a) =>
+          isIdbBlobRef(a.uri)
+            ? { ...a, uri: await resolveIdbRefToObjectUrl(a.uri) }
+            : a
+        )
+      )
+    : note.attachments;
+  return { ...note, images, attachments };
+}
+
 // Notes
 export async function getNotes(): Promise<Note[]> {
   const raw = await AsyncStorage.getItem(KEYS.NOTES);
-  return raw ? JSON.parse(raw) : [];
+  const notes: Note[] = raw ? JSON.parse(raw) : [];
+  if (Platform.OS === "web") {
+    return Promise.all(notes.map(hydrateNote));
+  }
+  return notes;
 }
 
 export async function saveNotes(notes: Note[]): Promise<void> {
-  await AsyncStorage.setItem(KEYS.NOTES, JSON.stringify(notes));
+  let toWrite = notes;
+  if (Platform.OS === "web") {
+    toWrite = await Promise.all(notes.map(dehydrateNote));
+  }
+  await AsyncStorage.setItem(KEYS.NOTES, JSON.stringify(toWrite));
+}
+
+/**
+ * One-time migration: move any inline `data:` image/PDF bytes already living
+ * inside `sr_notes` over to IndexedDB so the localStorage quota is freed.
+ *
+ * Skips if already migrated, on non-web platforms, or on errors. Idempotent.
+ */
+export async function migrateNotesToIdbBlobsIfNeeded(): Promise<void> {
+  if (Platform.OS !== "web") return;
+  try {
+    const flag = await AsyncStorage.getItem("@hyperrecall_idb_migrated_v1");
+    if (flag === "1") return;
+    const raw = await AsyncStorage.getItem(KEYS.NOTES);
+    if (!raw) {
+      await AsyncStorage.setItem("@hyperrecall_idb_migrated_v1", "1");
+      return;
+    }
+    const notes: Note[] = JSON.parse(raw);
+    const needs = notes.some((n) =>
+      n.images.some((i) => i.uri?.startsWith("data:") || i.thumbnailUri?.startsWith("data:")) ||
+      (n.attachments ?? []).some((a) => a.uri?.startsWith("data:"))
+    );
+    if (!needs) {
+      await AsyncStorage.setItem("@hyperrecall_idb_migrated_v1", "1");
+      return;
+    }
+    const migrated = await Promise.all(notes.map(dehydrateNote));
+    await AsyncStorage.setItem(KEYS.NOTES, JSON.stringify(migrated));
+    await AsyncStorage.setItem("@hyperrecall_idb_migrated_v1", "1");
+  } catch (err) {
+    // Don't block app start on migration failures.
+    // eslint-disable-next-line no-console
+    console.warn("[storage] migrateNotesToIdbBlobsIfNeeded failed:", err);
+  }
 }
 
 export async function createNote(
