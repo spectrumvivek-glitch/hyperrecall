@@ -195,10 +195,16 @@ export function PremiumRankIcon({ rank, size = "md", unlocked = true }: Props) {
       >
         <Svg
           width="100%"
-          height={cfg.ribbonH}
+          height="100%"
           viewBox="0 0 100 30"
           preserveAspectRatio="none"
-          style={{ position: "absolute", inset: 0 } as any}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
         >
           <Defs>
             <SvgLinearGradient id={ribbonId} x1="0" y1="0" x2="0" y2="1">
