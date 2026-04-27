@@ -36,6 +36,7 @@ const FEATURES: Array<{ icon: keyof typeof Feather.glyphMap; text: string }> = [
   { icon: "book-open", text: "Generate summary of your notes from images and pdf's" },
   { icon: "edit-3", text: "Generate practice questions on any topic" },
   { icon: "zap", text: "Predict most likely questions and topics for your exam" },
+  { icon: "copy", text: "Tip - Copy the summary and questions from StudyMate AI and paste it in your notes" },
 ];
 
 export default function StudyMateScreen() {
@@ -46,7 +47,7 @@ export default function StudyMateScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
@@ -56,12 +57,8 @@ export default function StudyMateScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            StudyMate AI
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            
-          </Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>StudyMate AI</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]} />
         </View>
 
         <View
@@ -78,7 +75,7 @@ export default function StudyMateScreen() {
           >
             <Feather name="message-circle" size={28} color="#FFFFFF" />
           </LinearGradient>
-          <Text style={[styles.heroText, { color: colors.foreground }]}>
+          <Text style={[styles.heroText, { color: colors.foreground }]}> 
             🧠 From doubts to exam success — instant answers, smart summaries,
             practice questions, and AI-powered predictions
           </Text>
@@ -90,7 +87,7 @@ export default function StudyMateScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Text style={[styles.cardTitle, { color: colors.mutedForeground }]}>
+          <Text style={[styles.cardTitle, { color: colors.mutedForeground }]}> 
             WHAT YOU CAN DO
           </Text>
           {FEATURES.map((f, idx) => (
@@ -112,9 +109,7 @@ export default function StudyMateScreen() {
               >
                 <Feather name={f.icon} size={15} color={colors.primary} />
               </View>
-              <Text
-                style={[styles.featureText, { color: colors.foreground }]}
-              >
+              <Text style={[styles.featureText, { color: colors.foreground }]}>
                 {f.text}
               </Text>
             </View>
@@ -223,34 +218,25 @@ const styles = StyleSheet.create({
   featureIconWrap: {
     width: 30,
     height: 30,
-    borderRadius: 9,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   featureText: {
     flex: 1,
-    fontSize: 13.5,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 18,
   },
   primaryBtnWrap: {
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#7C3AED",
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-      },
-      android: { elevation: 4 },
-    }),
   },
   primaryBtn: {
+    height: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    paddingVertical: 15,
   },
   primaryBtnText: {
     color: "#FFFFFF",
