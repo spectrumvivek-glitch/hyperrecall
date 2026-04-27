@@ -14,11 +14,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ZoomableImageViewer } from "@/components/ZoomableImageViewer";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { useSubscription } from "@/lib/revenuecat";
@@ -297,26 +297,13 @@ function ExamReviewCard({
 
   return (
     <>
-      {viewerOpen && hasImages && (
-        <Modal visible animationType="fade" transparent statusBarTranslucent onRequestClose={() => setViewerOpen(false)}>
-          <View style={{ flex: 1, backgroundColor: "#000" }}>
-            <TouchableOpacity
-              onPress={() => setViewerOpen(false)}
-              style={{ position: "absolute", top: 50, right: 18, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: "#ffffff20", alignItems: "center", justifyContent: "center" }}
-            >
-              <Feather name="x" size={22} color="#fff" />
-            </TouchableOpacity>
-            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} contentOffset={{ x: viewerStart * SCREEN_W, y: 0 }} style={{ flex: 1 }}>
-              {note.images.map((img) => (
-                <ScrollView key={img.id} style={{ width: SCREEN_W, height: SCREEN_H }} contentContainerStyle={{ flex: 1, alignItems: "center", justifyContent: "center" }} maximumZoomScale={4} minimumZoomScale={1} centerContent bouncesZoom>
-                  <TouchableWithoutFeedback onPress={() => setViewerOpen(false)}>
-                    <Image source={{ uri: img.uri }} style={{ width: SCREEN_W, height: SCREEN_H }} resizeMode="contain" />
-                  </TouchableWithoutFeedback>
-                </ScrollView>
-              ))}
-            </ScrollView>
-          </View>
-        </Modal>
+      {hasImages && (
+        <ZoomableImageViewer
+          visible={viewerOpen}
+          images={note.images}
+          initialIndex={viewerStart}
+          onClose={() => setViewerOpen(false)}
+        />
       )}
 
       <Animated.View style={[
