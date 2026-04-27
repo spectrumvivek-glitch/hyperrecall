@@ -55,11 +55,19 @@ export function AnalyticsLineChart({ data, colors, height = 180 }: Props) {
   const innerW = VIEW_W - PAD_L - PAD_R;
   const innerH = VIEW_H - PAD_T - PAD_B;
 
-  const { completedPts, skippedPts, areaPath, donePath, skipPath, maxVal, gridLines } =
+  const { completedPts, skippedPts, areaPath, donePath, skipPath, maxVal, peakVal, gridLines } =
     useMemo(() => {
-      const max = Math.max(...data.map((d) => Math.max(d.completed, d.skipped)), 4);
-      // round up to a "nice" upper bound
-      const niceMax = Math.ceil(max / 4) * 4 || 4;
+      // Real maximum from the data (can be 0 when there's no activity yet).
+      const realMax = Math.max(
+        0,
+        ...data.map((d) => Math.max(d.completed, d.skipped))
+      );
+      // Pick a clean upper bound for the Y-axis. When there's no data yet we
+      // still keep a readable scale (4) so the chart frame looks intentional —
+      // but the footer's peak/day uses the real max (0) so we don't mislead
+      // the user into thinking they're averaging 4 reviews/day.
+      const niceMax =
+        realMax <= 0 ? 4 : Math.max(4, Math.ceil(realMax / 4) * 4);
       const stepX = data.length > 1 ? innerW / (data.length - 1) : 0;
       const yFor = (v: number) =>
         PAD_T + innerH - (v / niceMax) * innerH;
@@ -95,6 +103,7 @@ export function AnalyticsLineChart({ data, colors, height = 180 }: Props) {
         donePath: dDone,
         skipPath: dSkip,
         maxVal: niceMax,
+        peakVal: realMax,
         gridLines: grid,
       };
     }, [data, innerH, innerW]);
@@ -118,6 +127,7 @@ export function AnalyticsLineChart({ data, colors, height = 180 }: Props) {
 
   const totalDone = data.reduce((s, d) => s + d.completed, 0);
   const totalSkip = data.reduce((s, d) => s + d.skipped, 0);
+  const isEmpty = totalDone === 0 && totalSkip === 0;
 
   return (
     <View style={{ width: "100%" }}>
@@ -231,6 +241,20 @@ export function AnalyticsLineChart({ data, colors, height = 180 }: Props) {
             {l.label}
           </SvgText>
         ))}
+        {/* Empty state — no reviews yet */}
+        {isEmpty && (
+          <SvgText
+            x={PAD_L + innerW / 2}
+            y={PAD_T + innerH / 2 + 3}
+            fill={colors.mutedForeground}
+            fontSize="10"
+            fontWeight="600"
+            textAnchor="middle"
+            opacity={0.85}
+          >
+            No reviews yet — start your first one
+          </SvgText>
+        )}
       </Svg>
 
       {/* Footer summary */}
@@ -250,7 +274,7 @@ export function AnalyticsLineChart({ data, colors, height = 180 }: Props) {
         </View>
         <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
         <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: colors.foreground }]}>{maxVal}</Text>
+          <Text style={[styles.summaryValue, { color: colors.foreground }]}>{peakVal}</Text>
           <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
             peak/day
           </Text>
