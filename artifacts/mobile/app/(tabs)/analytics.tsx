@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AnalyticsLineChart } from "@/components/AnalyticsLineChart";
 import { StreakBadge } from "@/components/StreakBadge";
 import { BadgesGrid } from "@/components/BadgeCard";
 import { RankLadder } from "@/components/RankLadder";
@@ -182,9 +182,9 @@ export default function AnalyticsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const last14Days = useMemo(() => {
+  const last30Days = useMemo(() => {
     const days: { label: string; date: number; completed: number; skipped: number }[] = [];
-    for (let i = 13; i >= 0; i--) {
+    for (let i = 29; i >= 0; i--) {
       const dayStart = startOfDay(Date.now() - i * 24 * 60 * 60 * 1000);
       const dayEnd = dayStart + 24 * 60 * 60 * 1000;
       const dayLogs = revisionLogs.filter(
@@ -199,8 +199,6 @@ export default function AnalyticsScreen() {
     }
     return days;
   }, [revisionLogs]);
-
-  const maxVal = Math.max(...last14Days.map((d) => d.completed + d.skipped), 1);
 
   const categoryBreakdown = useMemo(() => {
     return categories.map((cat) => {
@@ -359,69 +357,33 @@ export default function AnalyticsScreen() {
         )}
       </View>
 
-      {/* Chart */}
+      {/* Activity trend — last 30 days line chart */}
       <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.primary }]}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
-            <Feather name="bar-chart-2" size={16} color={colors.primary} />
+            <Feather name="trending-up" size={16} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Last 14 Days
+              Last 30 Days
             </Text>
           </View>
           <View style={styles.legend}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+              <View style={[styles.legendLine, { backgroundColor: colors.primary }]} />
               <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Done</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+              <View
+                style={[
+                  styles.legendLine,
+                  styles.legendLineDashed,
+                  { borderTopColor: colors.warning },
+                ]}
+              />
               <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Skip</Text>
             </View>
           </View>
         </View>
-        <View style={styles.chart}>
-          {last14Days.map((day, i) => {
-            const completedHeight = ((day.completed / maxVal) * 100);
-            const skippedHeight = ((day.skipped / maxVal) * 100);
-            const totalHeight = completedHeight + skippedHeight;
-            const isToday = day.date === startOfDay(Date.now());
-            return (
-              <View key={i} style={styles.barColumn}>
-                <View style={styles.barContainer}>
-                  <View style={[styles.barBackground, { backgroundColor: colors.muted, borderRadius: 4 }]}>
-                    {totalHeight > 0 && (
-                      <View style={[styles.barFill, {
-                        height: `${totalHeight}%`,
-                        borderRadius: 4,
-                        overflow: "hidden",
-                      }]}>
-                        {completedHeight > 0 && (
-                          <LinearGradient
-                            colors={[colors.primary, colors.primary + "B3"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 0, y: 1 }}
-                            style={{ flex: completedHeight / (totalHeight || 1) }}
-                          />
-                        )}
-                        {skippedHeight > 0 && (
-                          <LinearGradient
-                            colors={[colors.warning + "B3", colors.warning + "70"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 0, y: 1 }}
-                            style={{ flex: skippedHeight / (totalHeight || 1) }}
-                          />
-                        )}
-                      </View>
-                    )}
-                  </View>
-                </View>
-                {isToday && (
-                  <View style={[styles.todayDot, { backgroundColor: colors.primary }]} />
-                )}
-              </View>
-            );
-          })}
-        </View>
+        <AnalyticsLineChart data={last30Days} colors={colors} />
       </View>
 
       {/* Badges Section */}
@@ -581,35 +543,6 @@ const styles = StyleSheet.create({
     gap: 7,
     paddingHorizontal: 2,
   },
-  chart: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 4,
-    height: 100,
-  },
-  barColumn: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-  },
-  barContainer: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "flex-end",
-  },
-  barBackground: {
-    height: 88,
-    width: "100%",
-    justifyContent: "flex-end",
-  },
-  barFill: {
-    width: "100%",
-  },
-  todayDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-  },
   legend: {
     flexDirection: "row",
     gap: 10,
@@ -619,10 +552,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  legendLine: {
+    width: 14,
+    height: 2,
+    borderRadius: 1,
+  },
+  legendLineDashed: {
+    backgroundColor: "transparent",
+    borderTopWidth: 2,
+    borderStyle: "dashed",
   },
   legendText: {
     fontSize: 11,
