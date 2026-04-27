@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Image,
@@ -29,12 +29,21 @@ export default function AddNoteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { categoryId: presetCategoryId } = useLocalSearchParams<{ categoryId?: string }>();
   const { categories, notes, addNote } = useApp();
   const { isPro } = useSubscription();
 
+  // If the user came from a category-filtered Notes list, pre-select that
+  // category. Falls back to the first category when no preset was passed
+  // or when the preset isn't a real category id (defensive).
+  const initialCategory =
+    presetCategoryId && categories.some((c) => c.id === presetCategoryId)
+      ? presetCategoryId
+      : categories[0]?.id || "";
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || "");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [images, setImages] = useState<NoteImage[]>([]);
   const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
   const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);

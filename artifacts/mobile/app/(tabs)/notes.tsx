@@ -106,7 +106,13 @@ export default function NotesScreen() {
           </Text>
         </View>
         <TouchableOpacity
-          onPress={() => router.push("/add-note")}
+          onPress={() =>
+            router.push(
+              selectedCategory
+                ? { pathname: "/add-note", params: { categoryId: selectedCategory } }
+                : "/add-note"
+            )
+          }
           style={[styles.addBtn, { backgroundColor: colors.primary }]}
           activeOpacity={0.85}
         >
