@@ -652,7 +652,7 @@ export default function SettingsScreen() {
           <View style={styles.infoRow}>
             <Feather name="shield" size={18} color={colors.mutedForeground} />
             <Text style={[styles.infoLabel, { color: colors.foreground }]}>Data storage</Text>
-            <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>Firebase + Local</Text>
+            <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>Local</Text>
           </View>
         </SectionCard>
       </View>
