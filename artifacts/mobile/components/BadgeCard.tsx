@@ -1,9 +1,10 @@
-import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { ALL_BADGES, BadgeDef, RARITY_COLORS } from "@/lib/badges";
+
+import { PremiumBadgeIcon } from "./PremiumBadgeIcon";
 
 interface BadgeCardProps {
   badge: BadgeDef;
@@ -14,9 +15,7 @@ interface BadgeCardProps {
 export function BadgeCard({ badge, earned, size = "md" }: BadgeCardProps) {
   const colors = useColors();
 
-  const iconSize = size === "sm" ? 18 : size === "lg" ? 28 : 22;
-  const containerSize = size === "sm" ? 40 : size === "lg" ? 64 : 52;
-  const borderRadius = containerSize / 2.5;
+  const containerSize = size === "sm" ? 40 : size === "lg" ? 72 : 56;
 
   const rarityColor = RARITY_COLORS[badge.rarity];
 
@@ -24,21 +23,14 @@ export function BadgeCard({ badge, earned, size = "md" }: BadgeCardProps) {
     <View style={[styles.badge, size === "sm" && styles.badgeSm, size === "lg" && styles.badgeLg]}>
       <View
         style={[
-          styles.iconWrap,
+          styles.iconShadow,
           {
-            width: containerSize,
-            height: containerSize,
-            borderRadius,
-            backgroundColor: earned ? badge.color + "20" : colors.muted,
-            borderColor: earned ? badge.color + "60" : colors.border,
+            shadowColor: earned ? badge.color : "#000",
+            shadowOpacity: earned ? 0.45 : 0.18,
           },
         ]}
       >
-        <Feather
-          name={badge.icon as any}
-          size={iconSize}
-          color={earned ? badge.color : colors.mutedForeground + "60"}
-        />
+        <PremiumBadgeIcon badge={badge} earned={earned} size={containerSize} />
       </View>
       {size !== "sm" && (
         <>
@@ -52,7 +44,7 @@ export function BadgeCard({ badge, earned, size = "md" }: BadgeCardProps) {
             {badge.name}
           </Text>
           {earned && (
-            <View style={[styles.rarityChip, { backgroundColor: rarityColor + "20" }]}>
+            <View style={[styles.rarityChip, { backgroundColor: rarityColor + "22", borderColor: rarityColor + "55" }]}>
               <Text style={[styles.rarityText, { color: rarityColor }]}>
                 {badge.rarity}
               </Text>
@@ -69,7 +61,6 @@ interface BadgesGridProps {
 }
 
 export function BadgesGrid({ earnedBadges }: BadgesGridProps) {
-  const colors = useColors();
   const earnedSet = new Set(earnedBadges);
 
   const earned = ALL_BADGES.filter((b) => earnedSet.has(b.id));
@@ -91,36 +82,37 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: "center",
     gap: 6,
-    width: 72,
+    width: 76,
   },
   badgeSm: {
     width: 44,
     gap: 0,
   },
   badgeLg: {
-    width: 90,
+    width: 96,
     gap: 8,
   },
-  iconWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
+  iconShadow: {
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 6,
   },
   name: {
-    fontWeight: "600",
+    fontWeight: "700",
     textAlign: "center",
     lineHeight: 14,
   },
   rarityChip: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 8,
+    borderWidth: 1,
   },
   rarityText: {
     fontSize: 9,
-    fontWeight: "700",
+    fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   grid: {
     flexDirection: "row",
