@@ -1,18 +1,11 @@
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { useSubscription } from "@/lib/revenuecat";
-
-// Key used to remember the user dismissed the active-trial banner. AsyncStorage
-// is cleared on reinstall, so a fresh install / new trial naturally shows the
-// banner again. The expired-trial banner is intentionally NOT dismissible —
-// it's part of the hard-lock upgrade flow.
-const DISMISS_KEY = "trialBannerDismissed";
 
 /**
  * Compact banner shown on the home screen explaining trial status.
@@ -25,32 +18,11 @@ export function TrialBanner() {
   const router = useRouter();
   const { isPaidPro, trial, trialDurationDays } = useSubscription();
 
-  // `dismissed` starts as undefined so we don't flash the banner on first
-  // mount before AsyncStorage resolves.
-  const [dismissed, setDismissed] = useState<boolean | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    AsyncStorage.getItem(DISMISS_KEY)
-      .then((v) => {
-        if (!cancelled) setDismissed(v === "1");
-      })
-      .catch(() => {
-        if (!cancelled) setDismissed(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const handleDismiss = async () => {
-    setDismissed(true);
-    try {
-      await AsyncStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      // Best-effort; if persistence fails the banner will reappear next open.
-    }
-  };
+  // Session-only dismissal — once Pro is purchased the banner is hidden
+  // permanently by the `isPaidPro` early-return below. For trial users we
+  // intentionally do NOT persist this so the reminder reappears on the next
+  // app open.
+  const [dismissed, setDismissed] = useState(false);
 
   if (isPaidPro) return null;
   if (!trial.hasEverStarted) return null;
@@ -58,9 +30,6 @@ export function TrialBanner() {
   const onUpgrade = () => router.push("/paywall");
 
   if (trial.isActive) {
-    // Wait for AsyncStorage to settle before deciding visibility — prevents
-    // a flicker where the banner appears for one frame then disappears.
-    if (dismissed === undefined) return null;
     if (dismissed) return null;
 
     const days = trial.daysRemaining;
@@ -95,7 +64,7 @@ export function TrialBanner() {
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={handleDismiss}
+          onPress={() => setDismissed(true)}
           style={styles.closeBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.7}
