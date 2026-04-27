@@ -1,4 +1,6 @@
 import { Feather } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system";
+import * as IntentLauncher from "expo-intent-launcher";
 import * as Sharing from "expo-sharing";
 import * as WebBrowser from "expo-web-browser";
 import React from "react";
@@ -20,16 +22,38 @@ async function openPdf(uri: string, name: string) {
       await WebBrowser.openBrowserAsync(uri);
       return;
     }
-    const can = await Sharing.isAvailableAsync();
-    if (can) {
-      await Sharing.shareAsync(uri, {
-        mimeType: "application/pdf",
-        dialogTitle: name,
-        UTI: "com.adobe.pdf",
-      });
-    } else {
-      await WebBrowser.openBrowserAsync(uri);
+
+    if (Platform.OS === "android") {
+      // Convert file:// → content:// via FileProvider so other apps can read it,
+      // then open with the system's default PDF viewer (no share sheet).
+      try {
+        const contentUri = await FileSystem.getContentUriAsync(uri);
+        await IntentLauncher.startActivityAsync(
+          "android.intent.action.VIEW",
+          {
+            data: contentUri,
+            flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+            type: "application/pdf",
+          }
+        );
+        return;
+      } catch {
+        // Fall through to sharing as a last resort if no PDF viewer is installed.
+        const can = await Sharing.isAvailableAsync();
+        if (can) {
+          await Sharing.shareAsync(uri, {
+            mimeType: "application/pdf",
+            dialogTitle: name,
+            UTI: "com.adobe.pdf",
+          });
+          return;
+        }
+        throw new Error("No PDF viewer available on this device.");
+      }
     }
+
+    // iOS: open in the in-app browser/QuickLook preview directly.
+    await WebBrowser.openBrowserAsync(uri);
   } catch (err: any) {
     Alert.alert("Couldn't open PDF", err?.message ?? "Please try again.");
   }
