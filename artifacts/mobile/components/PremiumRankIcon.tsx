@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Text, View } from "react-native";
 import Svg, {
@@ -65,7 +66,6 @@ export function PremiumRankIcon({ rank, size = "md", unlocked = true }: Props) {
   const rimId = `rkrim-${idSuffix}`;
   const innerGlowId = `rkglow-${idSuffix}`;
   const glossId = `rkgloss-${idSuffix}`;
-  const ribbonId = `rkribbon-${idSuffix}`;
 
   const totalH = cfg.wrap + Math.abs(cfg.ribbonOffset) + cfg.ribbonH / 2 + 4;
 
@@ -178,7 +178,9 @@ export function PremiumRankIcon({ rank, size = "md", unlocked = true }: Props) {
         </View>
       </View>
 
-      {/* Roman ribbon */}
+      {/* Roman ribbon — gradient pill rendered via expo-linear-gradient so it
+          always fills the rounded container (the previous SVG-based fill was
+          intermittently blank on Android due to absolute % sizing). */}
       <View
         style={{
           position: "absolute",
@@ -186,54 +188,38 @@ export function PremiumRankIcon({ rank, size = "md", unlocked = true }: Props) {
           alignSelf: "center",
           height: cfg.ribbonH,
           minWidth: cfg.ribbonH * 1.8,
-          paddingHorizontal: cfg.ribbonH * 0.55,
           borderRadius: cfg.ribbonH / 2,
-          alignItems: "center",
-          justifyContent: "center",
           overflow: "hidden",
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.55)",
         }}
       >
-        <Svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 100 30"
-          preserveAspectRatio="none"
+        <LinearGradient
+          colors={[rimLight, mid, rimDark]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            flex: 1,
+            paddingHorizontal: cfg.ribbonH * 0.55,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <Defs>
-            <SvgLinearGradient id={ribbonId} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={rimLight} stopOpacity="1" />
-              <Stop offset="0.5" stopColor={mid} stopOpacity="1" />
-              <Stop offset="1" stopColor={rimDark} stopOpacity="1" />
-            </SvgLinearGradient>
-          </Defs>
-          <Path
-            d="M0,15 Q0,0 15,0 L85,0 Q100,0 100,15 Q100,30 85,30 L15,30 Q0,30 0,15 Z"
-            fill={`url(#${ribbonId})`}
-            stroke="#ffffff"
-            strokeOpacity="0.55"
-            strokeWidth="1.2"
-          />
-        </Svg>
-        <Text
-          style={{
-            color: "#ffffff",
-            fontSize: cfg.romanFs,
-            fontWeight: "900",
-            letterSpacing: 0.8,
-            textShadowColor: "rgba(0,0,0,0.55)",
-            textShadowOffset: { width: 0, height: 1 },
-            textShadowRadius: 2,
-          }}
-        >
-          {rank.stepRoman}
-        </Text>
+          <Text
+            style={{
+              color: "#ffffff",
+              fontSize: cfg.romanFs,
+              fontWeight: "900",
+              letterSpacing: 0.8,
+              textShadowColor: "rgba(0,0,0,0.55)",
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 2,
+            }}
+          >
+            {rank.stepRoman}
+          </Text>
+        </LinearGradient>
       </View>
     </View>
   );
