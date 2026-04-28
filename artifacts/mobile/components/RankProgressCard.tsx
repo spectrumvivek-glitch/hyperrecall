@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { RankBadge } from "@/components/RankBadge";
 import { useColors } from "@/hooks/useColors";
-import { RankInfo, REVIEWS_PER_STEP } from "@/lib/ranks";
+import { RankInfo } from "@/lib/ranks";
 
 interface Props {
   rank: RankInfo;
@@ -21,7 +21,7 @@ export function RankProgressCard({ rank }: Props) {
   const colors = useColors();
   const pct = rank.isMaxed
     ? 1
-    : Math.min(rank.reviewsIntoStep / REVIEWS_PER_STEP, 1);
+    : Math.min(rank.reviewsIntoStep / Math.max(1, rank.stepWidth), 1);
   // At 490–499 reviews the user is on The Boss V (no next step) but not yet
   // maxed (500). Treat "no next step" the same as maxed for hint copy.
   const hasNext = !!rank.nextStepLabel;
@@ -50,8 +50,8 @@ export function RankProgressCard({ rank }: Props) {
             {rank.isMaxed
               ? "Maxed out — The Boss V"
               : hasNext
-              ? `${rank.reviewsIntoStep} / ${REVIEWS_PER_STEP} to next step`
-              : `${rank.reviewsIntoStep} / ${REVIEWS_PER_STEP} to maxed`}
+              ? `${rank.reviewsIntoStep} / ${rank.stepWidth} to next step`
+              : `${rank.reviewsIntoStep} / ${rank.stepWidth} to maxed`}
           </Text>
         </View>
       </View>

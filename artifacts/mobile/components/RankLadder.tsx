@@ -9,8 +9,9 @@ import {
   MAX_REVIEWS,
   RANKS,
   RankInfo,
-  REVIEWS_PER_RANK,
   getRankInfo,
+  rankEntryReviews,
+  rankMaxedReviews,
 } from "@/lib/ranks";
 
 interface Props {
@@ -92,15 +93,15 @@ export function RankLadder({ rank, totalCompleted }: Props) {
           const representativeReviews = isCurrent
             ? totalCompleted
             : isUnlocked
-              ? (idx + 1) * REVIEWS_PER_RANK - 1
-              : idx * REVIEWS_PER_RANK;
+              ? rankMaxedReviews(idx)
+              : rankEntryReviews(idx);
           const info = getRankInfo(representativeReviews);
           const stepLabel = isCurrent
             ? `${rank.stepRoman}`
             : isUnlocked
               ? "V"
               : "I";
-          const reviewsForRank = idx * REVIEWS_PER_RANK;
+          const reviewsForRank = rankEntryReviews(idx);
 
           return (
             <View
