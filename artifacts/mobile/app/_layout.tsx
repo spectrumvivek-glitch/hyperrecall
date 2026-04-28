@@ -40,6 +40,10 @@ function RootLayoutNav() {
         name="paywall"
         options={{ headerShown: false, presentation: "modal" }}
       />
+      <Stack.Screen
+        name="pdf-viewer"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
     </Stack>
   );
 }
