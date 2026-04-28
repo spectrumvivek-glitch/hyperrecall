@@ -50,7 +50,6 @@ module.exports = {
         },
       ],
       "expo-font",
-      "expo-web-browser",
       [
         "expo-image-picker",
         {
