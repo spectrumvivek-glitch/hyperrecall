@@ -12,7 +12,6 @@ import {
   View,
 } from "react-native";
 
-import { PdfAttachmentCard } from "@/components/PdfAttachmentCard";
 import { ZoomableImageViewer } from "@/components/ZoomableImageViewer";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -148,15 +147,6 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
         </TouchableOpacity>
       )}
 
-      {/* PDF Attachments */}
-      {note.attachments && note.attachments.length > 0 && (
-        <View style={styles.attachmentsSection}>
-          {note.attachments.map((att) => (
-            <PdfAttachmentCard key={att.id} attachment={att} compact />
-          ))}
-        </View>
-      )}
-
       {/* Next revision info */}
       {nextInterval !== undefined && (
         <View style={[styles.nextRevision, { backgroundColor: colors.muted, borderRadius: colors.radius - 4 }]}>
@@ -214,7 +204,6 @@ const styles = StyleSheet.create({
   content: { fontSize: 14, lineHeight: 22 },
   expandRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   expandText: { fontSize: 13 },
-  attachmentsSection: { gap: 6, marginTop: -4 },
   nextRevision: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10 },
   nextRevisionText: { fontSize: 12, flex: 1 },
   actions: { flexDirection: "row", gap: 10, marginTop: 4 },

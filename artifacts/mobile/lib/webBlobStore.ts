@@ -1,5 +1,5 @@
 /**
- * Web-only IndexedDB store for image / PDF blobs.
+ * Web-only IndexedDB store for image blobs.
  *
  * Why: On web, AsyncStorage is backed by localStorage which has a small
  * (~5–10 MB) per-origin quota. Inlining base64 image data inside the
