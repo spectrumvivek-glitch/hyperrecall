@@ -91,7 +91,27 @@ async function openPdf(uri: string, name: string) {
       });
       return;
     } catch (e: any) {
-      // No PDF reader app installed / no activity to handle the intent.
+      // Try to distinguish "stale/unreadable URI" (legacy content:// from old
+      // saves) from "no PDF reader installed" so the message stays helpful.
+      const msg = String(e?.message ?? "").toLowerCase();
+      // Heuristics: error text suggests the file/uri is the problem, OR the
+      // saved URI was a legacy non-file scheme (stale content://) which we
+      // can't probe via FileSystem.getInfoAsync.
+      const looksLikeBadUri =
+        msg.includes("no such file") ||
+        msg.includes("not found") ||
+        msg.includes("permission denial") ||
+        msg.includes("failed to find") ||
+        msg.includes("fileuriexposed") ||
+        (!uri.startsWith("file://") && !uri.startsWith("http"));
+      if (looksLikeBadUri) {
+        Alert.alert(
+          "File missing",
+          "Yeh PDF ab available nahi hai. Please dobara upload karein.",
+        );
+        return;
+      }
+      // Otherwise: most likely no activity to handle application/pdf.
       Alert.alert(
         "No PDF reader found",
         "Koi PDF reader nahi mila. Google Drive ya Adobe Acrobat install karein, fir try karein.",
