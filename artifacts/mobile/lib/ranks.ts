@@ -1,15 +1,15 @@
 // Rank ladder — Free Fire-style competitive progression.
 //
-// 10 ranks × 5 steps × 40 reviews per step = 2000 reviews to reach The Boss V.
+// 10 ranks × 5 steps × 20 reviews per step = 1000 reviews to reach The Boss V.
 // Drives a personal status display; not a networked leaderboard.
 
 import { Feather } from "@expo/vector-icons";
 
-export const REVIEWS_PER_STEP = 40;
+export const REVIEWS_PER_STEP = 20;
 export const STEPS_PER_RANK = 5;
-export const REVIEWS_PER_RANK = REVIEWS_PER_STEP * STEPS_PER_RANK; // 200
+export const REVIEWS_PER_RANK = REVIEWS_PER_STEP * STEPS_PER_RANK; // 100
 export const TOTAL_TIERS = 50; // 10 ranks × 5 steps
-export const MAX_REVIEWS = TOTAL_TIERS * REVIEWS_PER_STEP; // 2000
+export const MAX_REVIEWS = TOTAL_TIERS * REVIEWS_PER_STEP; // 1000
 
 export type RankIconName = keyof typeof Feather.glyphMap;
 
