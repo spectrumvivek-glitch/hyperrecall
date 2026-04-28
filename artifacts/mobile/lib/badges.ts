@@ -27,7 +27,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "streak_7",
     name: "Week Warrior",
-    description: "Maintain a 10-day study streak",
+    description: "Maintain a 7-day study streak",
     icon: "award",
     color: "#8B5CF6",
     rarity: "rare",
@@ -35,7 +35,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "streak_14",
     name: "Fortnight",
-    description: "Maintain a 21-day study streak",
+    description: "Maintain a 14-day study streak",
     icon: "trending-up",
     color: "#06B6D4",
     rarity: "rare",
@@ -43,7 +43,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "streak_30",
     name: "Monthly Hero",
-    description: "Maintain a 45-day study streak",
+    description: "Maintain a 30-day study streak",
     icon: "calendar",
     color: "#10B981",
     rarity: "epic",
@@ -51,7 +51,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "streak_100",
     name: "Century Streak",
-    description: "Maintain a 150-day study streak",
+    description: "Maintain a 100-day study streak",
     icon: "shield",
     color: "#EC4899",
     rarity: "legendary",
@@ -165,10 +165,10 @@ export function checkNewBadges(
 
   check("first_review", stats.totalCompleted >= 1);
   check("streak_3", stats.currentStreak >= 5);
-  check("streak_7", stats.currentStreak >= 10);
-  check("streak_14", stats.currentStreak >= 21);
-  check("streak_30", stats.currentStreak >= 45);
-  check("streak_100", stats.currentStreak >= 150);
+  check("streak_7", stats.currentStreak >= 7);
+  check("streak_14", stats.currentStreak >= 14);
+  check("streak_30", stats.currentStreak >= 30);
+  check("streak_100", stats.currentStreak >= 100);
   check("reviews_10", stats.totalCompleted >= 25);
   check("reviews_50", stats.totalCompleted >= 100);
   check("reviews_100", stats.totalCompleted >= 250);
