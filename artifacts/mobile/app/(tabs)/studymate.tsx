@@ -34,6 +34,7 @@ async function openStudyMateAI() {
 const FEATURES: Array<{ icon: keyof typeof Feather.glyphMap; text: string }> = [
   { icon: "help-circle", text: "Ask any doubt and get instant explanations" },
   { icon: "book-open", text: "Generate summary of your notes from images" },
+  { icon: "video", text: "Summarize video lecture to notes" },
   { icon: "edit-3", text: "Generate practice questions on any topic" },
   { icon: "zap", text: "Predict most likely questions and topics for your exam" },
   { icon: "copy", text: "Tip - Copy the summary and questions from StudyMate AI and paste it in your notes" },
