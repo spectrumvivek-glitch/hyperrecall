@@ -6,6 +6,7 @@ import {
   Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,17 +19,43 @@ import { useColors } from "@/hooks/useColors";
 const STUDYMATE_AI_URL =
   "https://chatgpt.com/g/g-69ee1c9314988191b54a52b0a1bc5a00-studymate-ai";
 
+/**
+ * Opens StudyMate AI in the user's browser / ChatGPT app.
+ *
+ * NOTE: We deliberately do NOT use `Linking.canOpenURL` here. On Android 11+
+ * (API 30+) `canOpenURL` returns `false` for arbitrary https links unless
+ * the app has declared the target in its `AndroidManifest` `queries` block.
+ * That false negative is what caused the "unable to open link" message on
+ * many phones — the link was perfectly openable, we just weren't allowed
+ * to ask. Calling `openURL` directly works fine because the system itself
+ * shows the chooser. We only fall back to a copy-to-clipboard path if
+ * `openURL` itself throws (e.g. no browser installed at all).
+ */
 async function openStudyMateAI() {
+  // First try: send the user straight to ChatGPT in their browser / app.
   try {
-    const supported = await Linking.canOpenURL(STUDYMATE_AI_URL);
-    if (supported) {
-      await Linking.openURL(STUDYMATE_AI_URL);
-    } else {
-      Alert.alert("StudyMate AI", "Couldn't open the link. Please try again.");
-    }
-  } catch {
-    Alert.alert("StudyMate AI", "Couldn't open the link. Please try again.");
+    await Linking.openURL(STUDYMATE_AI_URL);
+    return;
+  } catch (err) {
+    console.warn("[studymate] openURL failed:", err);
   }
+  // Last resort: show the URL and offer Share so the user can send it
+  // to themselves or open it manually.
+  Alert.alert(
+    "Couldn't open the link automatically",
+    `Please open this link in your browser:\n\n${STUDYMATE_AI_URL}`,
+    [
+      { text: "OK", style: "cancel" },
+      {
+        text: "Share link",
+        onPress: () => {
+          Share.share({ message: STUDYMATE_AI_URL, url: STUDYMATE_AI_URL }).catch(
+            () => {}
+          );
+        },
+      },
+    ]
+  );
 }
 
 const FEATURES: Array<{ icon: keyof typeof Feather.glyphMap; text: string }> = [
