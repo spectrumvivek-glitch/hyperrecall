@@ -7,6 +7,8 @@ import React, {
   useState,
 } from "react";
 
+import { rescheduleAllReminders } from "@/lib/notifications";
+
 const USERNAME_KEY = "@hyperrecall/username";
 
 interface UserProfileValue {
@@ -52,6 +54,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     try {
       await AsyncStorage.setItem(USERNAME_KEY, clean);
       setUsernameState(clean);
+      // Re-schedule the daily 8 AM greeting so it picks up the new name.
+      rescheduleAllReminders();
     } catch (err) {
       console.warn("Failed to save username:", err);
     }

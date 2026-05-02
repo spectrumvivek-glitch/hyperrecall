@@ -16,14 +16,18 @@ const NOTIF_MINUTE_KEY = "@studybrain/notif_minute";
 const STREAK_NOTIF_ENABLED_KEY = "@studybrain/streak_notif_enabled";
 const STREAK_NOTIF_HOUR_KEY = "@studybrain/streak_notif_hour";
 const STREAK_NOTIF_MINUTE_KEY = "@studybrain/streak_notif_minute";
+const USERNAME_KEY = "@hyperrecall/username";
 
 export const DEFAULT_HOUR = 9;
 export const DEFAULT_MINUTE = 0;
 export const DEFAULT_STREAK_HOUR = 21;
 export const DEFAULT_STREAK_MINUTE = 0;
+export const MORNING_HOUR = 8;
+export const MORNING_MINUTE = 0;
 
 const REMINDER_PREFIX = "hr-due-";
 const STREAK_PREFIX = "hr-streak-";
+const MORNING_PREFIX = "hr-morning-";
 const WINDOW_DAYS = 7;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -133,7 +137,54 @@ async function cancelByPrefix(prefix: string): Promise<void> {
 
 export async function cancelAllRevisionNotifications(): Promise<void> {
   if (Platform.OS === "web" || !notifAvailable) return;
-  await Promise.all([cancelByPrefix(REMINDER_PREFIX), cancelByPrefix(STREAK_PREFIX)]);
+  await Promise.all([
+    cancelByPrefix(REMINDER_PREFIX),
+    cancelByPrefix(STREAK_PREFIX),
+    cancelByPrefix(MORNING_PREFIX),
+  ]);
+}
+
+async function readUsername(): Promise<string> {
+  try {
+    const raw = await AsyncStorage.getItem(USERNAME_KEY);
+    return raw ? raw.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+export function buildMorningGreeting(username: string): { title: string; body: string } {
+  const name = username.trim();
+  const greeting = name.length > 0 ? `Hello ${name}` : "Hello there";
+  return {
+    title: "Good morning! ☀️",
+    body: `${greeting}, have a great day with HyperRecall`,
+  };
+}
+
+async function scheduleMorningGreetingWindow(username: string): Promise<void> {
+  if (Platform.OS === "web" || !notifAvailable || !Notif) return;
+  await cancelByPrefix(MORNING_PREFIX);
+  const today = startOfDay(Date.now());
+  const now = Date.now();
+  const content = buildMorningGreeting(username);
+  for (let i = 0; i < WINDOW_DAYS; i++) {
+    const dayStart = today + i * ONE_DAY_MS;
+    const fireAt = dateAt(dayStart, MORNING_HOUR, MORNING_MINUTE);
+    if (fireAt.getTime() <= now) continue;
+    try {
+      await Notif.scheduleNotificationAsync({
+        identifier: `${MORNING_PREFIX}${dayKey(dayStart)}`,
+        content: { ...content, sound: true },
+        trigger: {
+          type: Notif.SchedulableTriggerInputTypes.DATE,
+          date: fireAt,
+        },
+      });
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /**
@@ -270,18 +321,20 @@ async function performReschedule(): Promise<void> {
     await cancelAllRevisionNotifications();
     return;
   }
-  const [plans, notes, stats, logs] = await Promise.all([
+  const [plans, notes, stats, logs, username] = await Promise.all([
     getRevisionPlans(),
     getNotes(),
     getUserStats(),
     getRevisionLogs(),
+    readUsername(),
   ]);
   const todayStart = startOfDay(Date.now());
   const hasReviewedToday = logs.some(
     (l) => l.status === "completed" && l.date >= todayStart
   );
-  // Schedule both windows in parallel — they touch independent identifier
-  // namespaces (hr-due-* vs hr-streak-*) so there's no contention.
+  // Schedule all three windows in parallel — they touch independent
+  // identifier namespaces (hr-due-*, hr-streak-*, hr-morning-*) so
+  // there's no contention.
   await Promise.all([
     scheduleRevisionReminderWindow(settings.hour, settings.minute, plans, notes),
     settings.streakEnabled
@@ -292,6 +345,7 @@ async function performReschedule(): Promise<void> {
           hasReviewedToday
         )
       : cancelByPrefix(STREAK_PREFIX),
+    scheduleMorningGreetingWindow(username),
   ]);
 }
 
