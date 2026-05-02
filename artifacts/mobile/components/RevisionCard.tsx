@@ -365,6 +365,30 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* Coaching tip — the heart of HyperRecall */}
+      <View
+        style={[
+          styles.recallTip,
+          {
+            backgroundColor: colors.primary + "10",
+            borderColor: colors.primary + "30",
+            borderRadius: colors.radius - 2,
+          },
+        ]}
+      >
+        <View style={[styles.recallIconWrap, { backgroundColor: colors.primary + "20" }]}>
+          <Feather name="cpu" size={14} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[styles.recallTitle, { color: colors.primary }]}>
+            Here the HyperRecall starts
+          </Text>
+          <Text style={[styles.recallBody, { color: colors.foreground }]}>
+            Try to recall without watching the notes — or teach that concept in your own words.
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -520,4 +544,27 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   completeText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  recallTip: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  recallIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  recallTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+    textTransform: "uppercase",
+  },
+  recallBody: { fontSize: 13, lineHeight: 19, fontWeight: "500" },
 });
