@@ -52,8 +52,14 @@ function packageSubtitle(pkg: PurchasesPackage): string {
   switch (pkg.identifier) {
     case "$rc_lifetime":
       return "One-time payment, forever";
-    case "$rc_annual":
-      return "Billed yearly · just ₹83/mo";
+    case "$rc_annual": {
+      const monthly = pkg.product.price > 0 ? pkg.product.price / 12 : 0;
+      const symbol = pkg.product.currencyCode ?? "";
+      const formatted = monthly > 0 ? `${symbol} ${monthly.toFixed(0)}` : "";
+      return formatted
+        ? `Billed yearly · just ${formatted}/mo`
+        : "Billed yearly";
+    }
     case "$rc_monthly":
       return "Billed monthly";
     default:
@@ -62,16 +68,7 @@ function packageSubtitle(pkg: PurchasesPackage): string {
 }
 
 function packagePrice(pkg: PurchasesPackage): string {
-  switch (pkg.identifier) {
-    case "$rc_lifetime":
-      return "₹1,999";
-    case "$rc_annual":
-      return "₹999";
-    case "$rc_monthly":
-      return "₹99";
-    default:
-      return pkg.product.priceString;
-  }
+  return pkg.product.priceString;
 }
 
 export default function PaywallScreen() {

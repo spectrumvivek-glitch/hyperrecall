@@ -164,7 +164,7 @@ At `artifacts/api-server/`. Express server at port 8080.
   - `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` (Play Store)
 - **Seed script**: `scripts/seedRevenueCat.ts` (run with `pnpm exec tsx scripts/seedRevenueCat.ts`). Idempotent — safe to re-run after editing.
 - **Mobile integration**: `artifacts/mobile/lib/revenuecat.tsx` exports `SubscriptionProvider` and `useSubscription({ isPro, packages, purchasePackage, restorePurchases, ... })`. Native `react-native-purchases` is dynamically imported only on real iOS/Android builds (Expo Go and web are handled gracefully). Provider is wired into `app/_layout.tsx` between `AuthProvider` and `AppProvider`; user is automatically `logIn`/`logOut`'d to RevenueCat on auth changes.
-- **Paywall screen**: `artifacts/mobile/app/paywall.tsx` (modal, `/paywall`). Settings → Subscription → opens paywall.
+- **Paywall screen**: `artifacts/mobile/app/paywall.tsx` (modal, `/paywall`). Settings → Subscription → opens paywall. Prices are fetched from RevenueCat (`pkg.product.priceString`) so they automatically show the user's local currency based on their App Store / Play Store country.
 
 ## Key Commands
 
