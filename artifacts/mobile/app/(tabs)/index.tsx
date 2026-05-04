@@ -1,6 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
+import { cacheDirectory, copyAsync } from "expo-file-system/legacy";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import * as Sharing from "expo-sharing";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -143,6 +146,21 @@ function NewBadgeBanner({
 }
 
 
+const PROMO_IMAGE = require("@/assets/images/hyperrecall-promo.png");
+
+async function getPromoImageUri(): Promise<string | null> {
+  try {
+    const asset = Asset.fromModule(PROMO_IMAGE);
+    await asset.downloadAsync();
+    if (!asset.localUri) return null;
+    const cacheUri = `${cacheDirectory}hyperrecall-promo.png`;
+    await copyAsync({ from: asset.localUri, to: cacheUri });
+    return cacheUri;
+  } catch {
+    return null;
+  }
+}
+
 async function shareStreak(streak: number, totalXp: number, level: number, levelName: string) {
   const message =
     `🔥 I'm on a ${streak}-day study streak with HyperRecall!\n\n` +
@@ -152,10 +170,29 @@ async function shareStreak(streak: number, totalXp: number, level: number, level
     `Search "HyperRecall" on Play Store or App Store and download now!\n\n` +
     `#HyperRecall #SpacedRepetition #StudySmart #Learning`;
   try {
-    await Share.share({
-      message,
-      title: "HyperRecall — Learn Smarter with Spaced Repetition",
-    });
+    if (Platform.OS === "web") {
+      await Share.share({ message, title: "HyperRecall" });
+      return;
+    }
+
+    const imageUri = await getPromoImageUri();
+
+    if (Platform.OS === "ios") {
+      await Share.share({
+        message,
+        url: imageUri ?? undefined,
+        title: "HyperRecall — Learn Smarter with Spaced Repetition",
+      });
+    } else {
+      if (imageUri && (await Sharing.isAvailableAsync())) {
+        await Sharing.shareAsync(imageUri, {
+          mimeType: "image/png",
+          dialogTitle: "Share HyperRecall",
+        });
+      } else {
+        await Share.share({ message, title: "HyperRecall" });
+      }
+    }
   } catch {
     // user cancelled or error
   }
