@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import { type ThemeMode, useTheme } from "@/context/ThemeContext";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useColors } from "@/hooks/useColors";
 import { useCloudNotes } from "@/lib/hooks/useCloudNotes";
@@ -72,6 +73,7 @@ export default function SettingsScreen() {
   };
   const isOnline = useConnectionState();
   const router = useRouter();
+  const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const { isPro, isPaidPro, trial, isAvailable: subAvailable, isLoading: subLoading } = useSubscription();
   const { notes: cloudNotes, isLoading: cloudLoading, error: cloudError } = useCloudNotes(user?.uid ?? null);
 
@@ -296,6 +298,61 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             )}
           </View>
+        </SectionCard>
+      </View>
+
+      {/* Appearance */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Appearance</Text>
+        <SectionCard>
+          {(["light", "dark", "system"] as ThemeMode[]).map((opt, idx) => {
+            const isActive = themeMode === opt;
+            const icon: "sun" | "moon" | "smartphone" =
+              opt === "light" ? "sun" : opt === "dark" ? "moon" : "smartphone";
+            const label =
+              opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System default";
+            return (
+              <React.Fragment key={opt}>
+                {idx > 0 && divider}
+                <TouchableOpacity
+                  onPress={() => setThemeMode(opt)}
+                  style={styles.settingRow}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.settingIcon,
+                      {
+                        backgroundColor: isActive
+                          ? colors.primary + "18"
+                          : colors.muted,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name={icon}
+                      size={18}
+                      color={isActive ? colors.primary : colors.mutedForeground}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.settingLabel,
+                      {
+                        color: isActive ? colors.foreground : colors.mutedForeground,
+                        flex: 1,
+                      },
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  {isActive && (
+                    <Feather name="check" size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              </React.Fragment>
+            );
+          })}
         </SectionCard>
       </View>
 

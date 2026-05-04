@@ -113,14 +113,16 @@ All paths require `request.auth.uid == userId`. Note writes validated for `title
 - `components/FloatingXP.tsx` — Animated +XP badge on revision complete
 - `lib/xp.ts` — XP thresholds, level names, progress calculation
 
-### Design System — Premium Dark UI (always forced dark)
-- Background: `#0F172A`, Card: `#1E293B`, Muted: `#162032`
-- Primary: `#6366F1` (indigo), Accent/Success: `#22C55E`, Warning: `#F59E0B`, Destructive: `#EF4444`
-- Text: `#F8FAFC`, Muted text: `#94A3B8`, Border: `#334155`
+### Design System — Light / Dark / System Theme
+- **Theme modes**: Light, Dark, System default — configurable in Settings > Appearance
+- **ThemeContext** (`context/ThemeContext.tsx`): persists mode in AsyncStorage (`@hyperrecall/theme`), resolves to light/dark via `useColorScheme()`
+- **useColors hook** (`hooks/useColors.ts`): reads resolved theme from ThemeContext, returns matching palette
+- **Light palette**: Background `#F1F5F9`, Card `#ffffff`, Text `#0f172a`, Border `#E2E8F0`
+- **Dark palette**: Background `#0F172A`, Card `#1E293B`, Text `#E2E8F0`, Border `#334155`
+- Primary: `#6366F1` (light) / `#818CF8` (dark), Accent/Success: `#22C55E` / `#34D399`, Warning: `#F59E0B` / `#FBBF24`, Destructive: `#ef4444` / `#F87171`
 - Radius: 16px globally
 - Gradients: `#6366F1 → #8B5CF6` (primary), `#22C55E → #16A34A` (success)
-- Shadows use accent color as `shadowColor` for glow effect
-- `hooks/useColors.ts` always returns the dark palette (forced dark mode)
+- Tab bar adapts to theme (blur tint + background color)
 
 ### Reusable UI Components
 - `components/ui/PremiumCard.tsx` — card with glow shadow + border

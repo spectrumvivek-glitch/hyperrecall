@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { UsernamePromptModal } from "@/components/UsernamePromptModal";
 import { AppProvider } from "@/context/AppContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { UserProfileProvider } from "@/context/UserProfileContext";
 import { ProGateHost } from "@/lib/proGate";
 import { SubscriptionProvider } from "@/lib/revenuecat";
@@ -75,23 +76,25 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <UserProfileProvider>
-              <SubscriptionProvider>
-                <AppProvider>
-                  <GestureHandlerRootView>
-                    <KeyboardProvider>
-                      <RootLayoutNav />
-                      <ProGateHost />
-                      <UsernamePromptModal />
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </AppProvider>
-              </SubscriptionProvider>
-            </UserProfileProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <UserProfileProvider>
+                <SubscriptionProvider>
+                  <AppProvider>
+                    <GestureHandlerRootView>
+                      <KeyboardProvider>
+                        <RootLayoutNav />
+                        <ProGateHost />
+                        <UsernamePromptModal />
+                      </KeyboardProvider>
+                    </GestureHandlerRootView>
+                  </AppProvider>
+                </SubscriptionProvider>
+              </UserProfileProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

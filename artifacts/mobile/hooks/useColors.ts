@@ -1,6 +1,8 @@
 import colors from "@/constants/colors";
+import { useTheme } from "@/context/ThemeContext";
 
 export function useColors() {
-  const palette = (colors as Record<string, typeof colors.light>).dark ?? colors.light;
+  const { resolved } = useTheme();
+  const palette = resolved === "dark" ? colors.dark : colors.light;
   return { ...palette, radius: colors.radius };
 }

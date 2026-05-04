@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useTheme } from "@/context/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 
@@ -57,10 +58,14 @@ function ReviewIcon({ color, isIOS }: { color: string; isIOS: boolean }) {
 
 export default function TabLayout() {
   const colors = useColors();
+  const { resolved } = useTheme();
   const safeAreaInsets = useSafeAreaInsets();
 
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const isDark = resolved === "dark";
+  const tabBg = isDark ? "#0F172A" : "#F8FAFC";
+  const blurTint = isDark ? "dark" : "light";
 
   return (
     <Tabs
@@ -87,7 +92,7 @@ export default function TabLayout() {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: isIOS ? "transparent" : "#F8FAFC",
+          backgroundColor: isIOS ? "transparent" : tabBg,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
@@ -99,12 +104,12 @@ export default function TabLayout() {
           isIOS ? (
             <BlurView
               intensity={95}
-              tint="light"
+              tint={blurTint}
               style={StyleSheet.absoluteFill}
             />
           ) : (
             <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: "#F8FAFC" }]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: tabBg }]}
             />
           ),
       }}
