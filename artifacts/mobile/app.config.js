@@ -19,7 +19,7 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
-      versionCode: 25,
+      versionCode: 26,
       permissions: [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
@@ -49,7 +49,14 @@ module.exports = {
           origin: "https://replit.com/",
         },
       ],
-      "expo-font",
+      [
+        "expo-font",
+        {
+          fonts: [
+            "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ttf",
+          ],
+        },
+      ],
       [
         "expo-image-picker",
         {

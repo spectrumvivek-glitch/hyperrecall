@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Font from "expo-font";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -46,30 +46,17 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsReady, setFontsReady] = useState(false);
+  const [fontsLoaded, fontError] = useFonts({
+    ...Feather.font,
+  });
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        await Feather.loadFont();
-      } catch (err) {
-        console.warn("Feather font load failed:", err);
-      }
-      if (!cancelled) setFontsReady(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (fontsReady) {
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsReady]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsReady) {
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
