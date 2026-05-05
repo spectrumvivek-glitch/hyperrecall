@@ -13,14 +13,14 @@ interface ThemeContextValue {
 const STORAGE_KEY = "@hyperrecall/theme";
 
 const ThemeContext = createContext<ThemeContextValue>({
-  mode: "system",
+  mode: "light",
   setMode: async () => {},
   resolved: "light",
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [mode, setModeState] = useState<ThemeMode>("light");
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
