@@ -5,7 +5,7 @@
 // Boss I at 1000 total reviews. The Boss has 5 steps of 20 reviews each
 // (1000 → 1100 max). Drives a personal status display; not a leaderboard.
 
-import { Feather } from "@expo/vector-icons";
+import { Feather } from "@/components/Feather";
 
 export const REVIEWS_PER_STEP = 20;
 export const STEPS_PER_RANK = 5;

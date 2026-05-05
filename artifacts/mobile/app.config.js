@@ -19,7 +19,7 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
-      versionCode: 30,
+      versionCode: 31,
       permissions: [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
@@ -47,12 +47,6 @@ module.exports = {
         "expo-router",
         {
           origin: "https://replit.com/",
-        },
-      ],
-      [
-        "expo-font",
-        {
-          fonts: ["./assets/fonts/Feather.ttf"],
         },
       ],
       [

@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather } from "@/components/Feather";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {

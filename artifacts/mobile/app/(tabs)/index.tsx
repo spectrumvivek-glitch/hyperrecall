@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather } from "@/components/Feather";
 import { Asset } from "expo-asset";
 import { cacheDirectory, copyAsync } from "expo-file-system/legacy";
 import { LinearGradient } from "expo-linear-gradient";
