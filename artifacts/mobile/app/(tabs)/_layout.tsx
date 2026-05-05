@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useTheme } from "@/context/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 
@@ -58,14 +57,11 @@ function ReviewIcon({ color, isIOS }: { color: string; isIOS: boolean }) {
 
 export default function TabLayout() {
   const colors = useColors();
-  const { resolved } = useTheme();
   const safeAreaInsets = useSafeAreaInsets();
 
   const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
-  const isDark = resolved === "dark";
-  const tabBg = isDark ? "#0F172A" : "#F8FAFC";
-  const blurTint = isDark ? "dark" : "light";
+  const tabBg = "#F8FAFC";
+  const blurTint = "light" as const;
 
   return (
     <Tabs
