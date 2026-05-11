@@ -1,4 +1,4 @@
-const { withAndroidManifest } = require("@expo/config-plugins");
+const { withAndroidManifest } = require("expo/config-plugins");
 
 const PERMISSIONS_TO_REMOVE = [
   "android.permission.READ_MEDIA_IMAGES",
