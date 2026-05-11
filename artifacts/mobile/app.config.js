@@ -19,7 +19,7 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
-      versionCode: 34,
+      versionCode: 35,
       permissions: [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
@@ -66,6 +66,7 @@ module.exports = {
         },
       ],
       "@react-native-google-signin/google-signin",
+      "./plugins/withRemoveMediaPermissions",
     ],
     experiments: {
       typedRoutes: true,
