@@ -142,18 +142,22 @@ export function PremiumBadgeIcon({ badge, earned, size = 56 }: Props) {
         />
       </Svg>
 
-      {/* Centered Feather glyph on top */}
-      <Feather
-        name={badge.icon as any}
-        size={iconSize}
-        color="#ffffff"
+      {/* Centered Feather glyph on top of the shield SVG */}
+      <View
         style={{
-          textShadowColor: "rgba(0,0,0,0.45)",
-          textShadowOffset: { width: 0, height: 1 },
-          textShadowRadius: 2,
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          alignItems: "center",
+          justifyContent: "center",
           opacity: earned ? 1 : 0.55,
         }}
-      />
+        pointerEvents="none"
+      >
+        <Feather name={badge.icon as any} size={iconSize} color="#ffffff" />
+      </View>
 
       {/* Tiny rarity dot for legendary/epic earned badges */}
       {earned && (badge.rarity === "legendary" || badge.rarity === "epic") && (
