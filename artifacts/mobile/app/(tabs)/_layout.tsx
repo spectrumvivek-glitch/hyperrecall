@@ -2,8 +2,9 @@ import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@/components/Feather";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  AppState,
   Platform,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import { getExamSessions } from "@/lib/storage";
 
 function ReviewIcon({ color, isIOS }: { color: string; isIOS: boolean }) {
   const { dueNotes } = useApp();
@@ -23,6 +25,70 @@ function ReviewIcon({ color, isIOS }: { color: string; isIOS: boolean }) {
         <SymbolView name="checkmark.circle" tintColor={color} size={24} />
       ) : (
         <Feather name="check-circle" size={22} color={color} />
+      )}
+      {count > 0 && (
+        <View
+          style={{
+            position: "absolute",
+            top: -4,
+            right: -6,
+            backgroundColor: "#EF4444",
+            borderRadius: 8,
+            minWidth: 16,
+            height: 16,
+            paddingHorizontal: 3,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 9,
+              fontWeight: "700",
+              lineHeight: 12,
+            }}
+          >
+            {count > 99 ? "99+" : count}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function ExamIcon({ color, isIOS }: { color: string; isIOS: boolean }) {
+  const [count, setCount] = useState(0);
+
+  const loadCount = useCallback(async () => {
+    const sessions = await getExamSessions();
+    const todayEnd = new Date().setHours(0, 0, 0, 0) + 24 * 60 * 60 * 1000;
+    const total = sessions.reduce(
+      (acc, s) =>
+        acc +
+        s.schedule.filter(
+          (item: { completed: boolean; scheduledDate: number }) =>
+            !item.completed && item.scheduledDate < todayEnd
+        ).length,
+      0
+    );
+    setCount(total);
+  }, []);
+
+  useEffect(() => {
+    loadCount();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") loadCount();
+    });
+    return () => sub.remove();
+  }, [loadCount]);
+
+  return (
+    <View>
+      {isIOS ? (
+        <SymbolView name="graduationcap" tintColor={color} size={24} />
+      ) : (
+        <Feather name="award" size={22} color={color} />
       )}
       {count > 0 && (
         <View
@@ -145,12 +211,7 @@ export default function TabLayout() {
         name="exam"
         options={{
           title: "Exam Mode",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="graduationcap" tintColor={color} size={24} />
-            ) : (
-              <Feather name="award" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <ExamIcon color={color} isIOS={isIOS} />,
         }}
       />
       <Tabs.Screen
