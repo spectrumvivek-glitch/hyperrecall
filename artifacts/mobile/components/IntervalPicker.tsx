@@ -119,9 +119,18 @@ export function IntervalPicker({ intervals, onChange }: Props) {
 
       {/* Current intervals */}
       <View style={styles.section}>
+        {intervals.length === 0 ? (
+          <View style={[styles.emptyPrompt, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="arrow-up" size={14} color={colors.mutedForeground} />
+            <Text style={[styles.emptyPromptText, { color: colors.mutedForeground }]}>
+              Select a revision mode above to continue
+            </Text>
+          </View>
+        ) : (
         <Text style={[styles.label, { color: colors.mutedForeground }]}>
           Schedule ({intervals.length} steps) · 0 = same day
         </Text>
+        )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.chips}>
             {intervals.map((day) => (
@@ -218,6 +227,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderWidth: 1,
   },
+  emptyPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  emptyPromptText: { fontSize: 13 },
   addBtn: {
     width: 44,
     alignItems: "center",

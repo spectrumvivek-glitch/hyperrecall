@@ -21,8 +21,6 @@ import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
 import { useSubscription } from "@/lib/revenuecat";
 import { NoteImage } from "@/lib/storage";
 
-const DEFAULT_INTERVALS = [0, 1, 2, 3, 5, 7, 10, 14, 18, 25, 35, 45, 60, 75, 90, 110, 130, 150, 180, 210, 240, 270, 300, 330, 365];
-
 export default function AddNoteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -43,7 +41,7 @@ export default function AddNoteScreen() {
   const [content, setContent] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [images, setImages] = useState<NoteImage[]>([]);
-  const [intervals, setIntervals] = useState<number[]>(DEFAULT_INTERVALS);
+  const [intervals, setIntervals] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -74,7 +72,7 @@ export default function AddNoteScreen() {
       return;
     }
     if (intervals.length === 0) {
-      setErrorMsg("Please add at least one revision interval.");
+      setErrorMsg("Please select a revision mode (Classic, Aggressive, or Relaxed).");
       return;
     }
 
