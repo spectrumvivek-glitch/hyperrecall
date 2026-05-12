@@ -19,7 +19,7 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
-      versionCode: 38,
+      versionCode: 39,
       permissions: [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
@@ -53,7 +53,12 @@ module.exports = {
       [
         "expo-image-picker",
         {
-          photosPermission: "HyperRecall needs access to your photos so you can attach images to your study notes.",
+          // Do NOT set photosPermission — that auto-adds READ_MEDIA_IMAGES /
+          // READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE to the manifest, which
+          // Google Play rejects. We use Android Photo Picker (system UI) which
+          // requires no permission. cameraPermission is kept since the user
+          // can also capture a fresh photo for a note.
+          photosPermission: false,
           cameraPermission: "HyperRecall uses the camera so you can capture photos of your notes, textbooks, or whiteboards and add them to a note.",
         },
       ],
