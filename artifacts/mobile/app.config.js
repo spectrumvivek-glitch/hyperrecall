@@ -19,7 +19,7 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
-      versionCode: 39,
+      versionCode: 40,
       permissions: [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
@@ -35,6 +35,7 @@ module.exports = {
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
