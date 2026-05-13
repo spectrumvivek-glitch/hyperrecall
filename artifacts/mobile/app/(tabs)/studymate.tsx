@@ -200,11 +200,6 @@ export default function StudyMateScreen() {
                   {f.subtitle}
                 </Text>
               </View>
-              <Feather
-                name="chevron-right"
-                size={18}
-                color={colors.mutedForeground}
-              />
             </View>
           ))}
 
