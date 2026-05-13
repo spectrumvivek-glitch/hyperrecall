@@ -274,6 +274,15 @@ function ExamReviewCard({
   const exitTranslateY = useRef(new Animated.Value(0)).current;
   const expandAnim = useRef(new Animated.Value(0)).current;
 
+  // Success burst animation values
+  const [showSuccess, setShowSuccess] = useState(false);
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const ringScale = useRef(new Animated.Value(0)).current;
+  const ringOpacity = useRef(new Animated.Value(0.6)).current;
+  const sparkAnim = useRef(new Animated.Value(0)).current;
+  const checkRotate = useRef(new Animated.Value(0)).current;
+
   const cat = categories.find((c) => c.id === note.categoryId);
   const catColor = cat?.color ?? "#6366F1";
   const catName = cat?.name ?? "General";
@@ -285,11 +294,67 @@ function ExamReviewCard({
   };
 
   const handleComplete = () => {
+    setShowSuccess(true);
+
+    // Phase 1: Burst checkmark in with spring + ring expand + sparkles
     Animated.parallel([
-      Animated.timing(exitOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
-      Animated.timing(exitScale, { toValue: 0.88, duration: 220, useNativeDriver: true }),
-      Animated.timing(exitTranslateY, { toValue: -16, duration: 250, useNativeDriver: true }),
-    ]).start(() => onComplete());
+      Animated.spring(successScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 90,
+        friction: 6,
+      }),
+      Animated.timing(successOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(checkRotate, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(ringScale, {
+            toValue: 1.6,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringOpacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+      Animated.timing(sparkAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Phase 2: After hold, exit the card upward with rotation
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(exitOpacity, {
+          toValue: 0,
+          duration: 320,
+          useNativeDriver: true,
+        }),
+        Animated.timing(exitScale, {
+          toValue: 0.85,
+          duration: 320,
+          useNativeDriver: true,
+        }),
+        Animated.timing(exitTranslateY, {
+          toValue: -40,
+          duration: 320,
+          useNativeDriver: true,
+        }),
+      ]).start(() => onComplete());
+    }, 750);
   };
 
   const expandScale = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] });
@@ -379,7 +444,7 @@ function ExamReviewCard({
           )}
 
           {phase === "study" && (
-            <TouchableOpacity onPress={handleComplete} disabled={busy} style={{ borderRadius: 12, overflow: "hidden" }} activeOpacity={0.82}>
+            <TouchableOpacity onPress={handleComplete} disabled={busy || showSuccess} style={{ borderRadius: 12, overflow: "hidden" }} activeOpacity={0.82}>
               <LinearGradient colors={["#22C55E", "#16A34A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 13 }}>
                 <Feather name="check-circle" size={16} color="#fff" />
                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Mark Complete</Text>
@@ -387,6 +452,119 @@ function ExamReviewCard({
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Success burst overlay */}
+        {showSuccess && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              ercStyles.successOverlay,
+              { backgroundColor: colors.card + "f0", opacity: successOpacity },
+            ]}
+          >
+            {/* Expanding ring */}
+            <Animated.View
+              style={[
+                ercStyles.successRing,
+                {
+                  opacity: ringOpacity,
+                  transform: [{ scale: ringScale }],
+                },
+              ]}
+            />
+
+            {/* Center checkmark with spring + slight rotation */}
+            <Animated.View
+              style={{
+                transform: [
+                  { scale: successScale },
+                  {
+                    rotate: checkRotate.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["-25deg", "0deg"],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <LinearGradient
+                colors={["#22C55E", "#16A34A"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={ercStyles.successCheck}
+              >
+                <Feather name="check" size={42} color="#fff" />
+              </LinearGradient>
+            </Animated.View>
+
+            {/* Floating sparkles */}
+            {[
+              { x: -60, y: -50, emoji: "✨", delay: 0 },
+              { x: 55, y: -55, emoji: "⭐", delay: 0.1 },
+              { x: -65, y: 30, emoji: "✨", delay: 0.15 },
+              { x: 60, y: 35, emoji: "✨", delay: 0.2 },
+              { x: 0, y: -75, emoji: "🎉", delay: 0.05 },
+            ].map((s, i) => (
+              <Animated.Text
+                key={i}
+                style={{
+                  position: "absolute",
+                  fontSize: 22,
+                  opacity: sparkAnim.interpolate({
+                    inputRange: [0, s.delay, s.delay + 0.3, 1],
+                    outputRange: [0, 0, 1, 0],
+                  }),
+                  transform: [
+                    {
+                      translateX: sparkAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, s.x],
+                      }),
+                    },
+                    {
+                      translateY: sparkAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, s.y],
+                      }),
+                    },
+                    {
+                      scale: sparkAnim.interpolate({
+                        inputRange: [0, s.delay, s.delay + 0.3, 1],
+                        outputRange: [0, 0, 1.2, 0.8],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                {s.emoji}
+              </Animated.Text>
+            ))}
+
+            {/* "Nice work!" label */}
+            <Animated.Text
+              style={[
+                ercStyles.successLabel,
+                {
+                  color: "#16A34A",
+                  opacity: sparkAnim.interpolate({
+                    inputRange: [0, 0.3, 1],
+                    outputRange: [0, 1, 1],
+                  }),
+                  transform: [
+                    {
+                      translateY: sparkAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              Nice work! +1 review
+            </Animated.Text>
+          </Animated.View>
+        )}
       </Animated.View>
     </>
   );
@@ -407,6 +585,39 @@ const ercStyles = StyleSheet.create({
   skipBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 10, borderRadius: 11, borderWidth: 1 },
   startWrap: { flex: 2, borderRadius: 11, overflow: "hidden" },
   startBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10 },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+  },
+  successRing: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: "#22C55E",
+  },
+  successCheck: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#16A34A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  successLabel: {
+    position: "absolute",
+    bottom: 18,
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
 });
 
 // ── Exam Card ─────────────────────────────────────────────────────────────────
