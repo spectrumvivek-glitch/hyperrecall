@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Circle, Svg } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AnalyticsLineChart } from "@/components/AnalyticsLineChart";
@@ -291,18 +292,77 @@ export default function AnalyticsScreen() {
 
       {/* Overview cards */}
       <View style={styles.overviewRow}>
+
+        {/* STREAK card */}
         <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: "#FF6B00" }]}>
-          <StreakBadge streak={userStats.currentStreak} size="md" />
-          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Streak</Text>
+          <View style={styles.statIconArea}>
+            <View style={styles.streakIconBg}>
+              <Text style={styles.streakFlame}>🔥</Text>
+            </View>
+            <Text style={styles.statSparkle1}>✦</Text>
+            <Text style={styles.statSparkle2}>✦</Text>
+          </View>
+          <Text style={styles.streakValue}>{userStats.currentStreak}</Text>
+          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>STREAK</Text>
         </View>
-        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.success }]}>
-          <Text style={[styles.overviewValue, { color: colors.success }]}>{completionRate}%</Text>
-          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Completion</Text>
+
+        {/* COMPLETION card — circular SVG ring */}
+        <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: "#22C55E" }]}>
+          {(() => {
+            const SIZE = 80;
+            const STROKE = 7;
+            const R = (SIZE - STROKE) / 2;
+            const CIRCUMFERENCE = 2 * Math.PI * R;
+            const progress = Math.min(completionRate, 100) / 100;
+            const dash = CIRCUMFERENCE * progress;
+            const gap = CIRCUMFERENCE - dash;
+            return (
+              <View style={{ width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center" }}>
+                <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
+                  <Circle
+                    cx={SIZE / 2}
+                    cy={SIZE / 2}
+                    r={R}
+                    stroke="#E2E8F0"
+                    strokeWidth={STROKE}
+                    fill="none"
+                  />
+                  <Circle
+                    cx={SIZE / 2}
+                    cy={SIZE / 2}
+                    r={R}
+                    stroke="#22C55E"
+                    strokeWidth={STROKE}
+                    fill="none"
+                    strokeDasharray={`${dash} ${gap}`}
+                    strokeLinecap="round"
+                    rotation="-90"
+                    origin={`${SIZE / 2}, ${SIZE / 2}`}
+                  />
+                </Svg>
+                <Text style={styles.ringValuePct}>
+                  <Text style={styles.ringValueNum}>{completionRate}</Text>
+                  <Text style={styles.ringValueSuffix}>%</Text>
+                </Text>
+              </View>
+            );
+          })()}
+          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>COMPLETION</Text>
         </View>
+
+        {/* REVIEWS card */}
         <View style={[styles.overviewCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.primary }]}>
-          <Text style={[styles.overviewValue, { color: colors.foreground }]}>{totalCompleted}</Text>
-          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>Reviews</Text>
+          <View style={styles.statIconArea}>
+            <View style={styles.reviewsIconBg}>
+              <Feather name="file-text" size={24} color="#6366F1" />
+            </View>
+            <Text style={styles.statSparkle1}>✦</Text>
+            <Text style={styles.statSparkle2}>✦</Text>
+          </View>
+          <Text style={styles.reviewsValue}>{totalCompleted}</Text>
+          <Text style={[styles.overviewLabel, { color: colors.mutedForeground }]}>REVIEWS</Text>
         </View>
+
       </View>
 
       {/* Rank Ladder (windowed by default) */}
@@ -476,22 +536,96 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
   subtitle: { fontSize: 12, fontWeight: "500" },
-  overviewRow: { flexDirection: "row", gap: 8 },
+  overviewRow: { flexDirection: "row", gap: 10 },
   overviewCard: {
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 6,
     alignItems: "center",
-    gap: 6,
-    borderRadius: 14,
+    gap: 8,
+    borderRadius: 20,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     elevation: 3,
   },
   overviewValue: { fontSize: 22, fontWeight: "800", lineHeight: 26 },
-  overviewLabel: { fontSize: 10, fontWeight: "600", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.5 },
+  overviewLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: "#94A3B8",
+  },
+  // Streak card
+  statIconArea: {
+    position: "relative",
+    width: 60,
+    height: 60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  streakIconBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#FFF3E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  streakFlame: { fontSize: 28 },
+  streakValue: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#FF6B00",
+    lineHeight: 30,
+  },
+  statSparkle1: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    fontSize: 10,
+    color: "#FBBF24",
+  },
+  statSparkle2: {
+    position: "absolute",
+    bottom: 6,
+    right: 0,
+    fontSize: 7,
+    color: "#FBBF24",
+  },
+  // Completion ring
+  ringValuePct: {
+    flexDirection: "row",
+    alignItems: "baseline",
+  },
+  ringValueNum: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#22C55E",
+  },
+  ringValueSuffix: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#22C55E",
+  },
+  // Reviews card
+  reviewsIconBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#EEF2FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewsValue: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#4338CA",
+    lineHeight: 30,
+  },
   card: {
     borderRadius: 16,
     borderWidth: 1,
