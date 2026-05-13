@@ -1,8 +1,10 @@
 import { Feather } from "@/components/Feather";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Alert,
+  Animated,
+  Easing,
   Image,
   Linking,
   Platform,
@@ -102,6 +104,93 @@ const FEATURES: FeatureItem[] = [
   },
 ];
 
+// Animated floating mascot — gives the robot a premium, "alive" feel
+function FloatingMascot() {
+  const float = useRef(new Animated.Value(0)).current;
+  const sparkle1 = useRef(new Animated.Value(0)).current;
+  const sparkle2 = useRef(new Animated.Value(0)).current;
+  const sparkle3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Gentle up-down float
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(float, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(float, {
+          toValue: 0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+
+    // Twinkling sparkles (staggered)
+    const twinkle = (val: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(val, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(val, { toValue: 0, duration: 800, useNativeDriver: true }),
+          Animated.delay(400),
+        ]),
+      ).start();
+
+    twinkle(sparkle1, 0);
+    twinkle(sparkle2, 600);
+    twinkle(sparkle3, 1200);
+  }, []);
+
+  const translateY = float.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+  const shadowScale = float.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] });
+  const shadowOpacity = float.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.18] });
+
+  return (
+    <View style={styles.mascotWrap}>
+      {/* Soft purple gradient glow background */}
+      <LinearGradient
+        colors={["#EDE9FE", "#F5F3FF", "rgba(245,243,255,0)"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.mascotGlow}
+      />
+
+      {/* Floating shadow underneath */}
+      <Animated.View
+        style={[
+          styles.mascotShadow,
+          { opacity: shadowOpacity, transform: [{ scaleX: shadowScale }] },
+        ]}
+      />
+
+      {/* The robot itself — gentle float */}
+      <Animated.View style={{ transform: [{ translateY }] }}>
+        <Image
+          source={require("@/assets/images/studymate-robot.png")}
+          style={styles.mascotImage}
+          resizeMode="contain"
+        />
+      </Animated.View>
+
+      {/* Twinkling sparkles around it */}
+      <Animated.Text style={[styles.sparkleA, { opacity: sparkle1, transform: [{ scale: sparkle1 }] }]}>
+        ✨
+      </Animated.Text>
+      <Animated.Text style={[styles.sparkleB, { opacity: sparkle2, transform: [{ scale: sparkle2 }] }]}>
+        ⭐
+      </Animated.Text>
+      <Animated.Text style={[styles.sparkleC, { opacity: sparkle3, transform: [{ scale: sparkle3 }] }]}>
+        ✨
+      </Animated.Text>
+    </View>
+  );
+}
+
 export default function StudyMateScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -127,14 +216,7 @@ export default function StudyMateScreen() {
               <Text style={styles.titleAccent}>AI</Text>
             </Text>
           </View>
-          <View style={styles.mascotWrap}>
-            <Image
-              source={require("@/assets/images/studymate-robot.png")}
-              style={styles.mascotImage}
-              resizeMode="contain"
-            />
-            <Text style={styles.sparkleEmoji}>✨</Text>
-          </View>
+          <FloatingMascot />
         </View>
 
         {/* Hero card */}
@@ -273,21 +355,68 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   mascotWrap: {
-    width: 90,
-    height: 90,
+    width: 110,
+    height: 110,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
   },
-  mascotImage: {
-    width: 90,
-    height: 90,
-  },
-  sparkleEmoji: {
+  mascotGlow: {
     position: "absolute",
-    top: 2,
-    right: 0,
-    fontSize: 14,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    top: -5,
+    left: -5,
+  },
+  mascotShadow: {
+    position: "absolute",
+    bottom: 6,
+    width: 60,
+    height: 8,
+    borderRadius: 30,
+    backgroundColor: "#7C3AED",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#7C3AED",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+      },
+      android: { elevation: 0 },
+    }),
+  },
+  mascotImage: {
+    width: 100,
+    height: 100,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#7C3AED",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+  sparkleA: {
+    position: "absolute",
+    top: 4,
+    left: -4,
+    fontSize: 16,
+  },
+  sparkleB: {
+    position: "absolute",
+    top: 12,
+    right: -6,
+    fontSize: 13,
+    color: "#FBBF24",
+  },
+  sparkleC: {
+    position: "absolute",
+    bottom: 18,
+    left: -8,
+    fontSize: 12,
   },
   heroCard: {
     borderRadius: 18,
