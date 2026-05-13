@@ -6,6 +6,66 @@ uri = "file://artifacts/mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "t4aGo1ERBJSk3fFR68-rE"
+uri = "file://attached_assets/generated_images/rank_trophy_0_bronzestone.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "zvPyjeCst5nWhbPlwcjCh"
+uri = "file://attached_assets/generated_images/rank_trophy_1_silverstone.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3d2BNR8uvNBTaw5L9RM_e"
+uri = "file://attached_assets/generated_images/rank_trophy_2_platinumstone.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "4HCbNO7-MgKuKlrrxSK6z"
+uri = "file://attached_assets/generated_images/rank_trophy_3_diamondstone.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "w2PhwYwpcr2v6DhZoL3oS"
+uri = "file://attached_assets/generated_images/rank_trophy_4_emeraldstone.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "aR76Fnt_vY7VyexP6XHO-"
+uri = "file://attached_assets/generated_images/rank_trophy_5_hero.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3lX4QHeRogTMVxNajKFFd"
+uri = "file://attached_assets/generated_images/rank_trophy_6_master.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "mnhSyWh03wPNuigw2Jaq3"
+uri = "file://attached_assets/generated_images/rank_trophy_7_ultimate_master.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "seuUddL7pLj_ZSaNkfIzU"
+uri = "file://attached_assets/generated_images/rank_trophy_8_god_master.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6AsAQFBb0CsMLqhFu6yFY"
+uri = "file://attached_assets/generated_images/rank_trophy_9_the_boss.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "WCXeLfyFdyJ19jreFLWZT"
 uri = "file://exports/hyperrecall-icon-512.png"

@@ -4,6 +4,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { RankBadge } from "@/components/RankBadge";
+import { RankTrophy } from "@/components/RankTrophy";
 import { useColors } from "@/hooks/useColors";
 import { RankInfo } from "@/lib/ranks";
 
@@ -54,6 +55,7 @@ export function RankProgressCard({ rank }: Props) {
               : `${rank.reviewsIntoStep} / ${rank.stepWidth} to maxed`}
           </Text>
         </View>
+        <RankTrophy rankIndex={rank.rankIndex} size={80} style={styles.trophy} />
       </View>
 
       <View style={[styles.track, { backgroundColor: colors.muted }]}>
@@ -113,7 +115,10 @@ const styles = StyleSheet.create({
     borderRadius: 70,
     transform: [{ translateX: 50 }, { translateY: -50 }],
   },
-  row: { flexDirection: "row", alignItems: "center", gap: 14 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  trophy: {
+    marginLeft: 4,
+  },
   label: {
     fontSize: 11,
     fontWeight: "800",
