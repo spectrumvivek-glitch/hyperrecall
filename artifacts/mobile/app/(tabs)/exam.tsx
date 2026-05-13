@@ -485,6 +485,9 @@ function ExamCard({
 
       {/* Gradient header */}
       <LinearGradient colors={gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ecStyles.header}>
+        <View style={ecStyles.headerCapWrap}>
+          <Feather name="award" size={20} color="#fff" />
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={ecStyles.examName} numberOfLines={1}>{session.name}</Text>
           <Text style={ecStyles.examMeta}>
@@ -577,10 +580,25 @@ const ecStyles = StyleSheet.create({
   deleteActions: { flexDirection: "row", gap: 12, marginTop: 6 },
   delCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, alignItems: "center" },
   delConfirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: "#EF4444", alignItems: "center" },
-  header: { padding: 18, flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  header: { padding: 18, flexDirection: "row", alignItems: "center", gap: 12 },
+  headerCapWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#ffffff33",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   examName: { fontSize: 18, fontWeight: "800", color: "#fff" },
   examMeta: { fontSize: 13, color: "#ffffffcc", marginTop: 3 },
-  deleteBtn: { padding: 4 },
+  deleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#ffffff22",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   progressSection: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14, gap: 8 },
   progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   progressLabel: { fontSize: 13 },
@@ -974,19 +992,32 @@ export default function ExamScreen() {
 
   // Persistent header — rendered in every state so the user always knows
   // they're on the Exam tab (loading, paywall, empty, or populated).
-  const renderHeader = (subtitle: string) => (
-    <View style={scStyles.header}>
-      <View style={{ flex: 1 }}>
-        <Text style={[scStyles.title, { color: colors.foreground }]}>Exam Mode</Text>
-        <Text style={[scStyles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+  const renderHeader = (subtitle: string) => {
+    // Highlight "X due today" portion in primary color when present.
+    const dueMatch = subtitle.match(/(.*?·\s*)(\d+\s+due today)$/);
+    return (
+      <View style={scStyles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={[scStyles.title, { color: colors.foreground }]}>Exam Mode</Text>
+          {dueMatch ? (
+            <Text style={[scStyles.subtitle, { color: colors.mutedForeground }]}>
+              {dueMatch[1]}
+              <Text style={{ color: colors.primary, fontWeight: "700" }}>{dueMatch[2]}</Text>
+            </Text>
+          ) : (
+            <Text style={[scStyles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
+          )}
+        </View>
+        {totalDueToday > 0 && (
+          <View style={scStyles.dueBadgeRing}>
+            <LinearGradient colors={["#EF4444", "#DC2626"]} style={scStyles.dueBadge} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={scStyles.dueBadgeText}>{totalDueToday}</Text>
+            </LinearGradient>
+          </View>
+        )}
       </View>
-      {totalDueToday > 0 && (
-        <LinearGradient colors={["#EF4444", "#DC2626"]} style={scStyles.dueBadge} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Text style={scStyles.dueBadgeText}>{totalDueToday}</Text>
-        </LinearGradient>
-      )}
-    </View>
-  );
+    );
+  };
 
   // Wait until both the trial state and (on native) RevenueCat have settled
   // before deciding to show the paywall. Without this guard the paywall flashes
@@ -1108,17 +1139,29 @@ export default function ExamScreen() {
 
         {/* How Exam Mode works — always visible */}
         <View style={[scStyles.infoBanner, { backgroundColor: colors.primary + "0e", borderColor: colors.primary + "30" }]}>
-          <Text style={[scStyles.infoBannerTitle, { color: colors.primary }]}>How Exam Mode works</Text>
+          <View style={scStyles.infoBannerHeader}>
+            <View style={[scStyles.infoBannerHeaderIcon, { backgroundColor: colors.primary + "1f" }]}>
+              <Feather name="award" size={18} color={colors.primary} />
+            </View>
+            <Text style={[scStyles.infoBannerTitle, { color: colors.primary }]}>How Exam Mode works</Text>
+            <Text style={scStyles.infoBannerSparkle}>✨</Text>
+          </View>
           {[
-            ["📅", "Set your exam date"],
-            ["📝", "Choose notes to include"],
-            ["🧠", "Get 14 auto-scheduled reviews per note"],
-            ["📈", "Front-loaded schedule for maximum retention"],
-            ["⏰", "Best started 25–30 days before your exam"],
-          ].map(([icon, text]) => (
-            <View key={text as string} style={scStyles.infoBannerRow}>
-              <Text style={{ fontSize: 15 }}>{icon}</Text>
-              <Text style={[scStyles.infoBannerText, { color: colors.foreground }]}>{text}</Text>
+            ["📅", "Set your exam date", null],
+            ["📝", "Choose notes to include", null],
+            ["🧠", "Get ", "14", " auto-scheduled reviews per note"],
+            ["📈", "Front-loaded schedule for maximum retention", null],
+            ["⏰", "Best started ", "25–30 days", " before your exam"],
+          ].map(([icon, prefix, accent, suffix], idx) => (
+            <View key={idx} style={scStyles.infoBannerRow}>
+              <View style={[scStyles.infoBannerStepIcon, { backgroundColor: colors.background }]}>
+                <Text style={{ fontSize: 15 }}>{icon}</Text>
+              </View>
+              <Text style={[scStyles.infoBannerText, { color: colors.foreground }]}>
+                {prefix as string}
+                {accent ? <Text style={{ color: colors.primary, fontWeight: "700" }}>{accent}</Text> : null}
+                {suffix ? (suffix as string) : null}
+              </Text>
             </View>
           ))}
         </View>
@@ -1200,12 +1243,39 @@ const scStyles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
   subtitle: { fontSize: 14, marginTop: 3 },
-  dueBadge: { minWidth: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
-  dueBadgeText: { color: "#fff", fontSize: 17, fontWeight: "800" },
-  infoBanner: { borderRadius: 16, borderWidth: 1, padding: 18, gap: 10 },
-  infoBannerTitle: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  dueBadgeRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: "#FECACA",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  dueBadge: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  dueBadgeText: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  infoBanner: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 12 },
+  infoBannerHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 2 },
+  infoBannerHeaderIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  infoBannerSparkle: { fontSize: 14, marginLeft: "auto" },
+  infoBannerTitle: { fontSize: 15, fontWeight: "800", flex: 1 },
   infoBannerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  infoBannerText: { fontSize: 14, flex: 1, lineHeight: 20 },
+  infoBannerStepIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  infoBannerText: { fontSize: 14, flex: 1, lineHeight: 20, fontWeight: "500" },
   section: { gap: 12 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 17, fontWeight: "700" },
