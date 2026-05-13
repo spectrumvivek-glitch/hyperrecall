@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
   Alert,
+  Image,
   Linking,
   Platform,
   ScrollView,
@@ -127,7 +128,11 @@ export default function StudyMateScreen() {
             </Text>
           </View>
           <View style={styles.mascotWrap}>
-            <Text style={styles.mascotEmoji}>🤖</Text>
+            <Image
+              source={require("@/assets/images/studymate-robot.png")}
+              style={styles.mascotImage}
+              resizeMode="contain"
+            />
             <Text style={styles.sparkleEmoji}>✨</Text>
           </View>
         </View>
@@ -268,18 +273,19 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   mascotWrap: {
-    width: 70,
-    height: 70,
+    width: 90,
+    height: 90,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
   },
-  mascotEmoji: {
-    fontSize: 48,
+  mascotImage: {
+    width: 90,
+    height: 90,
   },
   sparkleEmoji: {
     position: "absolute",
-    top: 4,
+    top: 2,
     right: 0,
     fontSize: 14,
   },
