@@ -82,6 +82,8 @@ export default function PaywallScreen() {
     purchasePackage,
     restorePurchases,
     isPro,
+    isPaidPro,
+    trial,
     error,
     refresh,
   } = useSubscription();
@@ -157,7 +159,7 @@ export default function PaywallScreen() {
           ))}
         </View>
 
-        {isPro ? (
+        {isPaidPro ? (
           <View
             style={[
               styles.proBanner,
@@ -215,6 +217,27 @@ export default function PaywallScreen() {
           </View>
         ) : (
           <View style={styles.packages}>
+            {trial.isActive && (
+              <View
+                style={[
+                  styles.trialBanner,
+                  { backgroundColor: "#F97316" + "14", borderColor: "#F97316" + "55" },
+                ]}
+              >
+                <Feather name="gift" size={18} color="#F97316" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.trialBannerTitle, { color: colors.foreground }]}>
+                    Free trial active —{" "}
+                    <Text style={{ color: "#F97316", fontWeight: "800" }}>
+                      {trial.daysRemaining} day{trial.daysRemaining !== 1 ? "s" : ""} left
+                    </Text>
+                  </Text>
+                  <Text style={[styles.trialBannerSub, { color: colors.mutedForeground }]}>
+                    Subscribe now to keep Pro after your trial ends
+                  </Text>
+                </View>
+              </View>
+            )}
             {sortedPackages.map((pkg) => {
               const badge = packageBadge(pkg);
               const busy = busyId === pkg.identifier;
@@ -327,6 +350,17 @@ const styles = StyleSheet.create({
   },
   proBannerText: { fontSize: 14, fontWeight: "600" },
   packages: { gap: 12, marginTop: 4 },
+  trialBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  trialBannerTitle: { fontSize: 13, fontWeight: "700" },
+  trialBannerSub: { fontSize: 11, fontWeight: "500", marginTop: 2 },
   pkgCard: {
     borderRadius: 14,
     borderWidth: 1,
