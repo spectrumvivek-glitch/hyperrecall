@@ -19,7 +19,7 @@ module.exports = {
     },
     android: {
       package: "com.recallify.app",
-      versionCode: 40,
+      versionCode: 41,
       permissions: [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
