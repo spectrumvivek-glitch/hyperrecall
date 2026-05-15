@@ -180,14 +180,6 @@ export default function ReviewTab() {
                       >
                         {note.title}
                       </Text>
-                      {note.content ? (
-                        <Text
-                          style={[styles.cardContent, { color: colors.mutedForeground }]}
-                          numberOfLines={2}
-                        >
-                          {note.content}
-                        </Text>
-                      ) : null}
                       <View style={styles.cardMeta}>
                         <View style={[styles.metaPill, { backgroundColor: colors.muted }]}>
                           <Feather name="repeat" size={10} color={colors.mutedForeground} />
