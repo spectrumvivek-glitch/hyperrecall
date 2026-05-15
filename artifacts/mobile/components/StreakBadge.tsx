@@ -11,11 +11,12 @@ interface Props {
 
 const STREAK_COLOR = "#FFA94D";
 const STREAK_GLOW = "#FFA94D26";
+const FIRE_GLOW = "#FF8A3D";
 
 export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Props) {
   const colors = useColors();
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  // Continuous "breathing" glow — runs forever while the streak is active.
+  // Continuous fire-icon glow — opacity-only, no size change.
   const glow = useRef(new Animated.Value(0)).current;
 
   const config = {
@@ -26,7 +27,7 @@ export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Prop
 
   const isActive = streak > 0;
 
-  // Pop animation when streak changes (one-shot, no infinite loop to avoid crashes)
+  // Pop animation when streak changes (one-shot)
   const prevStreak = useRef(streak);
   useEffect(() => {
     if (streak > 0 && streak !== prevStreak.current) {
@@ -38,7 +39,7 @@ export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Prop
     }
   }, [streak, scaleAnim]);
 
-  // Continuous glow loop while the streak is active.
+  // Continuous opacity glow loop — fire icon only, no scale change
   useEffect(() => {
     if (!isActive) {
       glow.stopAnimation();
@@ -65,85 +66,94 @@ export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Prop
     return () => loop.stop();
   }, [isActive, glow]);
 
-  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.55] });
-  const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] });
-  const ringOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.04] });
-  const ringScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.55] });
+  // Two stacked emoji layers behind the real one — they fade in/out
+  // to create a halo around the 🔥 character. Same size, no scaling.
+  const halo1Opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.7] });
+  const halo2Opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.5] });
+
+  const fireSize = config.iconSize;
+  const fireLineHeight = fireSize + 4;
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <View style={styles.glowWrap}>
-        {isActive && (
-          <>
-            {/* Outer expanding ring — like a pulse wave */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFillObject,
-                styles.ring,
-                {
-                  borderColor: STREAK_COLOR,
-                  opacity: ringOpacity,
-                  transform: [{ scale: ringScale }],
-                },
-              ]}
-            />
-            {/* Inner soft halo — breathing */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFillObject,
-                styles.halo,
-                {
-                  backgroundColor: STREAK_COLOR,
-                  opacity: glowOpacity,
-                  transform: [{ scale: glowScale }],
-                },
-              ]}
-            />
-          </>
-        )}
-        <View
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: isActive ? STREAK_GLOW : colors.muted,
+            borderColor: isActive ? STREAK_COLOR + "55" : colors.border,
+            paddingHorizontal: config.padH,
+            paddingVertical: config.padV,
+            borderRadius: 20,
+          },
+        ]}
+      >
+        <View style={[styles.fireWrap, { width: fireSize, height: fireLineHeight }]}>
+          {isActive && (
+            <>
+              <Animated.Text
+                pointerEvents="none"
+                style={[
+                  styles.fireLayer,
+                  {
+                    fontSize: fireSize,
+                    lineHeight: fireLineHeight,
+                    opacity: halo1Opacity,
+                    textShadowColor: FIRE_GLOW,
+                    textShadowRadius: 14,
+                    textShadowOffset: { width: 0, height: 0 },
+                  },
+                ]}
+              >
+                🔥
+              </Animated.Text>
+              <Animated.Text
+                pointerEvents="none"
+                style={[
+                  styles.fireLayer,
+                  {
+                    fontSize: fireSize,
+                    lineHeight: fireLineHeight,
+                    opacity: halo2Opacity,
+                    textShadowColor: FIRE_GLOW,
+                    textShadowRadius: 22,
+                    textShadowOffset: { width: 0, height: 0 },
+                  },
+                ]}
+              >
+                🔥
+              </Animated.Text>
+            </>
+          )}
+          <Text
+            style={{
+              fontSize: fireSize,
+              lineHeight: fireLineHeight,
+              textShadowColor: isActive ? FIRE_GLOW : "transparent",
+              textShadowRadius: isActive ? 8 : 0,
+              textShadowOffset: { width: 0, height: 0 },
+            }}
+          >
+            🔥
+          </Text>
+        </View>
+        <Text
           style={[
-            styles.container,
+            styles.text,
             {
-              backgroundColor: isActive ? STREAK_GLOW : colors.muted,
-              borderColor: isActive ? STREAK_COLOR + "55" : colors.border,
-              paddingHorizontal: config.padH,
-              paddingVertical: config.padV,
-              borderRadius: 20,
-              shadowColor: STREAK_COLOR,
-              shadowOpacity: isActive ? 0.35 : 0,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 0 },
-              elevation: isActive ? 6 : 0,
+              fontSize: config.fontSize,
+              color: isActive ? STREAK_COLOR : colors.mutedForeground,
             },
           ]}
         >
-          <Text style={{ fontSize: config.iconSize, lineHeight: config.iconSize + 4 }}>🔥</Text>
-          <Text
-            style={[
-              styles.text,
-              {
-                fontSize: config.fontSize,
-                color: isActive ? STREAK_COLOR : colors.mutedForeground,
-              },
-            ]}
-          >
-            {streak}
-          </Text>
-        </View>
+          {streak}
+        </Text>
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  glowWrap: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   container: {
     flexDirection: "row",
     alignItems: "center",
@@ -153,11 +163,12 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: "800",
   },
-  halo: {
-    borderRadius: 24,
+  fireWrap: {
+    alignItems: "center",
+    justifyContent: "center",
   },
-  ring: {
-    borderRadius: 24,
-    borderWidth: 2,
+  fireLayer: {
+    position: "absolute",
+    textAlign: "center",
   },
 });
