@@ -22,7 +22,6 @@ export function NoteContentSection({ content, defaultOpen = true }: Props) {
 
   if (!content || content.trim().length === 0) return null;
 
-  const charCount = content.length;
   const wordCount = content.trim().split(/\s+/).length;
   const readMins = Math.max(1, Math.round(wordCount / 200));
 
@@ -85,15 +84,6 @@ export function NoteContentSection({ content, defaultOpen = true }: Props) {
           <Text style={[styles.body, { color: colors.foreground }]} selectable>
             {content}
           </Text>
-
-          <View style={styles.footerRow}>
-            <View style={[styles.charPill, { backgroundColor: colors.muted }]}>
-              <Feather name="type" size={11} color={colors.mutedForeground} />
-              <Text style={[styles.charText, { color: colors.mutedForeground }]}>
-                {charCount} chars
-              </Text>
-            </View>
-          </View>
         </View>
       )}
     </View>
