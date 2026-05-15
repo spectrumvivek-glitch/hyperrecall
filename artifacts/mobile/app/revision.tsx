@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CelebrationPopup } from "@/components/CelebrationPopup";
 import { FloatingXP } from "@/components/FloatingXP";
 import { LevelUpModal } from "@/components/LevelUpModal";
+import { NoteContentSection } from "@/components/NoteContentSection";
 import { RevisionCard } from "@/components/RevisionCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -267,6 +268,7 @@ export default function RevisionScreen() {
           onSkip={handleSkip}
           isLast={currentIndex === sessionNotes.length - 1}
         />
+        <NoteContentSection content={currentItem.note.content} />
       </ScrollView>
     </View>
   );

@@ -37,7 +37,6 @@ interface Props {
 export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
   const colors = useColors();
   const { categories } = useApp();
-  const [expanded, setExpanded] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerStartIndex, setViewerStartIndex] = useState(0);
@@ -292,29 +291,9 @@ export function RevisionCard({ note, plan, onComplete, onSkip }: Props) {
         </View>
       )}
 
-      {/* Content */}
-      {note.content.length > 0 && (
-        <TouchableOpacity onPress={() => setExpanded(!expanded)} style={styles.contentSection} activeOpacity={0.7}>
-          <Text
-            style={[styles.content, { color: colors.mutedForeground }]}
-            numberOfLines={expanded ? undefined : 4}
-          >
-            {note.content}
-          </Text>
-          {note.content.length > 120 && (
-            <View style={styles.expandRow}>
-              <Text style={[styles.expandText, { color: colors.primary }]}>
-                {expanded ? "Show less" : "Show more"}
-              </Text>
-              <Feather
-                name={expanded ? "chevron-up" : "chevron-down"}
-                size={14}
-                color={colors.primary}
-              />
-            </View>
-          )}
-        </TouchableOpacity>
-      )}
+      {/* Content lives in a dedicated NoteContentSection rendered below this
+          card by revision.tsx — keeps this action card focused on title,
+          images, and the complete/skip CTA. */}
 
       {/* Next revision info */}
       {nextInterval !== undefined && (
