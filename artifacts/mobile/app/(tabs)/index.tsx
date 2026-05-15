@@ -28,14 +28,13 @@ import { RankUpToast } from "@/components/RankUpToast";
 import { StatCard } from "@/components/StatCard";
 import { StreakBadge } from "@/components/StreakBadge";
 import { TrialBanner } from "@/components/TrialBanner";
-import { BadgeCard } from "@/components/BadgeCard";
 import { Confetti } from "@/components/Confetti";
 import { DailyStreakPopup } from "@/components/DailyStreakPopup";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { useUserProfile } from "@/context/UserProfileContext";
 import { useColors } from "@/hooks/useColors";
-import { getBadgeDef, ALL_BADGES } from "@/lib/badges";
+import { getBadgeDef } from "@/lib/badges";
 
 function XpBar({ xpIntoLevel, xpNeeded, progressPct, colors }: {
   xpIntoLevel: number;
@@ -265,11 +264,6 @@ export default function DashboardScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const recentBadges = (userStats.earnedBadges ?? [])
-    .slice(-4)
-    .map((id) => getBadgeDef(id))
-    .filter(Boolean) as ReturnType<typeof getBadgeDef>[];
-
   return (
     <>
       <DailyStreakPopup
@@ -435,31 +429,6 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* Recent Badges */}
-        {recentBadges.length > 0 && (
-          <View style={[styles.badgesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Badges</Text>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/analytics")}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.recentBadgesRow}>
-              {recentBadges.map((badge) => (
-                <BadgeCard key={badge!.id} badge={badge!} earned size="md" />
-              ))}
-              {(userStats.earnedBadges ?? []).length < ALL_BADGES.length && (
-                <View style={[styles.lockedBadge, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                  <Feather name="lock" size={18} color={colors.mutedForeground} />
-                  <Text style={[styles.lockedCount, { color: colors.mutedForeground }]}>
-                    +{ALL_BADGES.length - (userStats.earnedBadges ?? []).length}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-
         {/* Start Revision Button */}
         {dueNotes.length > 0 && (
           <TouchableOpacity
@@ -584,30 +553,6 @@ const styles = StyleSheet.create({
   },
   todayText: { fontSize: 14, fontWeight: "500", flex: 1 },
   statsRow: { flexDirection: "row", gap: 10 },
-  badgesCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 14,
-  },
-  recentBadgesRow: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
-  lockedBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-  lockedCount: {
-    fontSize: 10,
-    fontWeight: "700",
-  },
   badgeBanner: {
     flexDirection: "row",
     alignItems: "center",
