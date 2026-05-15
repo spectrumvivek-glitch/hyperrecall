@@ -9,8 +9,8 @@ interface Props {
   pulse?: boolean;
 }
 
-const STREAK_COLOR = "#FF6B00";
-const STREAK_GLOW = "#FF6B0030";
+const STREAK_COLOR = "#FFA94D";
+const STREAK_GLOW = "#FFA94D26";
 
 export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Props) {
   const colors = useColors();
@@ -65,9 +65,9 @@ export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Prop
     return () => loop.stop();
   }, [isActive, glow]);
 
-  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.85] });
+  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.55] });
   const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] });
-  const ringOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0.05] });
+  const ringOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.04] });
   const ringScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.55] });
 
   return (
@@ -108,12 +108,12 @@ export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Prop
             styles.container,
             {
               backgroundColor: isActive ? STREAK_GLOW : colors.muted,
-              borderColor: isActive ? STREAK_COLOR + "70" : colors.border,
+              borderColor: isActive ? STREAK_COLOR + "55" : colors.border,
               paddingHorizontal: config.padH,
               paddingVertical: config.padV,
               borderRadius: 20,
               shadowColor: STREAK_COLOR,
-              shadowOpacity: isActive ? 0.55 : 0,
+              shadowOpacity: isActive ? 0.35 : 0,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 0 },
               elevation: isActive ? 6 : 0,
