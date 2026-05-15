@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AmbientGlow } from "@/components/AmbientGlow";
 import { EmptyState } from "@/components/EmptyState";
 import { NoteCard } from "@/components/NoteCard";
 import { useApp } from "@/context/AppContext";
@@ -96,6 +97,7 @@ export default function NotesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <AmbientGlow variant="notes" />
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 18, backgroundColor: colors.background }]}>
         <View style={{ flex: 1 }}>

@@ -12,6 +12,7 @@ import {
 import { Circle, Svg } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AmbientGlow } from "@/components/AmbientGlow";
 import { AnalyticsLineChart } from "@/components/AnalyticsLineChart";
 import { StreakBadge } from "@/components/StreakBadge";
 import { BadgesGrid } from "@/components/BadgeCard";
@@ -260,8 +261,10 @@ export default function AnalyticsScreen() {
   const youInTop5 = leaderboard.slice(0, 5).some((u) => u.isYou);
 
   return (
+    <View style={[styles.scroll, { backgroundColor: colors.background }]}>
+    <AmbientGlow variant="analytics" />
     <ScrollView
-      style={[styles.scroll, { backgroundColor: colors.background }]}
+      style={styles.scroll}
       contentContainerStyle={[
         styles.content,
         { paddingTop: topPad + 16, paddingBottom: bottomPad + 110 },
@@ -513,6 +516,7 @@ export default function AnalyticsScreen() {
         </View>
       )}
     </ScrollView>
+    </View>
   );
 }
 

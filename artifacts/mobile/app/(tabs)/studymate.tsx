@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AmbientGlow } from "@/components/AmbientGlow";
 import { useColors } from "@/hooks/useColors";
 
 const STUDYMATE_AI_URL =
@@ -200,6 +201,7 @@ export default function StudyMateScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <AmbientGlow variant="studymate" />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[

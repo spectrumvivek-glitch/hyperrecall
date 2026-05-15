@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AmbientGlow } from "@/components/AmbientGlow";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { useUserProfile } from "@/context/UserProfileContext";
@@ -243,8 +244,10 @@ export default function SettingsScreen() {
   };
 
   return (
+    <View style={[styles.scroll, { backgroundColor: colors.background }]}>
+    <AmbientGlow variant="settings" />
     <ScrollView
-      style={[styles.scroll, { backgroundColor: colors.background }]}
+      style={styles.scroll}
       contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: bottomPad + 100 }]}
       showsVerticalScrollIndicator={false}
     >
@@ -657,6 +660,7 @@ export default function SettingsScreen() {
         </SectionCard>
       </View>
     </ScrollView>
+    </View>
   );
 }
 

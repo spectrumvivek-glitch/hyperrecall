@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AmbientGlow } from "@/components/AmbientGlow";
 import { ZoomableImageViewer } from "@/components/ZoomableImageViewer";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -1238,8 +1239,10 @@ export default function ExamScreen() {
 
   if (!isReady) {
     return (
+      <View style={[scStyles.scroll, { backgroundColor: colors.background }]}>
+      <AmbientGlow variant="exam" />
       <ScrollView
-        style={[scStyles.scroll, { backgroundColor: colors.background }]}
+        style={scStyles.scroll}
         contentContainerStyle={[scStyles.content, { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -1259,6 +1262,7 @@ export default function ExamScreen() {
           </Text>
         </View>
       </ScrollView>
+      </View>
     );
   }
 
@@ -1268,8 +1272,10 @@ export default function ExamScreen() {
   if (!isPro) {
     const trialExpired = trial.hasEverStarted && !trial.isActive;
     return (
+      <View style={[scStyles.scroll, { backgroundColor: colors.background }]}>
+      <AmbientGlow variant="exam" />
       <ScrollView
-        style={[scStyles.scroll, { backgroundColor: colors.background }]}
+        style={scStyles.scroll}
         contentContainerStyle={[scStyles.content, { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -1322,6 +1328,7 @@ export default function ExamScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
+      </View>
     );
   }
 
@@ -1337,8 +1344,10 @@ export default function ExamScreen() {
         onEdit={handleEdit}
       />
 
+      <View style={[scStyles.scroll, { backgroundColor: colors.background }]}>
+      <AmbientGlow variant="exam" />
       <ScrollView
-        style={[scStyles.scroll, { backgroundColor: colors.background }]}
+        style={scStyles.scroll}
         contentContainerStyle={[scStyles.content, { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -1443,6 +1452,7 @@ export default function ExamScreen() {
         )}
 
       </ScrollView>
+      </View>
 
     </>
   );

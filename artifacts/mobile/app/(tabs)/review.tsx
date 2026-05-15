@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AmbientGlow } from "@/components/AmbientGlow";
 import { EmptyState } from "@/components/EmptyState";
 import { FloatingXP } from "@/components/FloatingXP";
 import { useApp } from "@/context/AppContext";
@@ -73,6 +74,7 @@ export default function ReviewTab() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <AmbientGlow variant="revise" />
       {/* `key` forces a remount on each new completion so the animation
           restarts even when consecutive completions earn the same XP. */}
       <FloatingXP

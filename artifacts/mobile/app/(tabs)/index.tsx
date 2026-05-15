@@ -27,6 +27,7 @@ import { RankUpModal } from "@/components/RankUpModal";
 import { RankUpToast } from "@/components/RankUpToast";
 import { StatCard } from "@/components/StatCard";
 import { StreakBadge } from "@/components/StreakBadge";
+import { AmbientGlow } from "@/components/AmbientGlow";
 import { TrialBanner } from "@/components/TrialBanner";
 import { Confetti } from "@/components/Confetti";
 import { DailyStreakPopup } from "@/components/DailyStreakPopup";
@@ -307,8 +308,10 @@ export default function DashboardScreen() {
         />
       )}
 
+      <View style={[styles.scroll, { backgroundColor: colors.background }]}>
+      <AmbientGlow variant="home" />
       <ScrollView
-        style={[styles.scroll, { backgroundColor: colors.background }]}
+        style={styles.scroll}
         contentContainerStyle={[
           styles.content,
           { paddingTop: topPad + 20, paddingBottom: bottomPad + 110 },
@@ -492,6 +495,7 @@ export default function DashboardScreen() {
           />
         )}
       </ScrollView>
+      </View>
     </>
   );
 }
