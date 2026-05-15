@@ -35,10 +35,10 @@ export function PremiumCard({ children, style, glowColor, padding = 20, noPaddin
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.22,
+    shadowRadius: 28,
+    elevation: 10,
     overflow: "hidden",
   },
 });
