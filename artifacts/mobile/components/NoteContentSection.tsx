@@ -7,7 +7,7 @@ import { useColors } from "@/hooks/useColors";
 
 interface Props {
   content: string;
-  /** Default open state — true so the user immediately sees the reading area. */
+  /** Default open state — collapsed so users try recall before peeking. */
   defaultOpen?: boolean;
 }
 
@@ -16,14 +16,11 @@ interface Props {
  * revision session. Keeps the action card clean while giving the user a
  * comfortable, paper-like surface to read the full note.
  */
-export function NoteContentSection({ content, defaultOpen = true }: Props) {
+export function NoteContentSection({ content, defaultOpen = false }: Props) {
   const colors = useColors();
   const [open, setOpen] = useState(defaultOpen);
 
   if (!content || content.trim().length === 0) return null;
-
-  const wordCount = content.trim().split(/\s+/).length;
-  const readMins = Math.max(1, Math.round(wordCount / 200));
 
   return (
     <View
@@ -57,7 +54,7 @@ export function NoteContentSection({ content, defaultOpen = true }: Props) {
         <View style={{ flex: 1 }}>
           <Text style={[styles.heading, { color: colors.foreground }]}>Note Content</Text>
           <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-            {wordCount} word{wordCount !== 1 ? "s" : ""} · ~{readMins} min read
+            {open ? "Tap to hide" : "Tap to reveal"}
           </Text>
         </View>
         <View style={[styles.chevWrap, { backgroundColor: colors.muted }]}>
