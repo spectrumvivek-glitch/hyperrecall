@@ -196,8 +196,8 @@ function SchedulePreview({ noteIds, examDate }: { noteIds: string[]; examDate: D
       <View style={pvStyles.statsRow}>
         {[
           { label: "Notes", value: noteIds.length },
-          { label: "Reviews each", value: 14 },
-          { label: "Total reviews", value: totalReviews },
+          { label: "Revisions each", value: 14 },
+          { label: "Total revisions", value: totalReviews },
         ].map(({ label, value }, i) => (
           <React.Fragment key={label}>
             {i > 0 && <View style={[pvStyles.divider, { backgroundColor: colors.border }]} />}
@@ -225,7 +225,7 @@ function SchedulePreview({ noteIds, examDate }: { noteIds: string[]; examDate: D
       </View>
 
       <Text style={[pvStyles.hint, { color: colors.mutedForeground }]}>
-        Reviews are spread equally across all available days up to the exam
+        Revisions are spread equally across all available days up to the exam
       </Text>
     </View>
   );
@@ -383,7 +383,7 @@ function ExamReviewCard({
               <Text style={[ercStyles.catName, { color: colors.mutedForeground }]}>{catName}</Text>
             </View>
             <View style={[ercStyles.badge, { backgroundColor: "#6366F115" }]}>
-              <Text style={[ercStyles.badgeText, { color: "#6366F1" }]}>Review {item.sessionIndex + 1}/14</Text>
+              <Text style={[ercStyles.badgeText, { color: "#6366F1" }]}>Revise {item.sessionIndex + 1}/14</Text>
             </View>
           </View>
 
@@ -561,7 +561,7 @@ function ExamReviewCard({
                 },
               ]}
             >
-              Nice work! +1 review
+              Nice work! +1 revision
             </Animated.Text>
           </Animated.View>
         )}
@@ -681,7 +681,7 @@ function ExamCard({
           <Feather name="trash-2" size={28} color="#EF4444" />
           <Text style={[ecStyles.deleteTitle, { color: colors.foreground }]}>Delete this exam?</Text>
           <Text style={[ecStyles.deleteSubtitle, { color: colors.mutedForeground }]}>
-            All {total} scheduled reviews will be permanently removed.
+            All {total} scheduled revisions will be permanently removed.
           </Text>
           <View style={ecStyles.deleteActions}>
             <TouchableOpacity onPress={() => setConfirmDelete(false)} style={[ecStyles.delCancelBtn, { backgroundColor: colors.muted, borderColor: colors.border }]} activeOpacity={0.7}>
@@ -703,7 +703,7 @@ function ExamCard({
           <Text style={ecStyles.examName} numberOfLines={1}>{session.name}</Text>
           <Text style={ecStyles.examMeta}>
             {isComplete
-              ? "🎉 All reviews complete!"
+              ? "🎉 All revisions complete!"
               : isExamPast
               ? "Exam date passed"
               : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left · ${examDateStr}`}
@@ -722,7 +722,7 @@ function ExamCard({
       {/* Progress */}
       <View style={ecStyles.progressSection}>
         <View style={ecStyles.progressRow}>
-          <Text style={[ecStyles.progressLabel, { color: colors.mutedForeground }]}>{done} / {total} reviews</Text>
+          <Text style={[ecStyles.progressLabel, { color: colors.mutedForeground }]}>{done} / {total} revisions</Text>
           <Text style={[ecStyles.progressPct, { color: isComplete ? "#22C55E" : colors.primary }]}>
             {Math.round(pct * 100)}%
           </Text>
@@ -746,14 +746,14 @@ function ExamCard({
             <Text style={{ color: "#EF4444", fontSize: 14, fontWeight: "800" }}>{todayDue.length}</Text>
           </View>
           <Text style={[ecStyles.dueText, { color: colors.foreground }]}>
-            {todayDue.length} review{todayDue.length !== 1 ? "s" : ""} due today
+            {todayDue.length} revision{todayDue.length !== 1 ? "s" : ""} due today
           </Text>
           <Feather name={expanded ? "chevron-up" : "chevron-down"} size={17} color={colors.mutedForeground} />
         </TouchableOpacity>
       ) : !isExamPast && !isComplete ? (
         <View style={[ecStyles.dueRow, { borderTopColor: colors.border }]}>
           <Feather name="check-circle" size={15} color="#22C55E" />
-          <Text style={[ecStyles.dueText, { color: colors.mutedForeground }]}>No reviews due today</Text>
+          <Text style={[ecStyles.dueText, { color: colors.mutedForeground }]}>No revisions due today</Text>
         </View>
       ) : null}
 
@@ -929,7 +929,7 @@ function CreateExamModal({
               <Feather name={step === "details" ? "x" : "arrow-left"} size={22} color={colors.foreground} />
             </TouchableOpacity>
             <Text style={[mStyles.sheetTitle, { color: colors.foreground }]}>
-              {step === "details" ? (isEditMode ? "Edit Exam" : "New Exam") : step === "notes" ? "Select Notes" : "Review Schedule"}
+              {step === "details" ? (isEditMode ? "Edit Exam" : "New Exam") : step === "notes" ? "Select Notes" : "Revision Schedule"}
             </Text>
             <View style={mStyles.stepDots}>
               {(["details", "notes", "preview"] as const).map((s) => (
@@ -1288,7 +1288,7 @@ export default function ExamScreen() {
             Unlock Exam Mode
           </Text>
           <Text style={{ fontSize: 14, lineHeight: 21, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 12 }}>
-            Get 14 auto-scheduled, front-loaded reviews per note before any exam — designed for maximum retention right when you need it most.
+            Get 14 auto-scheduled, front-loaded revisions per note before any exam — designed for maximum retention right when you need it most.
           </Text>
         </View>
 
@@ -1296,7 +1296,7 @@ export default function ExamScreen() {
           {([
             ["calendar", "Set your exam date"],
             ["edit-3", "Pick the notes to master"],
-            ["trending-up", "14 spaced reviews per note"],
+            ["trending-up", "14 spaced revisions per note"],
             ["zap", "Front-loaded for the exam"],
           ] as const).map(([icon, text]) => (
             <View
@@ -1344,7 +1344,7 @@ export default function ExamScreen() {
       >
         {renderHeader(
           !hasExams
-            ? "14 focused reviews per note before your exam"
+            ? "14 focused revisions per note before your exam"
             : `${examSessions.length} active exam${examSessions.length !== 1 ? "s" : ""}${totalDueToday > 0 ? ` · ${totalDueToday} due today` : ""}`,
         )}
 
@@ -1360,7 +1360,7 @@ export default function ExamScreen() {
           {[
             ["📅", "Set your exam date", null],
             ["📝", "Choose notes to include", null],
-            ["🧠", "Get ", "14", " auto-scheduled reviews per note"],
+            ["🧠", "Get ", "14", " auto-scheduled revisions per note"],
             ["📈", "Front-loaded schedule for maximum retention", null],
             ["⏰", "Best started ", "25–30 days", " before your exam"],
           ].map(([icon, prefix, accent, suffix], idx) => (
@@ -1422,7 +1422,7 @@ export default function ExamScreen() {
             <Text style={[scStyles.emptyBody, { color: colors.mutedForeground }]}>
               {notes.length === 0
                 ? "Create a few notes first, then come back to schedule your first exam."
-                : "Pick an exam date and the notes you need to master — we'll auto-schedule 14 spaced reviews per note."}
+                : "Pick an exam date and the notes you need to master — we'll auto-schedule 14 spaced revisions per note."}
             </Text>
             <TouchableOpacity
               onPress={() => {

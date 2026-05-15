@@ -25,7 +25,7 @@ const PRESETS = [
   },
   {
     label: "Aggressive",
-    description: "Fast review, frequent revisits",
+    description: "Fast revise, frequent revisits",
     intervals: [
       0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 14,
       17, 21, 25, 30, 36, 43, 51, 60, 70, 81,

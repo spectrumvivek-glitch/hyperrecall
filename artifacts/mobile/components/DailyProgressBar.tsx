@@ -150,7 +150,7 @@ export function DeckProgressBar({ notesWithPlans, totalNotes }: DeckProgressBarP
         </Animated.View>
       </View>
       <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-        {notesWithPlans} of {totalNotes} note{totalNotes !== 1 ? "s" : ""} scheduled for review
+        {notesWithPlans} of {totalNotes} note{totalNotes !== 1 ? "s" : ""} scheduled for revision
       </Text>
     </View>
   );

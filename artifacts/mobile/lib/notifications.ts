@@ -209,7 +209,7 @@ export function buildReminderContent(dueNotes: Note[]): { title: string; body: s
   if (dueNotes.length === 0) {
     return {
       title: "HyperRecall — All caught up! ✨",
-      body: "No reviews due today. Add new notes or take a well-earned break.",
+      body: "No revisions due today. Add new notes or take a well-earned break.",
     };
   }
   const titles = dueNotes

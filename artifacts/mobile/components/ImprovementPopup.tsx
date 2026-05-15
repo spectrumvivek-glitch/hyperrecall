@@ -45,10 +45,10 @@ export function ImprovementPopup({
     : `${Math.abs(pct)}% below yesterday`;
 
   const sub = positive
-    ? `You completed ${todayCompleted} review${todayCompleted !== 1 ? "s" : ""} today — well done!`
+    ? `You completed ${todayCompleted} revision${todayCompleted !== 1 ? "s" : ""} today — well done!`
     : neutral
-    ? `${todayCompleted} review${todayCompleted !== 1 ? "s" : ""} done — consistent effort pays off!`
-    : `You've done ${todayCompleted} review${todayCompleted !== 1 ? "s" : ""} — push a little harder!`;
+    ? `${todayCompleted} revision${todayCompleted !== 1 ? "s" : ""} done — consistent effort pays off!`
+    : `You've done ${todayCompleted} revision${todayCompleted !== 1 ? "s" : ""} — push a little harder!`;
 
   useEffect(() => {
     if (visible) {

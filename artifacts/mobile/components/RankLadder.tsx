@@ -167,7 +167,7 @@ export function RankLadder({ rank, totalCompleted }: Props) {
                 >
                   {isUnlocked
                     ? `Unlocked at ${reviewsForRank}`
-                    : `${reviewsForRank} reviews to unlock`}
+                    : `${reviewsForRank} revisions to unlock`}
                 </Text>
               </View>
             </View>

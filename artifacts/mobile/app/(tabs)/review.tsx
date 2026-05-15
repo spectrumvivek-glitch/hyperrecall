@@ -94,7 +94,7 @@ export default function ReviewTab() {
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Review</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Revise</Text>
             <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
               {dueNotes.length === 0
                 ? "No notes due — nice work!"
@@ -239,7 +239,7 @@ export default function ReviewTab() {
           <EmptyState
             icon="check-circle"
             title="All caught up!"
-            description="You've reviewed everything due today. Come back tomorrow to keep your streak alive."
+            description="You've revised everything due today. Come back tomorrow to keep your streak alive."
             actionLabel="Go to Notes"
             onAction={() => router.push("/(tabs)/notes")}
           />

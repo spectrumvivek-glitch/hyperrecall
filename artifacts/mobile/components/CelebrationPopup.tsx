@@ -123,7 +123,7 @@ export function CelebrationPopup({
             <Text style={styles.emoji}>🎉</Text>
           </View>
 
-          <Text style={[styles.title, { color: colors.foreground }]}>Review Complete!</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Revision Complete!</Text>
           <Text style={[styles.congratsText, { color: colors.mutedForeground }]}>
             Great job — keep building that habit!
           </Text>

@@ -11,7 +11,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "first_review",
     name: "First Step",
-    description: "Complete your very first review",
+    description: "Complete your very first revision",
     icon: "star",
     color: "#F59E0B",
     rarity: "common",
@@ -59,15 +59,15 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "reviews_10",
     name: "Getting Started",
-    description: "Complete 25 reviews",
+    description: "Complete 25 revisions",
     icon: "check-circle",
     color: "#22C55E",
     rarity: "common",
   },
   {
     id: "reviews_50",
-    name: "Reviewer",
-    description: "Complete 100 reviews",
+    name: "Reviser",
+    description: "Complete 100 revisions",
     icon: "repeat",
     color: "#6366F1",
     rarity: "common",
@@ -75,7 +75,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "reviews_100",
     name: "Centurion",
-    description: "Complete 250 reviews",
+    description: "Complete 250 revisions",
     icon: "target",
     color: "#F59E0B",
     rarity: "rare",
@@ -83,7 +83,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "reviews_500",
     name: "Dedication",
-    description: "Complete 750 reviews",
+    description: "Complete 750 revisions",
     icon: "book-open",
     color: "#8B5CF6",
     rarity: "epic",
@@ -91,7 +91,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "reviews_1000",
     name: "Legend",
-    description: "Complete 2,000 reviews",
+    description: "Complete 2,000 revisions",
     icon: "cpu",
     color: "#EC4899",
     rarity: "legendary",
@@ -123,7 +123,7 @@ export const ALL_BADGES: BadgeDef[] = [
   {
     id: "perfect_day",
     name: "Perfect Day",
-    description: "Complete 20 reviews in a single day",
+    description: "Complete 20 revisions in a single day",
     icon: "sun",
     color: "#F59E0B",
     rarity: "rare",

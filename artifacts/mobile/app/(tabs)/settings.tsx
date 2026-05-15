@@ -511,7 +511,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.settingLabel, { color: colors.foreground }]}>Streak Saver</Text>
                   <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
                     {streakEnabled
-                      ? `Evening nudge at ${formatTime(streakHour, streakMinute)} if you haven't reviewed`
+                      ? `Evening nudge at ${formatTime(streakHour, streakMinute)} if you haven't revised`
                       : "Off — no evening reminder"}
                   </Text>
                 </View>
@@ -549,7 +549,7 @@ export default function SettingsScreen() {
                     <Text style={[styles.ampm, { color: colors.mutedForeground }]}>{streakHour >= 12 ? "PM" : "AM"}</Text>
                   </View>
                   <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
-                    Only fires on days you have an active streak and haven't reviewed yet.
+                    Only fires on days you have an active streak and haven't revised yet.
                   </Text>
                 </View>
               )}

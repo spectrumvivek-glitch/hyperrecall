@@ -191,7 +191,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="review"
         options={{
-          title: "Review",
+          title: "Revise",
           tabBarIcon: ({ color }) => <ReviewIcon color={color} isIOS={isIOS} />,
         }}
       />

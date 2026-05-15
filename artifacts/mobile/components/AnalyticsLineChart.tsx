@@ -241,7 +241,7 @@ export function AnalyticsLineChart({ data, colors, height = 180 }: Props) {
             {l.label}
           </SvgText>
         ))}
-        {/* Empty state — no reviews yet */}
+        {/* Empty state — no revisions yet */}
         {isEmpty && (
           <SvgText
             x={PAD_L + innerW / 2}
@@ -252,7 +252,7 @@ export function AnalyticsLineChart({ data, colors, height = 180 }: Props) {
             textAnchor="middle"
             opacity={0.85}
           >
-            No reviews yet — start your first one
+            No revisions yet — start your first one
           </SvgText>
         )}
       </Svg>

@@ -171,15 +171,15 @@ export default function RevisionScreen() {
             {singleMissing
               ? "Not Available"
               : isSingle
-              ? "Note Reviewed!"
+              ? "Note Revised!"
               : "Session Complete!"}
           </Text>
           <Text style={[styles.doneSub, { color: colors.mutedForeground }]}>
             {singleMissing
-              ? "This note isn't due right now. Pull to refresh on the Review tab."
+              ? "This note isn't due right now. Pull to refresh on the Revise tab."
               : isSingle
               ? "Nice work — your next revision has been scheduled."
-              : "You've reviewed all due notes for today."}
+              : "You've revised all due notes for today."}
           </Text>
 
           {!singleMissing && (

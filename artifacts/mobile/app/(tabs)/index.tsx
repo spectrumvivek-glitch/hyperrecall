@@ -396,7 +396,7 @@ export default function DashboardScreen() {
           <StatCard
             label="Due Today"
             value={dueNotes.length}
-            subtitle={dueNotes.length > 0 ? "Ready to review" : "All caught up!"}
+            subtitle={dueNotes.length > 0 ? "Ready to revise" : "All caught up!"}
             icon={dueNotes.length > 0 ? "clock" : "check-circle"}
             accentColor={dueNotes.length > 0 ? "#F97316" : colors.success}
             gradientIcon

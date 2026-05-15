@@ -155,7 +155,7 @@ function LeaderboardRow({
           {reviews}
         </Text>
         <Text style={[lbStyles.reviewsLabel, { color: colors.mutedForeground }]}>
-          reviews
+          revisions
         </Text>
       </View>
     </View>
