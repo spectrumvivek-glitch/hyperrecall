@@ -12,6 +12,7 @@ interface Props {
 const STREAK_COLOR = "#FFA94D";
 const STREAK_GLOW = "#FFA94D26";
 const FIRE_GLOW = "#FF8A3D";
+const STREAK_TEXT_COLOR = "#B8501A";
 
 export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Props) {
   const colors = useColors();
@@ -142,7 +143,7 @@ export function StreakBadge({ streak, size = "md", pulse: _pulse = false }: Prop
             styles.text,
             {
               fontSize: config.fontSize,
-              color: isActive ? STREAK_COLOR : colors.mutedForeground,
+              color: isActive ? STREAK_TEXT_COLOR : colors.mutedForeground,
             },
           ]}
         >
