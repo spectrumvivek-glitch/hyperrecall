@@ -19,8 +19,6 @@ import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { deleteLocalImage } from "@/lib/imageUtils";
 import { chooseImageSource } from "@/lib/imagePicker";
-import { FREE_MAX_NOTES_PER_CATEGORY, showProGate } from "@/lib/proGate";
-import { useSubscription } from "@/lib/revenuecat";
 import { NoteImage } from "@/lib/storage";
 
 export default function NoteDetailScreen() {
@@ -29,7 +27,6 @@ export default function NoteDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { notes, categories, revisionPlans, editNote, removeNote } = useApp();
-  const { isPro } = useSubscription();
 
   const note = notes.find((n) => n.id === id);
   const plan = revisionPlans.find((p) => p.noteId === id);
