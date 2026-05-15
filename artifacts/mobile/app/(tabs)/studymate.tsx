@@ -1,6 +1,7 @@
 import { Feather } from "@/components/Feather";
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -22,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AmbientGlow } from "@/components/AmbientGlow";
 import { useColors } from "@/hooks/useColors";
+import { useSubscription } from "@/lib/revenuecat";
 
 const STUDYMATE_AI_URL =
   "https://chatgpt.com/g/g-69ee1c9314988191b54a52b0a1bc5a00-studymate-ai";
@@ -243,12 +245,188 @@ function FloatingMascot() {
 export default function StudyMateScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { isPro, isLoading: subLoading, trialReady, trial } = useSubscription();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const [activeFeature, setActiveFeature] = useState<FeatureItem | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const isReady = trialReady && !subLoading;
+
+  if (!isReady) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <AmbientGlow variant="studymate" />
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingTop: topPad,
+            paddingBottom: bottomPad,
+            gap: 14,
+          }}
+        >
+          <LinearGradient
+            colors={["#7C3AED", "#6366F1"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" }}
+          >
+            <Feather name="loader" size={26} color="#fff" />
+          </LinearGradient>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>Setting things up</Text>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 24 }}>
+            Just a moment while we check your subscription.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!isPro) {
+    const trialExpired = trial.hasEverStarted && !trial.isActive;
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <AmbientGlow variant="studymate" />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: topPad + 14, paddingBottom: bottomPad + 110, gap: 18 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <View style={styles.titleWrap}>
+              <Text style={[styles.title, { color: colors.foreground }]}>
+                StudyMate <Text style={styles.titleAccent}>AI</Text>
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: 4 }}>
+                {trialExpired ? "Your free trial has ended" : "Available with HyperRecall Pro"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ alignItems: "center", gap: 14, marginTop: 6 }}>
+            <LinearGradient
+              colors={["#7C3AED", "#6366F1"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: 48,
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#7C3AED",
+                shadowOpacity: 0.35,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 8 },
+                elevation: 10,
+              }}
+            >
+              <Feather name="message-circle" size={44} color="#fff" />
+            </LinearGradient>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "800",
+                color: colors.foreground,
+                textAlign: "center",
+                letterSpacing: -0.5,
+              }}
+            >
+              Unlock StudyMate AI
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                lineHeight: 21,
+                color: colors.mutedForeground,
+                textAlign: "center",
+                paddingHorizontal: 12,
+              }}
+            >
+              Get instant answers to any doubt, AI-generated summaries, practice questions, and exam predictions — all in one place.
+            </Text>
+          </View>
+
+          <View style={{ gap: 10 }}>
+            {(
+              [
+                ["help-circle", "Ask any doubt, get instant answers"],
+                ["book-open", "Auto-summarize notes from images"],
+                ["edit-3", "Generate practice questions on demand"],
+                ["zap", "Predict exam questions with AI"],
+              ] as const
+            ).map(([icon, text]) => (
+              <View
+                key={text}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: 14,
+                  padding: 14,
+                }}
+              >
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: "#7C3AED" + "18",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Feather name={icon as any} size={16} color="#7C3AED" />
+                </View>
+                <Text style={{ flex: 1, fontSize: 14, color: colors.foreground, fontWeight: "500" }}>{text}</Text>
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            onPress={() => router.push("/paywall")}
+            activeOpacity={0.85}
+            style={{
+              borderRadius: 16,
+              overflow: "hidden",
+              shadowColor: "#7C3AED",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.35,
+              shadowRadius: 14,
+              elevation: 8,
+            }}
+          >
+            <LinearGradient
+              colors={["#7C3AED", "#6366F1"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                paddingVertical: 16,
+              }}
+            >
+              <Feather name="zap" size={18} color="#fff" />
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Upgrade to HyperRecall Pro</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
 
   const handleCopy = async () => {
     if (!activeFeature) return;
