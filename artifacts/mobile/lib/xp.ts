@@ -3,19 +3,20 @@ export const XP_STREAK_BONUS = 5;
 export const XP_DAILY_SWEEP_BONUS = 25;
 
 /**
- * 100-level progression — Free-Fire-style curve.
+ * 100-level progression — Free-Fire-style curve, target ~50k XP cap.
  *
- * Each level needs:   xpForNext(L) = 60 + L*40 + L*L*6
+ * Each level needs:   xpForNext(L) = 10*L + 10
  *
- *  L  1  →  next 106 xp     (total to reach L2  = 106)
- *  L 10 →  next 1,060 xp    (total to reach L11 ≈ 4,150)
- *  L 25 →  next 4,810 xp    (total to reach L26 ≈ 41,000)
- *  L 50 →  next 17,060 xp   (total to reach L51 ≈ 277,000)
- *  L 80 →  next 41,660 xp   (total to reach L81 ≈ 1.07M)
- *  L 99 →  next 62,826 xp   (total to reach L100 ≈ 2.14M)
+ *  L  1  →  next 20 xp     (total to reach L2  = 20)
+ *  L 10 →  next 110 xp     (total to reach L11 = 650)
+ *  L 25 →  next 260 xp     (total to reach L26 = 3,500)
+ *  L 50 →  next 510 xp     (total to reach L51 = 13,250)
+ *  L 80 →  next 810 xp     (total to reach L81 = 33,200)
+ *  L 99 →  next 1,000 xp   (total to reach L100 = 50,490)
  *
- * Result: easy to reach L5–L10, properly grindy past L40, prestige
- * tier 80+, and "untouchable" at L100 (HyperRecall God).
+ * Linear "+10 per level" curve: lightning-fast early levels (Beginner
+ * → Disciple in just 550 XP), steady mid-game grind, and L100
+ * "HyperRecall God" sits at ~50,000 XP total — reachable goal.
  */
 const LEVEL_NAMES = [
   // 1-10 — Rookie tier
@@ -55,14 +56,14 @@ export const MAX_LEVEL = LEVEL_NAMES.length; // 100
 export function xpForNextLevel(level: number): number {
   // Cap requirement at MAX_LEVEL — once at level 100 there is no next.
   if (level >= MAX_LEVEL) return 0;
-  return 60 + level * 40 + level * level * 6;
+  return level * 10 + 10;
 }
 
 export function xpThreshold(level: number): number {
   if (level <= 1) return 0;
   let total = 0;
   for (let i = 1; i < level; i++) {
-    total += 60 + i * 40 + i * i * 6;
+    total += i * 10 + 10;
   }
   return total;
 }

@@ -27,7 +27,7 @@ A spaced repetition study app at `artifacts/mobile/`.
 - Revision session flow (complete/skip) with floating +XP animation
 - **Scholar AI tutor**: GPT-4o powered, conversation memory (last 5 exchanges), text + image support, animated typing dots, structured JSON responses
 - **Gamification (full system)**:
-  - XP system, **100-level Free-Fire-style progression** (curve `60 + L*40 + L²*6`, ~2.14M XP to reach Level 100 "HyperRecall God"), share streak (+10 XP), category completion (+100 XP). Milestones at 5, 10, 25, 50, 75, 100.
+  - XP system, **100-level Free-Fire-style progression** (linear curve `xpForNext(L) = 10L + 10`, ~50,490 XP to reach Level 100 "HyperRecall God"), share streak (+10 XP), category completion (+100 XP). Milestones at 5, 10, 25, 50, 75, 100.
   - **17 Badges** across 4 rarities (common/rare/epic/legendary): First Step, On Fire, Week Warrior, Fortnight, Monthly Hero, Century Streak, Getting Started, Reviewer, Centurion, Dedication, Legend, Rising Scholar, Master Mind, Grandmaster, Perfect Day, XP Hunter, XP Legend
   - Badges awarded automatically after each review in `updateStreak()` via `checkNewBadges()` in `lib/badges.ts`
   - New badge toast banner on Home tab when badge is unlocked, dismissable
