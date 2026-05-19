@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AmbientGlow } from "@/components/AmbientGlow";
@@ -636,6 +638,106 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
       )}
+
+      {/* Rate Us */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Support Us</Text>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={async () => {
+            const pkg = "com.recallify.app";
+            const iosId = "0000000000";
+            const market = Platform.select({
+              android: `market://details?id=${pkg}`,
+              ios: `itms-apps://itunes.apple.com/app/id${iosId}?action=write-review`,
+            }) as string | undefined;
+            const web = Platform.select({
+              android: `https://play.google.com/store/apps/details?id=${pkg}`,
+              ios: `https://apps.apple.com/app/id${iosId}?action=write-review`,
+            }) as string | undefined;
+            try {
+              if (market) {
+                await Linking.openURL(market);
+                return;
+              }
+            } catch {}
+            if (web) {
+              try {
+                await Linking.openURL(web);
+              } catch {
+                Alert.alert("Can't open store", web);
+              }
+            }
+          }}
+          style={{
+            borderRadius: 18,
+            overflow: "hidden",
+            shadowColor: "#F59E0B",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.25,
+            shadowRadius: 14,
+            elevation: 6,
+          }}
+        >
+          <LinearGradient
+            colors={["#FFF8E1", "#FFE8B0"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 14,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: "#FFD680",
+              borderRadius: 18,
+            }}
+          >
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: "#FFFFFF",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#F59E0B",
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.25,
+                shadowRadius: 6,
+                elevation: 3,
+              }}
+            >
+              <Text style={{ fontSize: 36, lineHeight: 42 }}>🥺</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "800", color: "#7A4A00" }}>
+                Please rate us 5 stars!
+              </Text>
+              <Text style={{ fontSize: 12, color: "#B07A1B", marginTop: 3, lineHeight: 17 }}>
+                Your review helps HyperRecall grow and reach more learners 💛
+              </Text>
+              <View style={{ flexDirection: "row", gap: 2, marginTop: 6 }}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Text key={i} style={{ fontSize: 14 }}>⭐</Text>
+                ))}
+              </View>
+            </View>
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: "#F59E0B",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name="arrow-right" size={16} color="#fff" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
