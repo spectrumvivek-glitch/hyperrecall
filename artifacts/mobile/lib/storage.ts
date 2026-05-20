@@ -461,9 +461,21 @@ export async function saveUserStats(stats: UserStats): Promise<void> {
  */
 export async function expireStreakIfMissed(): Promise<UserStats> {
   const stats = await getUserStats();
-  if (stats.currentStreak === 0 || !stats.lastActiveDate) return stats;
 
   const today = startOfDay(Date.now());
+
+  // Reset todayCompleted whenever the calendar day rolls over, regardless of
+  // whether the user revises anything. Without this, yesterday's count stays
+  // visible on the Home screen until the first revision of the new day.
+  const lastXpDay = startOfDay(stats.lastXpDate || 0);
+  if (lastXpDay !== today && stats.todayCompleted > 0) {
+    stats.yesterdayCompleted = stats.todayCompleted;
+    stats.todayCompleted = 0;
+    await saveUserStats(stats);
+  }
+
+  if (stats.currentStreak === 0 || !stats.lastActiveDate) return stats;
+
   const yesterday = today - 24 * 60 * 60 * 1000;
   const lastActive = startOfDay(stats.lastActiveDate);
 
