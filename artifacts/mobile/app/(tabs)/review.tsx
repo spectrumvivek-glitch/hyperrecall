@@ -46,11 +46,16 @@ export default function ReviewTab() {
 
   useFocusEffect(
     useCallback(() => {
+      // Refresh due notes every time the tab is focused so stale data
+      // (e.g. the previous day's snapshot when the calendar rolls over)
+      // is never shown. The refresh is debounced inside AppContext so
+      // rapid tab switches don't fire multiple storage reads.
+      refresh();
       if (reviewCompletionTick > lastSeenTickRef.current) {
         lastSeenTickRef.current = reviewCompletionTick;
         setShowXpToast(true);
       }
-    }, [reviewCompletionTick])
+    }, [reviewCompletionTick, refresh])
   );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
