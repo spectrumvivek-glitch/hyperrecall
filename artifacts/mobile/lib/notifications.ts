@@ -199,7 +199,7 @@ export function predictDueNotesForDate(
   const dayEnd = dayStart + ONE_DAY_MS;
   const noteMap = new Map(notes.map((n) => [n.id, n]));
   return plans
-    .filter((p) => p.nextRevisionDate < dayEnd)
+    .filter((p) => p.nextRevisionDate <= dayEnd)
     .map((p) => noteMap.get(p.noteId))
     .filter((n): n is Note => !!n);
 }

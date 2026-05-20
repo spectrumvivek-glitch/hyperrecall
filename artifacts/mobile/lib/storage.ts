@@ -339,7 +339,7 @@ export async function getDueNotes(): Promise<{ note: Note; plan: RevisionPlan }[
   const [notes, plans] = await Promise.all([getNotes(), getRevisionPlans()]);
   const noteMap = new Map(notes.map((n) => [n.id, n]));
   return plans
-    .filter((p) => p.nextRevisionDate < tomorrow)
+    .filter((p) => p.nextRevisionDate <= tomorrow)
     .map((p) => ({ note: noteMap.get(p.noteId)!, plan: p }))
     .filter((item) => !!item.note);
 }
