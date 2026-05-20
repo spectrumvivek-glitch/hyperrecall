@@ -19,7 +19,7 @@ import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { deleteLocalImage } from "@/lib/imageUtils";
 import { chooseImageSource } from "@/lib/imagePicker";
-import { NoteImage } from "@/lib/storage";
+import { NoteImage, startOfDay } from "@/lib/storage";
 
 export default function NoteDetailScreen() {
   const colors = useColors();
@@ -160,7 +160,7 @@ export default function NoteDetailScreen() {
   };
 
   const daysUntilDue = plan
-    ? Math.ceil((plan.nextRevisionDate - Date.now()) / (24 * 60 * 60 * 1000))
+    ? Math.round((plan.nextRevisionDate - startOfDay(Date.now())) / (24 * 60 * 60 * 1000))
     : null;
 
   return (

@@ -10,7 +10,7 @@ import {
 
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { Note, RevisionPlan } from "@/lib/storage";
+import { Note, RevisionPlan, startOfDay } from "@/lib/storage";
 
 interface Props {
   note: Note;
@@ -26,7 +26,7 @@ export function NoteCard({ note, plan, onPress, showDueBadge }: Props) {
   const catColor = category?.color ?? colors.primary;
 
   const daysUntilDue = plan
-    ? Math.ceil((plan.nextRevisionDate - Date.now()) / (24 * 60 * 60 * 1000))
+    ? Math.round((plan.nextRevisionDate - startOfDay(Date.now())) / (24 * 60 * 60 * 1000))
     : null;
 
   const isDue = daysUntilDue !== null && daysUntilDue <= 0;
