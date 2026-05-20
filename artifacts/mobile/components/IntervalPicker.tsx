@@ -1,10 +1,9 @@
 import { Feather } from "@/components/Feather";
-import React, { useState } from "react";
+import React from "react";
 import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -53,19 +52,6 @@ interface Props {
 
 export function IntervalPicker({ intervals, onChange }: Props) {
   const colors = useColors();
-  const [inputValue, setInputValue] = useState("");
-
-  const addInterval = () => {
-    const val = parseInt(inputValue, 10);
-    if (!isNaN(val) && val >= 0 && !intervals.includes(val)) {
-      onChange([...intervals, val].sort((a, b) => a - b));
-      setInputValue("");
-    }
-  };
-
-  const removeInterval = (day: number) => {
-    onChange(intervals.filter((d) => d !== day));
-  };
 
   const isPresetActive = (preset: typeof PRESETS[0]) =>
     JSON.stringify(preset.intervals) === JSON.stringify(intervals);
@@ -117,7 +103,7 @@ export function IntervalPicker({ intervals, onChange }: Props) {
         </View>
       </View>
 
-      {/* Current intervals */}
+      {/* Current intervals (read-only preview) */}
       <View style={styles.section}>
         {intervals.length === 0 ? (
           <View style={[styles.emptyPrompt, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -127,54 +113,24 @@ export function IntervalPicker({ intervals, onChange }: Props) {
             </Text>
           </View>
         ) : (
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>
-          Schedule ({intervals.length} steps) · 0 = same day
-        </Text>
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>
+            Schedule ({intervals.length} steps) · 0 = same day
+          </Text>
         )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.chips}>
             {intervals.map((day) => (
-              <TouchableOpacity
+              <View
                 key={day}
-                onPress={() => removeInterval(day)}
                 style={[styles.chip, { backgroundColor: colors.accent, borderColor: colors.border }]}
               >
                 <Text style={[styles.chipText, { color: colors.accentForeground }]}>
                   {day === 0 ? "Same day" : `${day}d`}
                 </Text>
-                <Feather name="x" size={11} color={colors.accentForeground} />
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         </ScrollView>
-      </View>
-
-      {/* Add custom */}
-      <View style={styles.addRow}>
-        <TextInput
-          value={inputValue}
-          onChangeText={setInputValue}
-          placeholder="Add day (e.g. 45)"
-          placeholderTextColor={colors.mutedForeground}
-          keyboardType="numeric"
-          onSubmitEditing={addInterval}
-          style={[
-            styles.input,
-            {
-              color: colors.foreground,
-              backgroundColor: colors.muted,
-              borderRadius: colors.radius / 2,
-              borderColor: colors.border,
-            },
-          ]}
-        />
-        <TouchableOpacity
-          onPress={addInterval}
-          style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: colors.radius / 2 }]}
-          activeOpacity={0.8}
-        >
-          <Feather name="plus" size={18} color={colors.primaryForeground} />
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -219,14 +175,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: { fontSize: 12 },
-  addRow: { flexDirection: "row", gap: 8 },
-  input: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    borderWidth: 1,
-  },
   emptyPrompt: {
     flexDirection: "row",
     alignItems: "center",
@@ -237,9 +185,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   emptyPromptText: { fontSize: 13 },
-  addBtn: {
-    width: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });
